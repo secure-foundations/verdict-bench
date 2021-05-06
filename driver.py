@@ -78,7 +78,7 @@ def main():
         return False
 
     sign_verify_res = verifySignatures()
-    if not sign_verify_res:
+    if sign_verify_res == "false":
         print("Signature verification: failed")
         return False
     else:
