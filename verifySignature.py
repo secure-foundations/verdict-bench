@@ -1,5 +1,3 @@
-import sys
-
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -28,7 +26,7 @@ def readData(filepath):
         if (i % 5 == 0):  # tbs bytes
             tbs_bytes.append(int_to_Bytes(lines[i].strip()))
         elif (i % 5 == 1):  # signature
-            # if lines[i].strip().startswith("0 "):
+            # if lines[i].strip().startswith("0 "): ### todo
             lines_i_0_stripped = lines[i].strip()
             signatures.append(int_to_Bytes(lines_i_0_stripped)[5:])
             # else:
@@ -75,18 +73,3 @@ def verifySignatures():
             print("Failed to verify signature of certificate {}".format(i))
             break
     return res
-
-
-def main():
-    filename = sys.argv[1]
-    readData(filename)
-    res = verifySignatures()
-
-    if res:
-        print("Signature verification: passed")
-    else:
-        print("Signature verification: failed")
-
-
-if __name__ == "__main__":
-    main()
