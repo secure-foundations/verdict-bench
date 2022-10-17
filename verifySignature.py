@@ -1,6 +1,7 @@
 import sys
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_der_public_key
@@ -33,7 +34,7 @@ def readData(filepath):
             # else:
             #     signatures.append(int_to_Bytes(lines[i].strip()))
         elif (i % 5 == 2):  # pk
-            pks.append(load_der_public_key(int_to_Bytes(lines[i].strip())))
+            pks.append(load_der_public_key(int_to_Bytes(lines[i].strip()), backend=default_backend()))
         elif (i % 5 == 3):  # sign oid
             sign_oids.append(sign_oid_map.get(lines[i].strip()))
 
