@@ -44,7 +44,7 @@ def main():
         f.write(output)
         f.close()
 
-    cmd = ['cat {} | ./{} > {}'.format(filename_certchain_dump, filename_aeres_bin, filename_aeres_output)]
+    cmd = ['cat {} | {} > {}'.format(filename_certchain_dump, filename_aeres_bin, filename_aeres_output)]
     aeres_res = subprocess.getoutput(cmd)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") \
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
