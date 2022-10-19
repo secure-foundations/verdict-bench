@@ -26,11 +26,11 @@ def readData(filepath):
         if (i % 5 == 0):  # tbs bytes
             tbs_bytes.append(int_to_Bytes(lines[i].strip()))
         elif (i % 5 == 1):  # signature
-            # if lines[i].strip().startswith("0 "): ### todo
-            lines_i_0_stripped = lines[i].strip()
-            signatures.append(int_to_Bytes(lines_i_0_stripped)[5:])
-            # else:
-            #     signatures.append(int_to_Bytes(lines[i].strip()))
+            if lines[i].strip().startswith("0 "): ## 0 as padding byte
+                lines_i_0_stripped = lines[i].strip()[2:]
+                signatures.append(int_to_Bytes(lines_i_0_stripped))
+            else: ## without padding byte
+                signatures.append(int_to_Bytes(lines[i].strip()))
         elif (i % 5 == 2):  # pk
             pks.append(load_der_public_key(int_to_Bytes(lines[i].strip()), backend=default_backend()))
         elif (i % 5 == 3):  # sign oid
