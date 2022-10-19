@@ -2,6 +2,7 @@ import os.path
 import subprocess
 import sys
 from base64 import *
+from pathlib import Path
 
 from pem import *
 
@@ -23,12 +24,13 @@ def decodePem(filename):
 
 def main():
     args = sys.argv
-    filename_certchain_dump = ".residuals/temp1.txt"
-    filename_aeres_output = ".residuals/temp2.txt"
+    home_dir = str(Path.home())
+    filename_certchain_dump = home_dir + "/.residuals/temp1.txt"
+    filename_aeres_output = home_dir + "/.residuals/temp2.txt"
     filename_aeres_bin = args[3]
 
-    if not os.path.exists(".residuals/"):
-        os.mkdir(".residuals/")
+    if not os.path.exists(home_dir + "/.residuals/"):
+        os.mkdir(home_dir + "/.residuals/")
 
     decoded_certchain_bytes = decodePem(args[1])
     if (decoded_certchain_bytes == None):
