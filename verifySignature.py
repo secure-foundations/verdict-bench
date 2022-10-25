@@ -15,7 +15,11 @@ sign_oid_map = {
     "6 9 42 134 72 134 247 13 1 1 11": "sha256WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 12": "sha384WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 13": "sha512WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 14": "sha224WithRSAEncryption"
+    "6 9 42 134 72 134 247 13 1 1 14": "sha224WithRSAEncryption",
+    '6 8 42 134 72 206 61 4 3 1': 'ecdsa-with-SHA224',
+    '6 8 42 134 72 206 61 4 3 2': 'ecdsa-with-SHA256',
+    '6 8 42 134 72 206 61 4 3 3': 'ecdsa-with-SHA384',
+    '6 8 42 134 72 206 61 4 3 4': 'ecdsa-with-SHA512'
 }
 
 sign_oid_map_insecure = {
@@ -50,32 +54,36 @@ def verifySign(signature, sign_algo, msg, pk):
         print("Signature algorithm is insecure:", sign_oid_map_insecure[sign_algo])
         return False
 
-    if sign_oid_map[sign_algo] == "sha256WithRSAEncryption":
-        try:
-            pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA256())
+    if sign_algo in sign_oid_map:
+        if sign_oid_map[sign_algo] == "sha256WithRSAEncryption":
+            try:
+                pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA256())
+                return True
+            except InvalidSignature:
+                return False
+        elif sign_oid_map[sign_algo] == "sha384WithRSAEncryption":
+            try:
+                pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA384())
+                return True
+            except InvalidSignature:
+                return False
+        elif sign_oid_map[sign_algo] == "sha512WithRSAEncryption":
+            try:
+                pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA512())
+                return True
+            except InvalidSignature:
+                return False
+        elif sign_oid_map[sign_algo] == "sha224WithRSAEncryption":
+            try:
+                pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA224())
+                return True
+            except InvalidSignature:
+                return False
+        else:
+            print("Singnature algorithm is not supported, verification bypassed:", sign_oid_map[sign_algo])
             return True
-        except InvalidSignature:
-            return False
-    elif sign_oid_map[sign_algo] == "sha384WithRSAEncryption":
-        try:
-            pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA384())
-            return True
-        except InvalidSignature:
-            return False
-    elif sign_oid_map[sign_algo] == "sha512WithRSAEncryption":
-        try:
-            pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA512())
-            return True
-        except InvalidSignature:
-            return False
-    elif sign_oid_map[sign_algo] == "sha224WithRSAEncryption":
-        try:
-            pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA224())
-            return True
-        except InvalidSignature:
-            return False
     else:
-        print("Singnature algorithm is not supported:", sign_oid_map[sign_algo])
+        print("Singnature algorithm is not supported, verification bypassed:", int_to_hex(sign_algo).upper())
         return True
 
 
