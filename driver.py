@@ -27,12 +27,12 @@ def main():
     home_dir = str(Path.home())
     filename_certchain_dump = home_dir + "/.residuals/temp1.txt"
     filename_aeres_output = home_dir + "/.residuals/temp2.txt"
-    filename_aeres_bin = args[3]
+    filename_aeres_bin = args[1]
 
     if not os.path.exists(home_dir + "/.residuals/"):
         os.mkdir(home_dir + "/.residuals/")
 
-    decoded_certchain_bytes = decodePem(args[1])
+    decoded_certchain_bytes = decodePem(args[3])
     if (decoded_certchain_bytes == None):
         print("Error: Failed to decode input PEM certificate chain")
         return False
@@ -46,11 +46,11 @@ def main():
 
     cmd = ['cat {} | {} > {}'.format(filename_certchain_dump, filename_aeres_bin, filename_aeres_output)]
     aeres_res = subprocess.getoutput(cmd)
+    print(aeres_res)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") \
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
             or aeres_res.__contains__("cannot execute binary file"):
         print("AERES syntactic or semantic checks: failed")
-        print(aeres_res)
         return False
     else:
         print("AERES syntactic and semantic checks: passed")
