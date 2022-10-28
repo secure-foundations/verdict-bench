@@ -8,5 +8,4 @@ python3 driver.py /home/aeres-external-driver/aeres /etc/ssl/certs/ca-certificat
 
 ### Example (for Mac)
 
-python3 driver.py /home/aeres-external-driver/aeres_mac /etc/ssl/certs/ca-certificates.crt
-certs/www-google-com-chain.pem
+python3 driver.py /home/aeres-external-driver/aeres_mac /etc/ssl/certs/ca-certificates.crt certs/www-google-com-chain.pem
