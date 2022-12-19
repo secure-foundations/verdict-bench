@@ -16,7 +16,6 @@ sign_oid_map = {
     "6 9 42 134 72 134 247 13 1 1 12": "sha384WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 13": "sha512WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 14": "sha224WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 5": "sha1WithRSAEncryption",
     '6 8 42 134 72 206 61 4 3 1': 'ecdsa-with-SHA224',
     '6 8 42 134 72 206 61 4 3 2': 'ecdsa-with-SHA256',
     '6 8 42 134 72 206 61 4 3 3': 'ecdsa-with-SHA384',
@@ -26,7 +25,8 @@ sign_oid_map = {
 sign_oid_map_insecure = {
     "6 9 42 134 72 134 247 13 1 1 2": "md2WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 3": "md4WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 4": "md5WithRSAEncryption"
+    "6 9 42 134 72 134 247 13 1 1 4": "md5WithRSAEncryption",
+    "6 9 42 134 72 134 247 13 1 1 5": "sha1WithRSAEncryption"
 }
 
 
@@ -49,9 +49,9 @@ def readData(filepath):
             sign_oids.append(lines[i].strip())
 
 
-def verifySign(signature, sign_algo, msg, pk):
+def verifySign(signature, sign_algo, msg, pk, i):
     if sign_algo in sign_oid_map_insecure:
-        print("Signature algorithm is insecure:", sign_oid_map_insecure[sign_algo])
+        print("Singnature algorithm {} is insecure in certificate {}".format(sign_oid_map_insecure[sign_algo], i))
         return False
 
     if sign_algo in sign_oid_map:
@@ -79,17 +79,11 @@ def verifySign(signature, sign_algo, msg, pk):
                 return True
             except InvalidSignature:
                 return False
-        elif sign_oid_map[sign_algo] == "sha1WithRSAEncryption":
-            try:
-                pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA1())
-                return True
-            except InvalidSignature:
-                return False
         else:
-            print("Singnature algorithm is not supported, verification bypassed:", sign_oid_map[sign_algo])
+            print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(sign_oid_map[sign_algo], i))
             return True
     else:
-        print("Singnature algorithm is not supported, verification bypassed:", int_to_hex(sign_algo).upper())
+        print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(int_to_hex(sign_algo).upper(), i))
         return True
 
 
@@ -97,11 +91,11 @@ def verifySignatures():
     res = False
     for i in range(0, len(signatures)):
         if i == len(signatures) - 1:
-            res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i])
+            res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i], i + 1)
         else:
-            res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1])
+            res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1], i + 1)
 
         if res == False:
-            print("Failed to verify signature of certificate {}".format(i))
+            print("Failed to verify signature of certificate {}".format(i + 1))
             break
     return res
