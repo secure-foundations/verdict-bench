@@ -25,26 +25,14 @@ def decodePem(filename):
 def main():
     args = sys.argv
     home_dir = str(Path.home())
-    filename_certchain_dump = home_dir + "/.residuals/temp1.txt"
-    filename_aeres_output = home_dir + "/.residuals/temp2.txt"
+    filename_certchain = args[3]
+    filename_aeres_output = home_dir + "/.residuals/temp.txt"
     filename_aeres_bin = args[1]
 
     if not os.path.exists(home_dir + "/.residuals/"):
         os.mkdir(home_dir + "/.residuals/")
 
-    decoded_certchain_bytes = decodePem(args[3])
-    if (decoded_certchain_bytes == None):
-        print("Error: Failed to decode input PEM certificate chain")
-        return False
-    else:
-        output = b''
-        for c in decoded_certchain_bytes:
-            output = output + c
-        f = open(filename_certchain_dump, 'wb')
-        f.write(output)
-        f.close()
-
-    cmd = ['cat {} | {} > {}'.format(filename_certchain_dump, filename_aeres_bin, filename_aeres_output)]
+    cmd = ['cat {} | {} > {}'.format(filename_certchain, filename_aeres_bin, filename_aeres_output)]
     aeres_res = subprocess.getoutput(cmd)
     print(aeres_res)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") \
@@ -64,8 +52,12 @@ def main():
         print("Signature verification: passed")
 
     decoded_rootcert_bytes = decodePem(args[2])
+    decoded_certchain_bytes = decodePem(args[3])
     if (decoded_rootcert_bytes == None):
         print("Error: Failed to decode input PEM trusted root CA certs")
+        return False
+    elif (decoded_certchain_bytes == None):
+        print("Error: Failed to decode input PEM certificate chain")
         return False
     else:
         if decoded_certchain_bytes[len(decoded_certchain_bytes) - 1] in decoded_rootcert_bytes:
