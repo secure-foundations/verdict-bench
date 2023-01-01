@@ -37,7 +37,7 @@ def main():
     print(aeres_res)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") \
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
-            or aeres_res.__contains__("cannot execute binary file"):
+            or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain"):
         print("AERES syntactic or semantic checks: failed")
         return False
     else:
