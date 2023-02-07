@@ -72,6 +72,6 @@ def main():
 if __name__ == "__main__":
     res = main()
     if res:
-        print("Accepted")
+        print("success")
     else:
-        print("Rejected")
+        print("failed")
