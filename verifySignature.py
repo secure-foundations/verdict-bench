@@ -16,7 +16,7 @@ sign_oid_map = {
     "6 9 42 134 72 134 247 13 1 1 12": "sha384WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 13": "sha512WithRSAEncryption",
     "6 9 42 134 72 134 247 13 1 1 14": "sha224WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 5": "sha1WithRSAEncryption"
+    "6 9 42 134 72 134 247 13 1 1 5": "sha1WithRSAEncryption",
     '6 8 42 134 72 206 61 4 3 1': 'ecdsa-with-SHA224',
     '6 8 42 134 72 206 61 4 3 2': 'ecdsa-with-SHA256',
     '6 8 42 134 72 206 61 4 3 3': 'ecdsa-with-SHA384',
