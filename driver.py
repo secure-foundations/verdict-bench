@@ -8,6 +8,8 @@ from pem import *
 
 from verifySignature import *
 
+import time
+import os
 
 def decodePem(filename):
     try:
@@ -23,10 +25,11 @@ def decodePem(filename):
 
 
 def main():
+    ep = str(time.time())
     args = sys.argv
     home_dir = str(Path.home())
     filename_certchain = args[3]
-    filename_aeres_output = home_dir + "/.residuals/temp.txt"
+    filename_aeres_output = home_dir + "/.residuals/temp_{}.txt".format(ep)
     filename_aeres_bin = args[1]
 
     if not os.path.exists(home_dir + "/.residuals/"):
@@ -39,11 +42,13 @@ def main():
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
             or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain"):
         print("AERES syntactic or semantic checks: failed")
+        os.remove(filename_aeres_output)
         return False
     else:
         print("AERES syntactic and semantic checks: passed")
 
     readData(filename_aeres_output)
+    os.remove(filename_aeres_output) 
     sign_verify_res = verifySignatures()
     if not sign_verify_res:
         print("Signature verification: failed")
