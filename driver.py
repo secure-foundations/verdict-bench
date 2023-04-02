@@ -8,8 +8,8 @@ from pem import *
 
 from verifySignature import *
 
-import time
 import os
+import random
 
 def decodePem(filename):
     try:
@@ -25,7 +25,7 @@ def decodePem(filename):
 
 
 def main():
-    ep = str(time.time())
+    ep = random.random()
     args = sys.argv
     home_dir = str(Path.home())
     filename_certchain = args[3]
