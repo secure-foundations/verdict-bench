@@ -47,32 +47,36 @@ def main():
     else:
         print("AERES syntactic and semantic checks: passed")
 
+    decoded_rootcert_bytes = decodePem(args[2])
+    decoded_certchain_bytes = decodePem(args[3])
+    trusted_ca_index = -1
+    if (decoded_rootcert_bytes == None):
+        print("Error: Failed to decode input PEM trusted CA certs")
+        return False
+    elif (decoded_certchain_bytes == None):
+        print("Error: Failed to decode input PEM certificate chain")
+        return False
+    else:
+        for i in range(0, len(decoded_certchain_bytes)):
+            if decoded_certchain_bytes[i] in decoded_rootcert_bytes:
+                print("Trusted CA: passed")
+                trusted_ca_index = i
+                break
+
+    if trusted_ca_index == -1:
+        print("Trusted CA: failed")
+        return False
+
     readData(filename_aeres_output)
     os.remove(filename_aeres_output) 
-    sign_verify_res = verifySignatures()
+    sign_verify_res = verifySignatures(trusted_ca_index)
     if not sign_verify_res:
         print("Signature verification: failed")
         return False
     else:
         print("Signature verification: passed")
 
-    decoded_rootcert_bytes = decodePem(args[2])
-    decoded_certchain_bytes = decodePem(args[3])
-    if (decoded_rootcert_bytes == None):
-        print("Error: Failed to decode input PEM trusted root CA certs")
-        return False
-    elif (decoded_certchain_bytes == None):
-        print("Error: Failed to decode input PEM certificate chain")
-        return False
-    else:
-        if decoded_certchain_bytes[len(decoded_certchain_bytes) - 1] in decoded_rootcert_bytes:
-            print("Trusted root CA: passed")
-        else:
-            print("Trusted root CA: failed")
-            return False
-
     return True
-
 
 if __name__ == "__main__":
     res = main()

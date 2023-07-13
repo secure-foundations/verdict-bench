@@ -93,13 +93,10 @@ def verifySign(signature, sign_algo, msg, pk, i):
         return True
 
 
-def verifySignatures():
-    res = False
-    for i in range(0, len(signatures)):
-        if i == len(signatures) - 1:
-            res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i], i + 1)
-        else:
-            res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1], i + 1)
+def verifySignatures(trusted_ca_index):
+    res = True
+    for i in range(0, trusted_ca_index):
+        res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1], i + 1)
 
         if res == False:
             print("Failed to verify signature of certificate {}".format(i + 1))
