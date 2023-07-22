@@ -8,7 +8,7 @@ def hex_to_int(inp):
 def int_to_hex(inp):
     res = ""
     for x in inp.strip().split(" "):
-        res = res + " " + '{:02x}'.format(int(x))
+        res = res + "" + '{:02x}'.format(int(x))
     return res
 
 
