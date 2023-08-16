@@ -1,15 +1,14 @@
 import os.path
 import subprocess
 import sys
-from pathlib import Path
-
-from pem import *
-from base64 import *
-
-from verifySignature import *
-
+import argparse
 import os
 import random
+
+from pathlib import Path
+from pem import *
+from base64 import *
+from verifySignature import *
 
 def decodePem(filename):
     try:
@@ -24,10 +23,75 @@ def decodePem(filename):
         return None
 
 def main():
+
+    ### command-line argument processing
+    # usage: ./armor-driver [-h] [--chain INPUT] [--trust_store CA_STORE] [--purpose CHECK_PURPOSE [CHECK_PURPOSE ...]]
+    parser = argparse.ArgumentParser(description='ARMOR command-line arguments')
+    parser.add_argument('--chain', type=str,
+                        help='Input certificate chain location')
+    parser.add_argument('--trust_store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
+                        help='Trust anchor location; default=/etc/ssl/certs/ca-certificates.crt')
+    parser.add_argument('--purpose', nargs='+',
+                        help='list of expected purposes of end-user certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly; default=anyPurpose',
+                        default=[])
+    args = parser.parse_args()
+
+    input_chain = args.chain
+    input_CA_store = args.trust_store
+    input_purposes = args.purpose
+
+    for purpose in input_purposes:
+        if purpose == 'serverAuth':
+            continue
+        elif purpose == 'clientAuth':
+            continue
+        elif purpose == 'codeSigning':
+            continue
+        elif purpose == 'emailProtection':
+            continue
+        elif purpose == 'timeStamping':
+            continue
+        elif purpose == 'OCSPSigning':
+            continue
+        elif purpose == 'digitalSignature':
+            continue
+        elif purpose == 'nonRepudiation':
+            continue
+        elif purpose == 'keyEncipherment':
+            continue
+        elif purpose == 'dataEncipherment':
+            continue
+        elif purpose == 'keyAgreement':
+            continue
+        elif purpose == 'keyCertSign':
+            continue
+        elif purpose == 'cRLSign':
+            continue
+        elif purpose == 'encipherOnly':
+            continue
+        elif purpose == 'decipherOnly':
+            continue
+        else:
+            print(
+                "Error : Purposes are not supported (supported purposes: serverAuth, "
+                "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, "
+                "digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, "
+                "keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly"
+                ")")
+            sys.exit(-1)
+
+    if not (input_chain.endswith((".pem", ".crt")) \
+        and input_CA_store.endswith((".pem", ".crt")) \
+        and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
+        print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
+        sys.exit(-1)
+
+    #############################
+
     ep = random.random()
     args = sys.argv
     home_dir = str(Path.home())
-    filename_certchain = args[2]
+    filename_certchain = input_chain
     filename_aeres_output = home_dir + "/.residuals/temp_{}.txt".format(ep)
 
     if not os.path.exists(home_dir + "/.residuals/"):
@@ -45,8 +109,16 @@ def main():
     else:
         print("AERES syntactic and semantic checks: passed")
 
-    decoded_rootcert_bytes = decodePem(args[1])
-    decoded_certchain_bytes = decodePem(args[2])
+    readData(filename_aeres_output)
+    os.remove(filename_aeres_output)
+
+    purpose_verify_res = verifyCertificatePurpose(input_purposes)
+    if not purpose_verify_res:
+        print("Error: Incorrect certificate purpose")
+        return False
+
+    decoded_rootcert_bytes = decodePem(input_CA_store)
+    decoded_certchain_bytes = decodePem(input_chain)
     trusted_ca_index = -1
     if (decoded_rootcert_bytes == None):
         print("Error: Failed to decode input PEM trusted CA certs")
@@ -65,8 +137,6 @@ def main():
         print("Trusted CA: failed")
         return False
 
-    readData(filename_aeres_output)
-    os.remove(filename_aeres_output) 
     sign_verify_res = verifySignatures(trusted_ca_index)
     if not sign_verify_res:
         print("Signature verification: failed")

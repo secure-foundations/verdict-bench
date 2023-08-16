@@ -2,3 +2,7 @@
 **/.idea/
 **/__pycache__/
 .residuals/
+
+armor-driver.spec
+bin/
+build/
