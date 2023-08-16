@@ -1,55 +1,12 @@
 # from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.backends import default_backend
 # from cryptography.hazmat.primitives import hashes
 # from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.serialization import load_der_public_key
 
 from helpers import *
+from pathlib import Path
 
 import hashlib
 import subprocess
-
-tbs_bytes = []
-sign_oids = []
-signatures = []
-pks = []
-
-sign_oid_map = {
-    "6 9 42 134 72 134 247 13 1 1 11": "sha256WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 12": "sha384WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 13": "sha512WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 14": "sha224WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 5": "sha1WithRSAEncryption",
-    '6 8 42 134 72 206 61 4 3 1': 'ecdsa-with-SHA224',
-    '6 8 42 134 72 206 61 4 3 2': 'ecdsa-with-SHA256',
-    '6 8 42 134 72 206 61 4 3 3': 'ecdsa-with-SHA384',
-    '6 8 42 134 72 206 61 4 3 4': 'ecdsa-with-SHA512'
-}
-
-sign_oid_map_insecure = {
-    "6 9 42 134 72 134 247 13 1 1 2": "md2WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 3": "md4WithRSAEncryption",
-    "6 9 42 134 72 134 247 13 1 1 4": "md5WithRSAEncryption"
-}
-
-
-def readData(filepath):
-    f = open(filepath, "r")
-    lines = f.readlines()
-
-    for i in range(0, len(lines)):
-        if (i % 5 == 0):  # tbs bytes
-            tbs_bytes.append(int_to_Bytes(lines[i].strip()))
-        elif (i % 5 == 1):  # signature
-            if lines[i].strip().startswith("0 "):  ## 0 as padding byte
-                lines_i_0_stripped = lines[i].strip()[2:]
-                signatures.append(int_to_Bytes(lines_i_0_stripped))
-            else:  ## without padding byte
-                signatures.append(int_to_Bytes(lines[i].strip()))
-        elif (i % 5 == 2):  # pk
-            pks.append(load_der_public_key(int_to_Bytes(lines[i].strip()), backend=default_backend()))
-        elif (i % 5 == 3):  # sign oid
-            sign_oids.append(lines[i].strip())
 
 ## with cryptography library
 # def verifySign(signature, sign_algo, msg, pk, i):
@@ -95,29 +52,14 @@ def readData(filepath):
 #         print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(int_to_hex(sign_algo).upper(), i))
 #         return True
 
-# def readData(filepath):
-#     f = open(filepath, "r")
-#     lines = f.readlines()
-
-#     for i in range(0, len(lines)):
-#         if (i % 5 == 0):  # tbs bytes
-#             tbs_bytes.append(int_to_Bytes(lines[i].strip()))
-#         elif (i % 5 == 1):  # signature
-#             if lines[i].strip().startswith("0 "):  ## 0 as padding byte
-#                 lines_i_0_stripped = lines[i].strip()[2:]
-#                 signatures.append(int_to_hex(lines_i_0_stripped))
-#             else:  ## without padding byte
-#                 signatures.append(int_to_hex(lines[i].strip()))
-#         elif (i % 5 == 2):  # pk
-#             pks.append(load_der_public_key(int_to_Bytes(lines[i].strip()), backend=default_backend()))
-#         elif (i % 5 == 3):  # sign oid
-#             sign_oids.append(lines[i].strip())
-
 ## with morpheous formally verified oracle
 def verifySign(signature, sign_algo, msg, pk, i):
     if sign_algo in sign_oid_map_insecure:
         print("Singnature algorithm {} is insecure in certificate {}".format(sign_oid_map_insecure[sign_algo], i))
         return False
+
+    home_dir = str(Path.home())
+    morpheous_loc = home_dir + "/.armor/morpheus-bin"
 
     if sign_algo in sign_oid_map:
         if sign_oid_map[sign_algo] == "sha256WithRSAEncryption":
@@ -127,7 +69,7 @@ def verifySign(signature, sign_algo, msg, pk, i):
                 tbs_hash = hashlib.sha256(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 256
-                cmd = ['./oracle {} {} {} {}'.format(signature_mod_hex, n_length, tbs_hash, hash_size)]
+                cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
                 return morpheous_res
             except InvalidSignature:
@@ -139,7 +81,7 @@ def verifySign(signature, sign_algo, msg, pk, i):
                 tbs_hash = hashlib.sha384(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 384
-                cmd = ['./oracle {} {} {} {}'.format(signature_mod_hex, n_length, tbs_hash, hash_size)]
+                cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
                 return morpheous_res
             except InvalidSignature:
@@ -151,7 +93,7 @@ def verifySign(signature, sign_algo, msg, pk, i):
                 tbs_hash = hashlib.sha512(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 512
-                cmd = ['./oracle {} {} {} {}'.format(signature_mod_hex, n_length, tbs_hash, hash_size)]
+                cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
                 return morpheous_res
             except InvalidSignature:
@@ -163,7 +105,7 @@ def verifySign(signature, sign_algo, msg, pk, i):
                 tbs_hash = hashlib.sha224(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 224
-                cmd = ['./oracle {} {} {} {}'.format(signature_mod_hex, n_length, tbs_hash, hash_size)]
+                cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
                 return morpheous_res
             except InvalidSignature:
@@ -175,7 +117,7 @@ def verifySign(signature, sign_algo, msg, pk, i):
                 tbs_hash = hashlib.sha1(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 1
-                cmd = ['./oracle {} {} {} {}'.format(signature_mod_hex, n_length, tbs_hash, hash_size)]
+                cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
                 return morpheous_res
             except InvalidSignature:

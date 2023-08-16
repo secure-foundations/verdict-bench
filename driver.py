@@ -1,10 +1,10 @@
 import os.path
 import subprocess
 import sys
-from base64 import *
 from pathlib import Path
 
 from pem import *
+from base64 import *
 
 from verifySignature import *
 
@@ -23,19 +23,17 @@ def decodePem(filename):
     except:
         return None
 
-
 def main():
     ep = random.random()
     args = sys.argv
     home_dir = str(Path.home())
-    filename_certchain = args[3]
+    filename_certchain = args[2]
     filename_aeres_output = home_dir + "/.residuals/temp_{}.txt".format(ep)
-    filename_aeres_bin = args[1]
 
     if not os.path.exists(home_dir + "/.residuals/"):
         os.mkdir(home_dir + "/.residuals/")
 
-    cmd = ['cat {} | {} > {}'.format(filename_certchain, filename_aeres_bin, filename_aeres_output)]
+    cmd = ['cat {} | {}/.armor/armor-bin > {}'.format(filename_certchain, home_dir, filename_aeres_output)]
     aeres_res = subprocess.getoutput(cmd)
     print(aeres_res)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") \
@@ -47,8 +45,8 @@ def main():
     else:
         print("AERES syntactic and semantic checks: passed")
 
-    decoded_rootcert_bytes = decodePem(args[2])
-    decoded_certchain_bytes = decodePem(args[3])
+    decoded_rootcert_bytes = decodePem(args[1])
+    decoded_certchain_bytes = decodePem(args[2])
     trusted_ca_index = -1
     if (decoded_rootcert_bytes == None):
         print("Error: Failed to decode input PEM trusted CA certs")
