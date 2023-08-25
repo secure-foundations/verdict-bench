@@ -1,56 +1,8 @@
-# from cryptography.exceptions import InvalidSignature
-# from cryptography.hazmat.primitives import hashes
-# from cryptography.hazmat.primitives.asymmetric import padding
-
 from helpers import *
 from pathlib import Path
 
 import hashlib
 import subprocess
-
-## with cryptography library
-# def verifySign(signature, sign_algo, msg, pk, i):
-#     if sign_algo in sign_oid_map_insecure:
-#         print("Singnature algorithm {} is insecure in certificate {}".format(sign_oid_map_insecure[sign_algo], i))
-#         return False
-
-#     if sign_algo in sign_oid_map:
-#         if sign_oid_map[sign_algo] == "sha256WithRSAEncryption":
-#             try:
-#                 pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA256())
-#                 return True
-#             except InvalidSignature:
-#                 return False
-#         elif sign_oid_map[sign_algo] == "sha384WithRSAEncryption":
-#             try:
-#                 pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA384())
-#                 return True
-#             except InvalidSignature:
-#                 return False
-#         elif sign_oid_map[sign_algo] == "sha512WithRSAEncryption":
-#             try:
-#                 pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA512())
-#                 return True
-#             except InvalidSignature:
-#                 return False
-#         elif sign_oid_map[sign_algo] == "sha224WithRSAEncryption":
-#             try:
-#                 pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA224())
-#                 return True
-#             except InvalidSignature:
-#                 return False
-#         elif sign_oid_map[sign_algo] == "sha1WithRSAEncryption":
-#             try:
-#                 pk.verify(signature, msg, padding.PKCS1v15(), hashes.SHA1())
-#                 return True
-#             except InvalidSignature:
-#                 return False
-#         else:
-#             print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(sign_oid_map[sign_algo], i))
-#             return True
-#     else:
-#         print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(int_to_hex(sign_algo).upper(), i))
-#         return True
 
 ## with morpheous formally verified oracle
 def verifySign(signature, sign_algo, msg, pk, i):
@@ -130,12 +82,12 @@ def verifySign(signature, sign_algo, msg, pk, i):
         return True
 
 
-def verifySignatures(trusted_ca_index):
+def verifySignatures():
     res = True
-    for i in range(0, trusted_ca_index):
-        res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1], i + 1)
+    for i in range(0, len(signatures) - 1):
+        res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1], i)
 
         if res == False:
-            print("Failed to verify signature of certificate {}".format(i + 1))
+            print("Failed to verify signature of certificate {}".format(i))
             break
     return res

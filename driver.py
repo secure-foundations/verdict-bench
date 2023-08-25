@@ -10,17 +10,17 @@ from pem import *
 from base64 import *
 from verifySignature import *
 
-def decodePem(filename):
-    try:
-        cert_list = []
-        for c in parse_file(filename):
-            if (isinstance(c, Certificate)):
-                cert_list.append(b64decode(str(c)[28:-26]))
-            else:
-                return None
-        return cert_list
-    except:
-        return None
+# def decodePem(filename):
+#     try:
+#         cert_list = []
+#         for c in parse_file(filename):
+#             if (isinstance(c, Certificate)):
+#                 cert_list.append(b64decode(str(c)[28:-26]))
+#             else:
+#                 return None
+#         return cert_list
+#     except:
+#         return None
 
 def main():
 
@@ -97,10 +97,10 @@ def main():
     if not os.path.exists(home_dir + "/.residuals/"):
         os.mkdir(home_dir + "/.residuals/")
 
-    cmd = ['cat {} | {}/.armor/armor-bin > {}'.format(filename_certchain, home_dir, filename_aeres_output)]
+    cmd = ['{}/.armor/armor-bin {} {} > {}'.format(home_dir, filename_certchain, input_CA_store, filename_aeres_output)]
     aeres_res = subprocess.getoutput(cmd)
     print(aeres_res)
-    if aeres_res.__contains__("failed") or aeres_res.__contains__("error") \
+    if aeres_res.__contains__("failed") or aeres_res.__contains__("error") or aeres_res.__contains__("Error") \
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
             or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain"):
         print("AERES syntactic or semantic checks: failed")
@@ -117,27 +117,27 @@ def main():
         print("Error: Incorrect certificate purpose")
         return False
 
-    decoded_rootcert_bytes = decodePem(input_CA_store)
-    decoded_certchain_bytes = decodePem(input_chain)
-    trusted_ca_index = -1
-    if (decoded_rootcert_bytes == None):
-        print("Error: Failed to decode input PEM trusted CA certs")
-        return False
-    elif (decoded_certchain_bytes == None):
-        print("Error: Failed to decode input PEM certificate chain")
-        return False
-    else:
-        for i in range(0, len(decoded_certchain_bytes)):
-            if decoded_certchain_bytes[i] in decoded_rootcert_bytes:
-                print("Trusted CA: passed")
-                trusted_ca_index = i
-                break
+    # decoded_rootcert_bytes = decodePem(input_CA_store)
+    # decoded_certchain_bytes = decodePem(input_chain)
+    # trusted_ca_index = -1
+    # if (decoded_rootcert_bytes == None):
+    #     print("Error: Failed to decode input PEM trusted CA certs")
+    #     return False
+    # elif (decoded_certchain_bytes == None):
+    #     print("Error: Failed to decode input PEM certificate chain")
+    #     return False
+    # else:
+    #     for i in range(0, len(decoded_certchain_bytes)):
+    #         if decoded_certchain_bytes[i] in decoded_rootcert_bytes:
+    #             print("Trusted CA: passed")
+    #             trusted_ca_index = i
+    #             break
 
-    if trusted_ca_index == -1:
-        print("Trusted CA: failed")
-        return False
+    # if trusted_ca_index == -1:
+    #     print("Trusted CA: failed")
+    #     return False
 
-    sign_verify_res = verifySignatures(trusted_ca_index)
+    sign_verify_res = verifySignatures()
     if not sign_verify_res:
         print("Signature verification: failed")
         return False
