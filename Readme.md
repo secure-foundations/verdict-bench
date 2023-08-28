@@ -9,3 +9,9 @@ python3 driver.py /home/aeres-external-driver/aeres /etc/ssl/certs/ca-certificat
 ### Example (for Mac)
 
 python3 driver.py /home/aeres-external-driver/aeres_mac /etc/ssl/certs/ca-certificates.crt certs/www-google-com-chain.pem
+
+
+### TODO
+
+install morpheus oracle
+install hacl-star [gcc -o hash-hacl-star-bin hash-hacl-star.c -I /home/joyanta/Desktop/hacl-star/dist/gcc-compatible/ -I /home/joyanta/Desktop/hacl-star/dist/karamel/include -I /home/joyanta/Desktop/hacl-star/dist/karamel/krmllib/dist/minimal /home/joyanta/Desktop/hacl-star/dist/gcc-compatible/libevercrypt.a]

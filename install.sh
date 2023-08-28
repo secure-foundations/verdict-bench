@@ -11,6 +11,7 @@ mkdir ~/.armor
 
 cp armor-bin ~/.armor/armor-bin
 cp morpheus-bin ~/.armor/morpheus-bin
+cp hash-hacl-star-bin ~/.armor/hash-hacl-star-bin
 
 python3 -m PyInstaller driver.py --onefile --name=armor-driver --distpath bin
 
