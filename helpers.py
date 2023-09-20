@@ -82,9 +82,11 @@ def readData(filepath):
             purposes.append(process_eku_purposes(lines[i].strip()))
 
 def verifyCertificatePurpose(input_purpose):
-    end_cert_purposes = purposes[0]
+    end_cert_purposes = None
+    if len(purposes) > 0:
+        end_cert_purposes = purposes[0]
 
-    if input_purpose == None or end_cert_purposes == []:
+    if input_purpose == None or end_cert_purposes == None:
         return True
     else:
         return (input_purpose in end_cert_purposes)
