@@ -60,7 +60,8 @@ def main():
     print(aeres_res)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") or aeres_res.__contains__("Error") \
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
-            or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain"):
+            or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain") \
+            or aeres_res.__contains__("incomplete read"):
         print("AERES syntactic or semantic checks: failed")
         os.remove(filename_aeres_output)
         return False
