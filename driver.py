@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--trust_store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
                         help='Trust anchor location; default=/etc/ssl/certs/ca-certificates.crt')
     parser.add_argument('--purpose', type=str,
-                        help='expected purpose for end-user certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, or OCSPSigning, default=anyPurpose')
+                        help='expected purpose for end-user certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, or OCSPSigning, default=anyExtendedKeyUsage')
     args = parser.parse_args()
 
     input_chain = args.chain
@@ -32,10 +32,11 @@ def main():
         input_purpose != 'codeSigning' and \
         input_purpose != 'emailProtection' and \
         input_purpose != 'timeStamping' and \
-        input_purpose != 'OCSPSigning' and input_purpose != None):
+        input_purpose != 'OCSPSigning' and \
+        input_purpose != 'anyExtendedKeyUsage' and input_purpose != None):
             print(
             "Error : Purposes are not supported (supported purposes: serverAuth, "
-            "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning")
+            "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, anyExtendedKeyUsage")
             sys.exit(-1)
 
     if not (input_chain.endswith((".pem", ".crt")) \

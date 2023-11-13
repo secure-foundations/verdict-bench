@@ -50,7 +50,8 @@ eku_oid_purpose_map = {
     "6 8 43 6 1 5 5 7 3 3": "codeSigning",
     "6 8 43 6 1 5 5 7 3 4": "emailProtection",
     "6 8 43 6 1 5 5 7 3 8": "timeStamping",
-    "6 8 43 6 1 5 5 7 3 9": "OCSPSigning"
+    "6 8 43 6 1 5 5 7 3 9": "OCSPSigning",
+    "6 4 85 29 37 0": "anyExtendedKeyUsage"
 }
 
 def process_eku_purposes(ekulist):
