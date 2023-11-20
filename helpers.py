@@ -59,7 +59,8 @@ def process_eku_purposes(ekulist):
     if ekulist != "":
         ekulist = ekulist.split(" @@")[:-1]        
         for p in ekulist:
-            ret.append(eku_oid_purpose_map[p.strip()])
+            if p.strip() in eku_oid_purpose_map:
+                ret.append(eku_oid_purpose_map[p.strip()])
     return ret
 
 def readData(filepath):
