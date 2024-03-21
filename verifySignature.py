@@ -19,18 +19,13 @@ def verifySign(signature, sign_algo, msg, pk, i):
             try:
                 signature_mod = pow(int.from_bytes(signature, byteorder='big'), pk.public_numbers().e, pk.public_numbers().n)
                 signature_mod_hex = '00' + signature_mod.to_bytes((signature_mod.bit_length() + 7) // 8, byteorder='big').hex()
-                print(signature_mod)
-                print(signature_mod_hex)
-                #cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha256')]
-                #tbs_hash = subprocess.getoutput(cmd2)
+                # cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha256')]
+                # tbs_hash = subprocess.getoutput(cmd2)
                 tbs_hash = sha256(msg).hexdigest()
-                print(tbs_hash)
                 n_length = pk.public_numbers().n.bit_length() // 8
-                print(n_length)
                 hash_size = 256
                 cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
-                print(morpheous_res, hash_size)
                 return morpheous_res
             except:
                 return "false"
@@ -38,14 +33,13 @@ def verifySign(signature, sign_algo, msg, pk, i):
             try:
                 signature_mod = pow(int.from_bytes(signature, byteorder='big'), pk.public_numbers().e, pk.public_numbers().n)
                 signature_mod_hex = '00' + signature_mod.to_bytes((signature_mod.bit_length() + 7) // 8, byteorder='big').hex()
-                #cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha384')]
-                #tbs_hash = subprocess.getoutput(cmd2)
+                # cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha384')]
+                # tbs_hash = subprocess.getoutput(cmd2)
                 tbs_hash = sha384(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 384
                 cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
-                print(morpheous_res, hash_size)
                 return morpheous_res
             except:
                 return "false"
@@ -53,14 +47,13 @@ def verifySign(signature, sign_algo, msg, pk, i):
             try:
                 signature_mod = pow(int.from_bytes(signature, byteorder='big'), pk.public_numbers().e, pk.public_numbers().n)
                 signature_mod_hex = '00' + signature_mod.to_bytes((signature_mod.bit_length() + 7) // 8, byteorder='big').hex()
-                #cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha512')]
-                #tbs_hash = subprocess.getoutput(cmd2)
+                # cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha512')]
+                # tbs_hash = subprocess.getoutput(cmd2)
                 tbs_hash = sha512(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 512
                 cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
-                print(morpheous_res, hash_size)
                 return morpheous_res
             except:
                 return "false"
@@ -68,14 +61,13 @@ def verifySign(signature, sign_algo, msg, pk, i):
             try:
                 signature_mod = pow(int.from_bytes(signature, byteorder='big'), pk.public_numbers().e, pk.public_numbers().n)
                 signature_mod_hex = '00' + signature_mod.to_bytes((signature_mod.bit_length() + 7) // 8, byteorder='big').hex()
-                #cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha224')]
-                #tbs_hash = subprocess.getoutput(cmd2)
+                # cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha224')]
+                # tbs_hash = subprocess.getoutput(cmd2)
                 tbs_hash = sha224(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 224
                 cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
-                print(morpheous_res, hash_size)
                 return morpheous_res
             except:
                 return "false"
@@ -83,14 +75,13 @@ def verifySign(signature, sign_algo, msg, pk, i):
             try:
                 signature_mod = pow(int.from_bytes(signature, byteorder='big'), pk.public_numbers().e, pk.public_numbers().n)
                 signature_mod_hex = '00' + signature_mod.to_bytes((signature_mod.bit_length() + 7) // 8, byteorder='big').hex()
-                #cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha1')]
-                #tbs_hash = subprocess.getoutput(cmd2)
+                # cmd2 = ['{} {} {}'.format(hacl_loc, msg.hex(), 'sha1')]
+                # tbs_hash = subprocess.getoutput(cmd2)
                 tbs_hash = sha1(msg).hexdigest()
                 n_length = pk.public_numbers().n.bit_length() // 8
                 hash_size = 1
                 cmd = ['{} {} {} {} {}'.format(morpheous_loc, signature_mod_hex, n_length, tbs_hash, hash_size)]
                 morpheous_res = subprocess.getoutput(cmd)
-                print(morpheous_res, hash_size)
                 return morpheous_res
             except:
                 return "false"
