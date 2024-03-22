@@ -1,3 +1,5 @@
+#!/bin/bash
+
 pip3 install pyinstaller
 
 rm -rf ~/.residuals 2> /dev/null
