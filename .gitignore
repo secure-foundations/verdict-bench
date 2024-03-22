@@ -3,6 +3,6 @@
 **/__pycache__/
 .residuals/
 
-armor-driver.spec
+*.spec
 bin/
 build/
