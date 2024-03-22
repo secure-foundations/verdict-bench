@@ -4,4 +4,5 @@
 `./install.sh`
 
 ### How to run
-`python3 driver.py --chain <input chain> --trust_store <input CA store> [--purpose <certificate purpose>]`
+1. `python3 driver.py --chain <input chain> --trust_store <input CA store> [--purpose <expected purpose>]`
+2. `./bin/armor --chain <input chain> --trust_store <input CA store> [--purpose <expected purpose>]`
