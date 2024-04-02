@@ -31,7 +31,7 @@ def main():
         print("Error : missing input certificate chain")
         sys.exit(-1)
 
-    if not (input_chain.endswith((".pem", ".crt")) \
+    if not (input_chain.endswith((".pem", ".crt", ".der")) \
         and input_CA_store.endswith((".pem", ".crt")) \
         and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
         print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
@@ -60,12 +60,20 @@ def main():
     if not os.path.exists(home_dir + "/.residuals/"):
         os.mkdir(home_dir + "/.residuals/")
 
-    if input_purpose == None:
-        cmd = ['{}/.armor/armor-bin {} {} > {}'.format(home_dir, filename_certchain, input_CA_store, filename_aeres_output)]
-    else:
-        cmd = ['{}/.armor/armor-bin --purpose {} {} {} > {}'.format(home_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
+    if input_chain.endswith(".der"):
+        if input_purpose == None:
+            cmd = ['{}/.armor/armor-bin --DER {} {} > {}'.format(home_dir, filename_certchain, input_CA_store, filename_aeres_output)]
+        else:
+            cmd = ['{}/.armor/armor-bin --DER --purpose {} {} {} > {}'.format(home_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
+    else: ## for .pem and .crt
+        if input_purpose == None:
+            cmd = ['{}/.armor/armor-bin {} {} > {}'.format(home_dir, filename_certchain, input_CA_store, filename_aeres_output)]
+        else:
+            cmd = ['{}/.armor/armor-bin --purpose {} {} {} > {}'.format(home_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
+
     aeres_res = subprocess.getoutput(cmd)
     print(aeres_res)
+
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") or aeres_res.__contains__("Error") \
             or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
             or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain") \
