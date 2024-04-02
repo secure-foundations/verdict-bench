@@ -27,6 +27,16 @@ def main():
     input_CA_store = args.trust_store
     input_purpose = args.purpose
 
+    if input_chain == None:
+        print("Error : missing input certificate chain")
+        sys.exit(-1)
+
+    if not (input_chain.endswith((".pem", ".crt")) \
+        and input_CA_store.endswith((".pem", ".crt")) \
+        and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
+        print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
+        sys.exit(-1)
+
     if (input_purpose != 'serverAuth' and \
         input_purpose != 'clientAuth' and \
         input_purpose != 'codeSigning' and \
@@ -38,12 +48,6 @@ def main():
             "Error : Purposes are not supported (supported purposes: serverAuth, "
             "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning")
             sys.exit(-1)
-
-    if not (input_chain.endswith((".pem", ".crt")) \
-        and input_CA_store.endswith((".pem", ".crt")) \
-        and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
-        print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
-        sys.exit(-1)
 
     #############################
 
