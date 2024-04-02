@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 pip3 install pyinstaller
 
@@ -10,6 +11,12 @@ rm armor-driver.spec 2> /dev/null
 
 mkdir ~/.residuals
 mkdir ~/.armor
+
+git submodule update --init --remote
+cd Morpheus/oracle
+ocamlc -o oracle pkcs1.mli pkcs1.ml oracle.ml
+cp oracle ../../morpheus-bin
+cd ../..
 
 cp armor-bin ~/.armor/armor-bin
 cp morpheus-bin ~/.armor/morpheus-bin
