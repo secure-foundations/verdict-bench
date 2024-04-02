@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--trust_store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
                         help='Trust anchor location; default=/etc/ssl/certs/ca-certificates.crt')
     parser.add_argument('--purpose', type=str,
-                        help='expected purpose for end-user certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, or OCSPSigning, default=anyExtendedKeyUsage')
+                        help='expected purpose for end-user certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, or OCSPSigning')
     args = parser.parse_args()
 
     input_chain = args.chain
@@ -33,10 +33,10 @@ def main():
         input_purpose != 'emailProtection' and \
         input_purpose != 'timeStamping' and \
         input_purpose != 'OCSPSigning' and \
-        input_purpose != 'anyExtendedKeyUsage' and input_purpose != None):
+        input_purpose != None):
             print(
             "Error : Purposes are not supported (supported purposes: serverAuth, "
-            "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, anyExtendedKeyUsage")
+            "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning")
             sys.exit(-1)
 
     if not (input_chain.endswith((".pem", ".crt")) \
@@ -56,7 +56,10 @@ def main():
     if not os.path.exists(home_dir + "/.residuals/"):
         os.mkdir(home_dir + "/.residuals/")
 
-    cmd = ['{}/.armor/armor-bin {} {} > {}'.format(home_dir, filename_certchain, input_CA_store, filename_aeres_output)]
+    if input_purpose == None:
+        cmd = ['{}/.armor/armor-bin {} {} > {}'.format(home_dir, filename_certchain, input_CA_store, filename_aeres_output)]
+    else:
+        cmd = ['{}/.armor/armor-bin --purpose {} {} {} > {}'.format(home_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
     aeres_res = subprocess.getoutput(cmd)
     print(aeres_res)
     if aeres_res.__contains__("failed") or aeres_res.__contains__("error") or aeres_res.__contains__("Error") \
@@ -71,11 +74,6 @@ def main():
 
     readData(filename_aeres_output)
     os.remove(filename_aeres_output)
-
-    purpose_verify_res = verifyCertificatePurpose(input_purpose)
-    if not purpose_verify_res:
-        print("Error: Incorrect certificate purpose")
-        return False
 
     sign_verify_res = verifySignatures()
     if sign_verify_res == "false":

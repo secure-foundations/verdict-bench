@@ -24,7 +24,6 @@ tbs_bytes = []
 sign_oids = []
 signatures = []
 pks = []
-purposes = []
 
 sign_oid_map = {
     "6 9 42 134 72 134 247 13 1 1 11": "sha256WithRSAEncryption",
@@ -44,24 +43,6 @@ sign_oid_map_insecure = {
     "6 9 42 134 72 134 247 13 1 1 4": "md5WithRSAEncryption"
 }
 
-eku_oid_purpose_map = {
-    "6 8 43 6 1 5 5 7 3 1": "serverAuth",
-    "6 8 43 6 1 5 5 7 3 2": "clientAuth",
-    "6 8 43 6 1 5 5 7 3 3": "codeSigning",
-    "6 8 43 6 1 5 5 7 3 4": "emailProtection",
-    "6 8 43 6 1 5 5 7 3 8": "timeStamping",
-    "6 8 43 6 1 5 5 7 3 9": "OCSPSigning",
-    "6 4 85 29 37 0": "anyExtendedKeyUsage"
-}
-
-def process_eku_purposes(ekulist):
-    ret = []
-    if ekulist != "":
-        ekulist = ekulist.split(" @@")[:-1]        
-        for p in ekulist:
-            if p.strip() in eku_oid_purpose_map:
-                ret.append(eku_oid_purpose_map[p.strip()])
-    return ret
 
 def readData(filepath):
     f = open(filepath, "r")
@@ -81,14 +62,4 @@ def readData(filepath):
         elif (i % 6 == 3):  # sign oid
             sign_oids.append(lines[i].strip())
         elif (i % 6 == 4):  # eku purposes
-            purposes.append(process_eku_purposes(lines[i].strip()))
-
-def verifyCertificatePurpose(input_purpose):
-    end_cert_purposes = None
-    if len(purposes) > 0:
-        end_cert_purposes = purposes[0]
-
-    if input_purpose == None or end_cert_purposes == None:
-        return True
-    else:
-        return (input_purpose in end_cert_purposes)
+            continue
