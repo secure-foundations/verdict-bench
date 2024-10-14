@@ -15,11 +15,67 @@ verus! {
 broadcast use vpl::lemma_ext_equal_deep;
 
 /// Facts for supported extensions
-pub type ExtensionFacts = seq_facts![ ExtBasicConstraintsFacts, ExtKeyUsageFacts, ExtSubjectAltNameFacts, ExtNameConstraintsFacts ];
+pub type ExtensionFacts = seq_facts![
+    ExtBasicConstraintsFacts,
+    ExtKeyUsageFacts,
+    ExtSubjectAltNameFacts,
+    ExtNameConstraintsFacts,
+    ExtCertificatePolicies,
+];
 pub struct ExtBasicConstraintsFacts;
 pub struct ExtKeyUsageFacts;
 pub struct ExtSubjectAltNameFacts;
 pub struct ExtNameConstraintsFacts;
+pub struct ExtCertificatePolicies;
+
+impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtCertificatePolicies {
+    closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 32)) {
+            if let SpecExtensionParamValue::CertificatePolicies(policies) = ext.param {
+                seq![
+                    spec_fact!("certificatePoliciesExt", t.spec_cert(), spec_bool!(true)),
+                    spec_fact!("certificatePoliciesCritical", t.spec_cert(), spec_bool!(ext.critical)),
+                ] + policies.map_values(|policy: SpecPolicyInfoValue|
+                    spec_fact!("certificatePolicies", t.spec_cert(), spec_str!(BasicFacts::spec_oid_to_string(policy.policy_id))))
+            } else {
+                seq![
+                    spec_fact!("certificatePoliciesExt", t.spec_cert(), spec_bool!(false)),
+                ]
+            }
+        } else {
+            seq![
+                spec_fact!("certificatePoliciesExt", t.spec_cert(), spec_bool!(false)),
+            ]
+        })
+    }
+
+    #[verifier::loop_isolation(false)]
+    fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
+        let oid = oid!(2, 5, 29, 32);
+        assert(oid@ == spec_oid!(2, 5, 29, 32));
+
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+            if let ExtensionParamValue::CertificatePolicies(policies) = &ext.param {
+                out.push(RuleX::fact("certificatePoliciesExt", vec![ t.cert(), TermX::bool(true) ]));
+                out.push(RuleX::fact("certificatePoliciesCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
+
+                let len = policies.len();
+                for i in 0..len
+                    invariant
+                        len == policies@.len(),
+                        out@ =~~= old(out)@ + Self::spec_facts(t@).unwrap().take(i + 2),
+                {
+                    out.push(RuleX::fact("certificatePolicies", vec![ t.cert(), TermX::str(BasicFacts::oid_to_string(&policies.get(i).policy_id).as_str()) ]));
+                }
+
+                return Ok(());
+            }
+        }
+
+        out.push(RuleX::fact("certificatePoliciesExt", vec![ t.cert(), TermX::bool(false) ]));
+        Ok(())
+    }
+}
 
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtBasicConstraintsFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {

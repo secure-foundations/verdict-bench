@@ -60,7 +60,9 @@ impl<T> CertIndexed<T> {
 impl<T: View> CertIndexed<T> {
     /// Exec version of spec_cert
     pub fn cert(&self) -> (res: Term)
-        ensures res@ =~~= self@.spec_cert()
+        ensures
+            res@ =~~= self@.spec_cert(),
+            res@ =~~= self.spec_cert(),
     {
         TermX::app_str("cert", vec![TermX::int(self.idx)])
     }

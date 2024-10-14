@@ -1,6 +1,5 @@
 use std::fmt::{self, Debug, Formatter};
 use vstd::prelude::*;
-use vstd::std_specs::bits::u8_trailing_zeros;
 
 use polyfill::*;
 
@@ -64,7 +63,7 @@ impl<'a> BitStringValue<'a> {
         ||| s.len() == 1 && s[0] == 0
 
         // Otherwise, check that all trailing bits (as declared in bytes[0]) are zeros
-        ||| s.len() > 1 && s[0] <= u8_trailing_zeros(s.last())
+        ||| s.len() > 1 && s[0] <= s.last().trailing_zeros()
     }
 
     pub fn wf(s: &'a [u8]) -> (res: bool)
