@@ -383,18 +383,15 @@ impl ExtSubjectAltNameFacts {
             SpecGeneralNameValue::DNS(s) => seq![ ("DNS"@, spec_str!(s)) ],
             SpecGeneralNameValue::X400(..) => seq![ ("X400"@, spec_atom!("unsupported".view())) ],
             SpecGeneralNameValue::Directory(dir_names) => {
-                Seq::new(dir_names.len(), |j| {
-                    Seq::new(dir_names[j].len(), |k| {
-                        (
-                            "Directory/"@ + Self::spec_oid_to_name(dir_names[j][k].typ),
-
-                            match SubjectNameFacts::spec_dir_string_to_string(dir_names[j][k].value) {
-                                Some(s) => spec_str!(s),
-                                None => spec_atom!("unsupported".view()),
-                            }
-                        )
-                    })
-                }).flatten()
+                dir_names.map_values(|dir_name: SpecRDNValue|
+                    dir_name.map_values(|name: SpecAttributeTypeAndValueValue| (
+                        "Directory/"@ + Self::spec_oid_to_name(name.typ),
+                        match SubjectNameFacts::spec_dir_string_to_string(name.value) {
+                            Some(s) => spec_str!(s),
+                            None => spec_atom!("unsupported".view()),
+                        }
+                    ))
+                ).flatten()
             }
             SpecGeneralNameValue::EDIParty(..) => seq![ ("EDIParty"@, spec_atom!("unsupported".view())) ],
             SpecGeneralNameValue::URI(s) => seq![ ("URI"@, spec_str!(s)) ],
@@ -405,6 +402,7 @@ impl ExtSubjectAltNameFacts {
     }
 
     /// Exec version of spec_extract_general_name
+    #[verifier::loop_isolation(false)]
     pub fn extract_general_name(name: &GeneralNameValue) -> (res: VecDeep<(String, Term)>)
         ensures res@ =~~= Self::spec_extract_general_name(name@)
     {
@@ -416,23 +414,28 @@ impl ExtSubjectAltNameFacts {
             GeneralNameValue::Directory(dir_names) => {
                 let mut dir_name_pairs = vec_deep![];
 
+                // The spec version before flattening
+                let ghost spec_nested = dir_names@.map_values(|dir_name: SpecRDNValue| {
+                    dir_name.map_values(|name: SpecAttributeTypeAndValueValue| {
+                        (
+                            "Directory/"@ + Self::spec_oid_to_name(name.typ),
+                            match SubjectNameFacts::spec_dir_string_to_string(name.value) {
+                                Some(s) => spec_str!(s),
+                                None => spec_atom!("unsupported".view()),
+                            }
+                        )
+                    })
+                });
+
+                assert(spec_nested.skip(0) == spec_nested);
+
                 let len = dir_names.len();
                 for j in 0..len
                     invariant
                         len == dir_names@.len(),
-                        dir_name_pairs@ =~~= Seq::new(j as nat, |j| {
-                            Seq::new(dir_names@[j].len(), |k| {
-                                (
-                                    "Directory/"@ + Self::spec_oid_to_name(dir_names@[j][k].typ),
-                                    match SubjectNameFacts::spec_dir_string_to_string(dir_names@[j][k].value) {
-                                        Some(s) => spec_str!(s),
-                                        None => spec_atom!("unsupported".view()),
-                                    }
-                                )
-                            })
-                        })
+                        spec_nested.flatten() =~~= dir_name_pairs@ + spec_nested.skip(j as int).flatten(),
                 {
-                    let mut rdn_pairs = vec_deep![];
+                    let ghost prev_dir_name_pairs = dir_name_pairs@;
 
                     // Read each RDN, and convert it to a pair of (type, value)
                     let len = dir_names.get(j).len();
@@ -440,15 +443,7 @@ impl ExtSubjectAltNameFacts {
                         invariant
                             0 <= j < dir_names@.len(),
                             len == dir_names@[j as int].len(),
-                            rdn_pairs@ =~~= Seq::new(k as nat, |k| {
-                                (
-                                    "Directory/"@ + Self::spec_oid_to_name(dir_names@[j as int][k].typ),
-                                    match SubjectNameFacts::spec_dir_string_to_string(dir_names@[j as int][k].value) {
-                                        Some(s) => spec_str!(s),
-                                        None => spec_atom!("unsupported".view()),
-                                    }
-                                )
-                            })
+                            dir_name_pairs@ =~~= prev_dir_name_pairs + spec_nested[j as int].take(k as int),
                     {
                         let attr = dir_names.get(j).get(k);
                         let typ = "Directory/".to_string().concat(Self::oid_to_name(&attr.typ));
@@ -457,13 +452,16 @@ impl ExtSubjectAltNameFacts {
                             None => TermX::atom("unsupported"),
                         };
 
-                        rdn_pairs.push((typ, val));
+                        dir_name_pairs.push((typ, val));
                     }
 
-                    dir_name_pairs.push(rdn_pairs);
+                    assert(spec_nested.skip(j as int).first() == spec_nested[j as int]);
+                    assert(spec_nested.skip(j as int).drop_first() == spec_nested.skip(j + 1));
                 }
 
-                VecDeep::flatten(dir_name_pairs)
+                assert(dir_names@.take(len as int) == dir_names@);
+
+                dir_name_pairs
             }
             GeneralNameValue::EDIParty(..) => vec_deep![("EDIParty".to_string(), TermX::atom("unsupported"))],
             GeneralNameValue::URI(s) => vec_deep![("URI".to_string(), TermX::str(s))],
