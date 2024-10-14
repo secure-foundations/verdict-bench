@@ -78,10 +78,7 @@ pub fn get_extension<'a, 'b>(cert: &'b CertificateValue<'a>, oid: &ObjectIdentif
 pub fn get_auth_key_id<'a, 'b>(cert: &'b CertificateValue<'a>) -> (res: OptionDeep<&'b AuthorityKeyIdentifierValue<'a>>)
     ensures res@ == spec_get_auth_key_id(cert@)
 {
-    let oid = oid!(2, 5, 29, 35);
-    assert(oid@ == spec_oid!(2, 5, 29, 35));
-
-    if let Some(ext) = get_extension(cert, &oid) {
+    if let Some(ext) = get_extension(cert, &oid!(AUTH_KEY_IDENT)) {
         if let ExtensionParamValue::AuthorityKeyIdentifier(param) = &ext.param {
             return Some(param);
         }
@@ -93,10 +90,7 @@ pub fn get_auth_key_id<'a, 'b>(cert: &'b CertificateValue<'a>) -> (res: OptionDe
 pub fn get_subject_key_id<'a, 'b>(cert: &'b CertificateValue<'a>) -> (res: OptionDeep<&'b [u8]>)
     ensures res@ == spec_get_subject_key_id(cert@)
 {
-    let oid = oid!(2, 5, 29, 14);
-    assert(oid@ == spec_oid!(2, 5, 29, 14));
-
-    if let Some(ext) = get_extension(cert, &oid) {
+    if let Some(ext) = get_extension(cert, &oid!(SUBJECT_KEY_IDENT)) {
         if let ExtensionParamValue::SubjectKeyIdentifier(param) = &ext.param {
             return Some(param);
         }

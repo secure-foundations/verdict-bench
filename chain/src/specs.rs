@@ -118,7 +118,7 @@ pub open spec fn spec_get_extension_helper(exts: Seq<SpecExtensionValue>, oid: S
 /// Get the AuthorityKeyIdentifier extension if it exists
 pub open spec fn spec_get_auth_key_id(cert: SpecCertificateValue) -> OptionDeep<SpecAuthorityKeyIdentifierValue>
 {
-    if let Some(ext) = spec_get_extension(cert, spec_oid!(2, 5, 29, 35)) {
+    if let Some(ext) = spec_get_extension(cert, spec_oid!(AUTH_KEY_IDENT)) {
         if let SpecExtensionParamValue::AuthorityKeyIdentifier(param) = ext.param {
             Some(param)
         } else {
@@ -132,7 +132,7 @@ pub open spec fn spec_get_auth_key_id(cert: SpecCertificateValue) -> OptionDeep<
 /// Get the SubjectKeyIdentifier extension if it exists
 pub open spec fn spec_get_subject_key_id(cert: SpecCertificateValue) -> OptionDeep<Seq<u8>>
 {
-    if let Some(ext) = spec_get_extension(cert, spec_oid!(2, 5, 29, 14)) {
+    if let Some(ext) = spec_get_extension(cert, spec_oid!(SUBJECT_KEY_IDENT)) {
         if let SpecExtensionParamValue::SubjectKeyIdentifier(param) = ext.param {
             Some(param)
         } else {

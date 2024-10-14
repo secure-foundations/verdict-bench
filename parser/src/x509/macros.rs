@@ -416,7 +416,7 @@ macro_rules! oid_match_continuation {
     (
         continuation $name:ident {
             $(
-                oid($($arc:literal),+) => $variant:ident($combinator:expr): $combinator_type:ty,
+                oid($($arc:expr),+) => $variant:ident($combinator:expr): $combinator_type:ty,
             )*
 
             _ => $last_variant:ident($last_combinator:expr): $last_combinator_type:ty,
@@ -427,74 +427,15 @@ macro_rules! oid_match_continuation {
         crate::x509::macros::match_continuation! {
             continuation $name<'a>(ObjectIdentifierValue, spec SpecObjectIdentifierValue) {
                 $(
-                    oid!($($arc),+), spec spec_oid!($($arc),+) => $variant, $combinator_type, $combinator,
+                    crate::x509::oid!($($arc),+), spec crate::x509::spec_oid!($($arc),+) => $variant, $combinator_type, $combinator,
                 )*
 
                 _ => $last_variant, $last_combinator_type, $last_combinator,
             }
         }
-
-        ::paste::paste! {
-            ::builtin_macros::verus! {
-                mod [< internal2_ $name >] {
-                    #![allow(non_camel_case_types)]
-                    #![allow(non_snake_case)]
-
-                    use super::*;
-                    use crate::x509::macros::*;
-                    use crate::asn1::*;
-                    use crate::common::*;
-
-                    impl [< $name Cont >] {
-                        // Without explicit trigger terms, Verus is unable to
-                        // check that two sequence literals are disjoint.
-                        // So we generate a disjointness lemmas here
-                        gen_lemma_disjoint! {
-                            lemma_disjoint_oids {
-                                $(spec_oid!($($arc),+)),*
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 pub use oid_match_continuation;
-
-/// Used to suppress Verus warning about broadcast missing triggers
-pub closed spec fn lemma_disjoint_trigger() -> bool;
-
-/// Macro to generate a lemma that states the disjointness of a list of spec terms
-/// NOTE: the disjointness of the provided terms are trusted
-/// incorrect calls to this might lead to unsoundness
-#[allow(unused_macros)]
-#[macro_export]
-macro_rules! gen_lemma_disjoint {
-    ($name:ident { $($term:expr),* $(,)? }) => {
-        ::builtin_macros::verus! {
-            pub broadcast proof fn $name()
-                ensures
-                    (true || #[trigger] lemma_disjoint_trigger()),
-                    gen_lemma_disjoint_helper! {; $($term),* }
-            {
-                admit();
-            }
-        }
-    };
-}
-pub use gen_lemma_disjoint;
-
-#[allow(unused_macros)]
-#[macro_export]
-macro_rules! gen_lemma_disjoint_helper {
-    ($($term:expr),* ; ) => { true };
-
-    ($($prev_term:expr),* ; $term:expr $(, $rest_term:expr)*) => {
-        $(!ext_equal($prev_term, $term) &&)* true && gen_lemma_disjoint_helper!($($prev_term,)* $term ; $($rest_term),*)
-    };
-}
-pub use gen_lemma_disjoint_helper;
 
 #[allow(unused_macros)]
 #[macro_export]

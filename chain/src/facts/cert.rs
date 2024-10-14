@@ -136,121 +136,110 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for SubjectNameFacts {
         Some(seq![
             spec_fact!("subject", t.spec_cert(),
                 // common name
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 3)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(COMMON_NAME)).unwrap_or("".view())),
                 // country
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 6)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(COUNTRY_NAME)).unwrap_or("".view())),
                 // locality
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 7)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(LOCALITY_NAME)).unwrap_or("".view())),
                 // state or province name
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 8)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(STATE_NAME)).unwrap_or("".view())),
                 // organization name
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 10)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(ORGANIZATION_NAME)).unwrap_or("".view())),
             ),
 
             // TODO: duplicate with the subject pred?
             spec_fact!("commonName", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 3)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(COMMON_NAME)).unwrap_or("".view())),
             ),
 
             spec_fact!("country", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 6)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(COUNTRY_NAME)).unwrap_or("".view())),
             ),
 
             spec_fact!("givenName", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 42)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(GIVEN_NAME)).unwrap_or("".view())),
             ),
 
             spec_fact!("localityName", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 7)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(LOCALITY_NAME)).unwrap_or("".view())),
             ),
 
             spec_fact!("organizationName", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 10)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(ORGANIZATION_NAME)).unwrap_or("".view())),
             ),
 
             spec_fact!("postalCode", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 17)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(POSTAL_CODE)).unwrap_or("".view())),
             ),
 
             spec_fact!("stateOrProvinceName", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 8)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(STATE_NAME)).unwrap_or("".view())),
             ),
 
             spec_fact!("streetAddress", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 9)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(STREET_ADDRESS)).unwrap_or("".view())),
             ),
 
             spec_fact!("surname", t.spec_cert(),
-                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(2, 5, 4, 4)).unwrap_or("".view())),
+                spec_str!(Self::spec_get_rdn(t.x.cert.subject, spec_oid!(SURNAME)).unwrap_or("".view())),
             ),
         ])
     }
 
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(2, 5, 4, 3); assert(oid@ == spec_oid!(2, 5, 4, 3));
-        let oid = oid!(2, 5, 4, 4); assert(oid@ == spec_oid!(2, 5, 4, 4));
-        let oid = oid!(2, 5, 4, 6); assert(oid@ == spec_oid!(2, 5, 4, 6));
-        let oid = oid!(2, 5, 4, 7); assert(oid@ == spec_oid!(2, 5, 4, 7));
-        let oid = oid!(2, 5, 4, 8); assert(oid@ == spec_oid!(2, 5, 4, 8));
-        let oid = oid!(2, 5, 4, 9); assert(oid@ == spec_oid!(2, 5, 4, 9));
-        let oid = oid!(2, 5, 4, 10); assert(oid@ == spec_oid!(2, 5, 4, 10));
-        let oid = oid!(2, 5, 4, 42); assert(oid@ == spec_oid!(2, 5, 4, 42));
-        let oid = oid!(2, 5, 4, 17); assert(oid@ == spec_oid!(2, 5, 4, 17));
-
         out.append_owned(vec_deep![
-            // TODO: performance?
             RuleX::fact("subject", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 3)).unwrap_or("")),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 6)).unwrap_or("")),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 7)).unwrap_or("")),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 8)).unwrap_or("")),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 10)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(COMMON_NAME)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(COUNTRY_NAME)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(LOCALITY_NAME)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(STATE_NAME)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(ORGANIZATION_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("commonName", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 3)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(COMMON_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("country", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 6)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(COUNTRY_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("givenName", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 42)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(GIVEN_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("localityName", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 7)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(LOCALITY_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("organizationName", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 10)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(ORGANIZATION_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("postalCode", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 17)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(POSTAL_CODE)).unwrap_or("")),
             ]),
 
             RuleX::fact("stateOrProvinceName", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 8)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(STATE_NAME)).unwrap_or("")),
             ]),
 
             RuleX::fact("streetAddress", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 9)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(STREET_ADDRESS)).unwrap_or("")),
             ]),
 
             RuleX::fact("surname", vec![
                 t.cert(),
-                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(2, 5, 4, 4)).unwrap_or("")),
+                TermX::str(Self::get_rdn(&t.x.get().cert.get().subject, &oid!(SURNAME)).unwrap_or("")),
             ]),
         ]);
         Ok(())

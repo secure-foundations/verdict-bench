@@ -9,7 +9,7 @@ use super::macros::asn1;
 
 verus! {
 
-broadcast use ExtensionParamCont::lemma_disjoint_oids;
+broadcast use super::oid::axiom_disjoint_oids;
 
 /// Extension  ::=  SEQUENCE  {
 ///     extnID      OBJECT IDENTIFIER,

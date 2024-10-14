@@ -120,6 +120,15 @@ impl<T: View> VecDeep<T> {
         VecDeep(v)
     }
 
+    #[verifier::external_body]
+    pub fn from_slice(slice: &[T]) -> (res: Self)
+        where T: Clone
+        ensures
+            res@ =~= slice@.map_values(|x: T| x@),
+    {
+        VecDeep(slice.to_vec())
+    }
+
     pub fn to_vec_owned(self) -> (res: Vec<T>)
         ensures
             self@ =~= VecDeep(res)@,

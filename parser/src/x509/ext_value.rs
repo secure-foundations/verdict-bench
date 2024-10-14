@@ -8,6 +8,7 @@ use crate::common::*;
 
 use super::general_name::*;
 use super::macros::*;
+use super::oid::*;
 
 verus! {
 
@@ -80,28 +81,28 @@ asn1! {
 
 oid_match_continuation! {
     continuation ExtensionParam {
-        oid(2, 5, 29, 35) =>
+        oid(AUTH_KEY_IDENT) =>
             AuthorityKeyIdentifier(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(AuthorityKeyIdentifier)))): ASN1<ExplicitTag<ASN1<AuthorityKeyIdentifier>>>,
 
-        oid(2, 5, 29, 14) =>
+        oid(SUBJECT_KEY_IDENT) =>
             SubjectKeyIdentifier(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(OctetString)))): ASN1<ExplicitTag<ASN1<OctetString>>>,
 
-        oid(2, 5, 29, 19) =>
+        oid(BASIC_CONSTRAINTS) =>
             BasicConstraints(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(BasicConstraints)))): ASN1<ExplicitTag<ASN1<BasicConstraints>>>,
 
-        oid(2, 5, 29, 32) =>
+        oid(CERT_POLICIES) =>
             CertificatePolicies(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(CertificatePolicies)))): ASN1<ExplicitTag<ASN1<CertificatePolicies>>>,
 
-        oid(2, 5, 29, 37) =>
+        oid(EXTENDED_KEY_USAGE) =>
             ExtendedKeyUsage(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(ExtendedKeyUsage)))): ASN1<ExplicitTag<ASN1<ExtendedKeyUsage>>>,
 
-        oid(2, 5, 29, 15) =>
+        oid(KEY_USAGE) =>
             KeyUsage(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(BitString)))): ASN1<ExplicitTag<ASN1<BitString>>>,
 
-        oid(2, 5, 29, 17) =>
+        oid(SUBJECT_ALT_NAME) =>
             SubjectAltName(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(GeneralNames)))): ASN1<ExplicitTag<ASN1<GeneralNames>>>,
 
-        oid(2, 5, 29, 30) =>
+        oid(NAME_CONSTRAINTS) =>
             NameConstraints(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(NameConstraints)))): ASN1<ExplicitTag<ASN1<NameConstraints>>>,
 
         _ => Other(ASN1(OctetString)): ASN1<OctetString>,

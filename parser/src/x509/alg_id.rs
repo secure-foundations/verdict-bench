@@ -8,7 +8,7 @@ use super::alg_param::*;
 
 verus! {
 
-broadcast use AlgorithmParamCont::lemma_disjoint_oids;
+broadcast use super::oid::axiom_disjoint_oids;
 
 // In X.509:
 // AlgorithmIdentifier  ::=  SEQUENCE  {

@@ -4,6 +4,7 @@ use crate::asn1::*;
 use crate::common::*;
 
 use super::macros::*;
+use super::oid::*;
 
 verus! {
 
@@ -39,19 +40,19 @@ oid_match_continuation! {
         // NOTE: for some of these, technically the param field should
         // be NULL (or for some should be empty), but some certificates
         // do not comply with this
-        oid(1, 2, 840, 113549, 1, 1, 2) => RSASignatureWithMD2(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
-        oid(1, 2, 840, 113549, 1, 1, 4) => RSASignatureWithMD5(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
-        oid(1, 2, 840, 113549, 1, 1, 5) => RSASignatureWithSHA1(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_MD2) => RSASignatureWithMD2(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_MD5) => RSASignatureWithMD5(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_SHA1) => RSASignatureWithSHA1(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
 
-        oid(1, 2, 840, 113549, 1, 1, 11) => RSASignatureWithSHA256(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
-        oid(1, 2, 840, 113549, 1, 1, 12) => RSASignatureWithSHA384(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
-        oid(1, 2, 840, 113549, 1, 1, 13) => RSASignatureWithSHA512(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
-        oid(1, 2, 840, 113549, 1, 1, 14) => RSASignatureWithSHA224(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_SHA256) => RSASignatureWithSHA256(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_SHA384) => RSASignatureWithSHA384(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_SHA512) => RSASignatureWithSHA512(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_SIGNATURE_SHA224) => RSASignatureWithSHA224(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
 
-        oid(1, 2, 840, 10040, 4, 1) => DSASignature(OrdChoice(ASN1(DSAParam), End)): OrdChoice<ASN1<DSAParam>, End>,
+        oid(DSA_SIGNATURE) => DSASignature(OrdChoice(ASN1(DSAParam), End)): OrdChoice<ASN1<DSAParam>, End>,
 
         // Subject public key algorithms
-        oid(1, 2, 840, 113549, 1, 1, 1) => RSAEncryption(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
+        oid(RSA_ENCRYPTION) => RSAEncryption(OrdChoice(ASN1(Null), End)): OrdChoice<ASN1<Null>, End>,
 
         _ => Other(Tail): Tail,
     }

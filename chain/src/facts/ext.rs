@@ -32,26 +32,26 @@ pub struct ExtExtendedKeyUsageFacts;
 
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtExtendedKeyUsageFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
-        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 37)) {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(EXTENDED_KEY_USAGE)) {
             if let SpecExtensionParamValue::ExtendedKeyUsage(usages) = ext.param {
                 seq![
                     spec_fact!("extendedKeyUsageExt", t.spec_cert(), spec_bool!(true)),
                     spec_fact!("extendedKeyUsageCritical", t.spec_cert(), spec_bool!(ext.critical)),
                 ] + usages.map_values(|usage: SpecObjectIdentifierValue| {
                     let usage_term =
-                        if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 1) {
+                        if usage == spec_oid!(SERVER_AUTH) {
                             spec_atom!("serverAuth".view())
-                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 2) {
+                        } else if usage == spec_oid!(CLIENT_AUTH) {
                             spec_atom!("clientAuth".view())
-                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 3) {
+                        } else if usage == spec_oid!(CODE_SIGNING) {
                             spec_atom!("codeSigning".view())
-                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 4) {
+                        } else if usage == spec_oid!(EMAIL_PROTECTION) {
                             spec_atom!("emailProtection".view())
-                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 8) {
+                        } else if usage == spec_oid!(TIME_STAMPING) {
                             spec_atom!("timeStamping".view())
-                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 9) {
+                        } else if usage == spec_oid!(OCSP_SIGNING) {
                             spec_atom!("oCSPSigning".view())
-                        } else if usage == spec_oid!(2, 5, 29, 37) {
+                        } else if usage == spec_oid!(EXTENDED_KEY_USAGE) {
                             spec_atom!("any".view())
                         } else {
                             spec_str!(BasicFacts::spec_oid_to_string(usage))
@@ -73,15 +73,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtExtendedKeyUsag
 
     #[verifier::loop_isolation(false)]
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 1); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 1));
-        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 2); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 2));
-        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 3); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 3));
-        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 4); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 4));
-        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 8); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 8));
-        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 9); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 9));
-        let oid = oid!(2, 5, 29, 37); assert(oid@ == spec_oid!(2, 5, 29, 37));
-
-        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid!(EXTENDED_KEY_USAGE)) {
             if let ExtensionParamValue::ExtendedKeyUsage(usages) = &ext.param {
                 out.push(RuleX::fact("extendedKeyUsageExt", vec![ t.cert(), TermX::bool(true) ]));
                 out.push(RuleX::fact("extendedKeyUsageCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
@@ -94,13 +86,13 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtExtendedKeyUsag
                 {
                     let usage = usages.get(i);
                     let usage_term =
-                        if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 1)) { TermX::atom("serverAuth") }
-                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 2)) { TermX::atom("clientAuth") }
-                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 3)) { TermX::atom("codeSigning") }
-                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 4)) { TermX::atom("emailProtection") }
-                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 8)) { TermX::atom("timeStamping") }
-                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 9)) { TermX::atom("oCSPSigning") }
-                        else if usage.polyfill_eq(&oid!(2, 5, 29, 37)) { TermX::atom("any") }
+                        if usage.polyfill_eq(&oid!(SERVER_AUTH)) { TermX::atom("serverAuth") }
+                        else if usage.polyfill_eq(&oid!(CLIENT_AUTH)) { TermX::atom("clientAuth") }
+                        else if usage.polyfill_eq(&oid!(CODE_SIGNING)) { TermX::atom("codeSigning") }
+                        else if usage.polyfill_eq(&oid!(EMAIL_PROTECTION)) { TermX::atom("emailProtection") }
+                        else if usage.polyfill_eq(&oid!(TIME_STAMPING)) { TermX::atom("timeStamping") }
+                        else if usage.polyfill_eq(&oid!(OCSP_SIGNING)) { TermX::atom("oCSPSigning") }
+                        else if usage.polyfill_eq(&oid!(EXTENDED_KEY_USAGE)) { TermX::atom("any") }
                         else { TermX::str(BasicFacts::oid_to_string(usage).as_str()) };
 
                     out.push(RuleX::fact("extendedKeyUsage", vec![ t.cert(), usage_term ]));
@@ -117,7 +109,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtExtendedKeyUsag
 
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtCertificatePoliciesFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
-        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 32)) {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(CERT_POLICIES)) {
             if let SpecExtensionParamValue::CertificatePolicies(policies) = ext.param {
                 seq![
                     spec_fact!("certificatePoliciesExt", t.spec_cert(), spec_bool!(true)),
@@ -138,10 +130,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtCertificatePoli
 
     #[verifier::loop_isolation(false)]
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(2, 5, 29, 32);
-        assert(oid@ == spec_oid!(2, 5, 29, 32));
-
-        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid!(CERT_POLICIES)) {
             if let ExtensionParamValue::CertificatePolicies(policies) = &ext.param {
                 out.push(RuleX::fact("certificatePoliciesExt", vec![ t.cert(), TermX::bool(true) ]));
                 out.push(RuleX::fact("certificatePoliciesCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
@@ -166,7 +155,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtCertificatePoli
 
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtBasicConstraintsFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
-        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 19)) {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(BASIC_CONSTRAINTS)) {
             if let SpecExtensionParamValue::BasicConstraints(param) = ext.param {
                 seq![
                     spec_fact!("basicConstraintsExt", t.spec_cert(), spec_bool!(true)),
@@ -192,10 +181,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtBasicConstraint
     }
 
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(2, 5, 29, 19);
-        assert(oid@ == spec_oid!(2, 5, 29, 19));
-
-        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid!(BASIC_CONSTRAINTS)) {
             if let ExtensionParamValue::BasicConstraints(param) = &ext.param {
                 out.push(RuleX::fact("basicConstraintsExt", vec![ t.cert(), TermX::bool(true) ]));
                 out.push(RuleX::fact("basicConstraintsCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
@@ -235,7 +221,7 @@ impl ExtKeyUsageFacts {
 
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtKeyUsageFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
-        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 15)) {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(KEY_USAGE)) {
             if let SpecExtensionParamValue::KeyUsage(param) = ext.param {
                 let usages = seq![
                     "digitalSignature".view(),
@@ -267,10 +253,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtKeyUsageFacts {
     }
 
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(2, 5, 29, 15);
-        assert(oid@ == spec_oid!(2, 5, 29, 15));
-
-        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid!(KEY_USAGE)) {
             if let ExtensionParamValue::KeyUsage(param) = &ext.param {
                 let usages = vec_deep![
                     "digitalSignature",
@@ -326,18 +309,18 @@ impl ExtSubjectAltNameFacts {
     /// Same definition as Hammurabi
     pub closed spec fn spec_oid_to_name(oid: SpecObjectIdentifierValue) -> Seq<char>
     {
-        if oid == spec_oid!(2, 5, 4, 6) { "country"@ }
-        else if oid == spec_oid!(2, 5, 4, 10) { "organization"@ }
-        else if oid == spec_oid!(2, 5, 4, 11) { "organizational unit"@ }
-        else if oid == spec_oid!(2, 5, 4, 97) { "organizational identifier"@ }
-        else if oid == spec_oid!(2, 5, 4, 3) { "common name"@ }
-        else if oid == spec_oid!(2, 5, 4, 4) { "surname"@ }
-        else if oid == spec_oid!(2, 5, 4, 8) { "state"@ }
-        else if oid == spec_oid!(2, 5, 4, 9) { "street address"@ }
-        else if oid == spec_oid!(2, 5, 4, 7) { "locality"@ }
-        else if oid == spec_oid!(2, 5, 4, 17) { "postal code"@ }
-        else if oid == spec_oid!(2, 5, 4, 42) { "given name"@ }
-        else if oid == spec_oid!(0, 9, 2342, 19200300, 100, 1, 25) { "domain component"@ }
+        if oid == spec_oid!(COUNTRY_NAME) { "country"@ }
+        else if oid == spec_oid!(ORGANIZATION_NAME) { "organization"@ }
+        else if oid == spec_oid!(ORGANIZATIONAL_UNIT) { "organizational unit"@ }
+        else if oid == spec_oid!(ORGANIZATIONAL_IDENT) { "organizational identifier"@ }
+        else if oid == spec_oid!(COMMON_NAME) { "common name"@ }
+        else if oid == spec_oid!(SURNAME) { "surname"@ }
+        else if oid == spec_oid!(STATE_NAME) { "state"@ }
+        else if oid == spec_oid!(STREET_ADDRESS) { "street address"@ }
+        else if oid == spec_oid!(LOCALITY_NAME) { "locality"@ }
+        else if oid == spec_oid!(POSTAL_CODE) { "postal code"@ }
+        else if oid == spec_oid!(GIVEN_NAME) { "given name"@ }
+        else if oid == spec_oid!(DOMAIN_COMPONENT) { "domain component"@ }
         else { "UNKNOWN"@ }
     }
 
@@ -345,31 +328,31 @@ impl ExtSubjectAltNameFacts {
     pub fn oid_to_name(oid: &ObjectIdentifierValue) -> (res: &'static str)
         ensures res@ =~= Self::spec_oid_to_name(oid@)
     {
-        let id = oid!(2, 5, 4, 6); assert(id@ == spec_oid!(2, 5, 4, 6));
-        let id = oid!(2, 5, 4, 10); assert(id@ == spec_oid!(2, 5, 4, 10));
-        let id = oid!(2, 5, 4, 11); assert(id@ == spec_oid!(2, 5, 4, 11));
-        let id = oid!(2, 5, 4, 97); assert(id@ == spec_oid!(2, 5, 4, 97));
-        let id = oid!(2, 5, 4, 3); assert(id@ == spec_oid!(2, 5, 4, 3));
-        let id = oid!(2, 5, 4, 4); assert(id@ == spec_oid!(2, 5, 4, 4));
-        let id = oid!(2, 5, 4, 8); assert(id@ == spec_oid!(2, 5, 4, 8));
-        let id = oid!(2, 5, 4, 9); assert(id@ == spec_oid!(2, 5, 4, 9));
-        let id = oid!(2, 5, 4, 7); assert(id@ == spec_oid!(2, 5, 4, 7));
-        let id = oid!(2, 5, 4, 17); assert(id@ == spec_oid!(2, 5, 4, 17));
-        let id = oid!(2, 5, 4, 42); assert(id@ == spec_oid!(2, 5, 4, 42));
-        let id = oid!(0, 9, 2342, 19200300, 100, 1, 25); assert(id@ == spec_oid!(0, 9, 2342, 19200300, 100, 1, 25));
+        let id = oid!(COUNTRY_NAME); assert(id@ == spec_oid!(COUNTRY_NAME));
+        let id = oid!(ORGANIZATION_NAME); assert(id@ == spec_oid!(ORGANIZATION_NAME));
+        let id = oid!(ORGANIZATIONAL_UNIT); assert(id@ == spec_oid!(ORGANIZATIONAL_UNIT));
+        let id = oid!(ORGANIZATIONAL_IDENT); assert(id@ == spec_oid!(ORGANIZATIONAL_IDENT));
+        let id = oid!(COMMON_NAME); assert(id@ == spec_oid!(COMMON_NAME));
+        let id = oid!(SURNAME); assert(id@ == spec_oid!(SURNAME));
+        let id = oid!(STATE_NAME); assert(id@ == spec_oid!(STATE_NAME));
+        let id = oid!(STREET_ADDRESS); assert(id@ == spec_oid!(STREET_ADDRESS));
+        let id = oid!(LOCALITY_NAME); assert(id@ == spec_oid!(LOCALITY_NAME));
+        let id = oid!(POSTAL_CODE); assert(id@ == spec_oid!(POSTAL_CODE));
+        let id = oid!(GIVEN_NAME); assert(id@ == spec_oid!(GIVEN_NAME));
+        let id = oid!(DOMAIN_COMPONENT); assert(id@ == spec_oid!(DOMAIN_COMPONENT));
 
-        if oid.polyfill_eq(&oid!(2, 5, 4, 6)) { "country" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 10)) { "organization" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 11)) { "organizational unit" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 97)) { "organizational identifier" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 3)) { "common name" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 4)) { "surname" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 8)) { "state" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 9)) { "street address" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 7)) { "locality" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 17)) { "postal code" }
-        else if oid.polyfill_eq(&oid!(2, 5, 4, 42)) { "given name" }
-        else if oid.polyfill_eq(&oid!(0, 9, 2342, 19200300, 100, 1, 25)) { "domain component" }
+        if oid.polyfill_eq(&oid!(COUNTRY_NAME)) { "country" }
+        else if oid.polyfill_eq(&oid!(ORGANIZATION_NAME)) { "organization" }
+        else if oid.polyfill_eq(&oid!(ORGANIZATIONAL_UNIT)) { "organizational unit" }
+        else if oid.polyfill_eq(&oid!(ORGANIZATIONAL_IDENT)) { "organizational identifier" }
+        else if oid.polyfill_eq(&oid!(COMMON_NAME)) { "common name" }
+        else if oid.polyfill_eq(&oid!(SURNAME)) { "surname" }
+        else if oid.polyfill_eq(&oid!(STATE_NAME)) { "state" }
+        else if oid.polyfill_eq(&oid!(STREET_ADDRESS)) { "street address" }
+        else if oid.polyfill_eq(&oid!(LOCALITY_NAME)) { "locality" }
+        else if oid.polyfill_eq(&oid!(POSTAL_CODE)) { "postal code" }
+        else if oid.polyfill_eq(&oid!(GIVEN_NAME)) { "given name" }
+        else if oid.polyfill_eq(&oid!(DOMAIN_COMPONENT)) { "domain component" }
         else { "UNKNOWN" }
     }
 
@@ -500,7 +483,7 @@ impl ExtSubjectAltNameFacts {
 
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtSubjectAltNameFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
-        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 17)) {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(SUBJECT_ALT_NAME)) {
             if let SpecExtensionParamValue::SubjectAltName(names) = ext.param {
                 seq![
                     spec_fact!("sanExt", t.spec_cert(), spec_bool!(true)),
@@ -520,10 +503,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtSubjectAltNameF
     }
 
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(2, 5, 29, 17);
-        assert(oid@ == spec_oid!(2, 5, 29, 17));
-
-        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid!(SUBJECT_ALT_NAME)) {
             if let ExtensionParamValue::SubjectAltName(names) = &ext.param {
                 out.push(RuleX::fact("sanExt", vec![ t.cert(), TermX::bool(true) ]));
                 out.push(RuleX::fact("sanCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
@@ -619,7 +599,7 @@ impl ExtNameConstraintsFacts {
 impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtNameConstraintsFacts {
     /// TODO: avoid flatten() here
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
-        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 30)) {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(NAME_CONSTRAINTS)) {
             if let SpecExtensionParamValue::NameConstraints(param) = ext.param {
                 seq![
                     spec_fact!("nameConstraintsExt", t.spec_cert(), spec_bool!(true)),
@@ -646,10 +626,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtNameConstraints
     }
 
     fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
-        let oid = oid!(2, 5, 29, 30);
-        assert(oid@ == spec_oid!(2, 5, 29, 30));
-
-        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid!(NAME_CONSTRAINTS)) {
             if let ExtensionParamValue::NameConstraints(param) = &ext.param {
                 out.push(RuleX::fact("nameConstraintsExt", vec![ t.cert(), TermX::bool(true) ]));
                 out.push(RuleX::fact("nameConstraintsCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));

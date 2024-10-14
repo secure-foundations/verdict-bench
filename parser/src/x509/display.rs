@@ -22,23 +22,23 @@ impl<'a> Display for DirectoryStringValue<'a> {
 
 impl<'a> Display for AttributeTypeAndValueValue<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.typ.polyfill_eq(&oid!(2, 5, 4, 3)) {
+        if self.typ.polyfill_eq(&oid!(COMMON_NAME)) {
             write!(f, "CN={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 6)) {
+        } else if self.typ.polyfill_eq(&oid!(COUNTRY_NAME)) {
             write!(f, "C={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 7)) {
+        } else if self.typ.polyfill_eq(&oid!(LOCALITY_NAME)) {
             write!(f, "L={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 8)) {
+        } else if self.typ.polyfill_eq(&oid!(STATE_NAME)) {
             write!(f, "ST={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 10)) {
+        } else if self.typ.polyfill_eq(&oid!(ORGANIZATION_NAME)) {
             write!(f, "O={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 11)) {
+        } else if self.typ.polyfill_eq(&oid!(ORGANIZATIONAL_UNIT)) {
             write!(f, "OU={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 9)) {
+        } else if self.typ.polyfill_eq(&oid!(STREET_ADDRESS)) {
             write!(f, "STREET={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(2, 5, 4, 5)) {
+        } else if self.typ.polyfill_eq(&oid!(SERIAL_NUMBER)) {
             write!(f, "SERIALNUMBER={}", self.value)
-        } else if self.typ.polyfill_eq(&oid!(1, 2, 840, 113549, 1, 9, 1)) {
+        } else if self.typ.polyfill_eq(&oid!(EMAIL_ADDRESS)) {
             write!(f, "EMAILADDRESS={}", self.value)
         } else {
             write!(f, "{:?}={}", self.typ, self.value)
