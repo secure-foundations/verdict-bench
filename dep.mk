@@ -61,7 +61,7 @@ VERUS_COMMAND = \
 		--crate-name $(NAME) \
 		$(if $(filter %.rlib,$@),--crate-type=lib,) \
 		-L dependency=target/$*/deps \
-		$(foreach dep,$(CARGO_DEPS),--extern $(dep)=$(firstword $(wildcard target/$*/deps/lib$(dep)-*.rlib) $(wildcard target/$*/deps/lib$(dep)-*.dylib))) \
+		$(foreach dep,$(CARGO_DEPS),--extern $(subst -,_,$(dep))=$(firstword $(wildcard target/$*/deps/lib$(subst -,_,$(dep))-*.rlib) $(wildcard target/$*/deps/lib$(dep)-*.dylib))) \
 		$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$*/deps) \
 		$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$*) \
 		$(foreach dep,$(VERUS_DEPS),--extern $(dep)=../$(dep)/target/$*/lib$(dep).rlib --import $(dep)=../$(dep)/target/$*/lib$(dep).rlib.verusdata) \
