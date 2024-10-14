@@ -2134,3 +2134,7 @@ version(hack, hack).
 ocspResponse(hack, hack).
 stapledResponse(hack, hack).
 spkiDSAParameters(hack, hack, hack, hack).
+
+% TODO: support revocation
+stapledResponse(_, []).
+ocspResponse(_, []).

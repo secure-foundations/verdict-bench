@@ -20,15 +20,102 @@ pub type ExtensionFacts = seq_facts![
     ExtKeyUsageFacts,
     ExtSubjectAltNameFacts,
     ExtNameConstraintsFacts,
-    ExtCertificatePolicies,
+    ExtCertificatePoliciesFacts,
+    ExtExtendedKeyUsageFacts,
 ];
 pub struct ExtBasicConstraintsFacts;
 pub struct ExtKeyUsageFacts;
 pub struct ExtSubjectAltNameFacts;
 pub struct ExtNameConstraintsFacts;
-pub struct ExtCertificatePolicies;
+pub struct ExtCertificatePoliciesFacts;
+pub struct ExtExtendedKeyUsageFacts;
 
-impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtCertificatePolicies {
+impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtExtendedKeyUsageFacts {
+    closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
+        Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 37)) {
+            if let SpecExtensionParamValue::ExtendedKeyUsage(usages) = ext.param {
+                seq![
+                    spec_fact!("extendedKeyUsageExt", t.spec_cert(), spec_bool!(true)),
+                    spec_fact!("extendedKeyUsageCritical", t.spec_cert(), spec_bool!(ext.critical)),
+                ] + usages.map_values(|usage: SpecObjectIdentifierValue| {
+                    let usage_term =
+                        if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 1) {
+                            spec_atom!("serverAuth".view())
+                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 2) {
+                            spec_atom!("clientAuth".view())
+                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 3) {
+                            spec_atom!("codeSigning".view())
+                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 4) {
+                            spec_atom!("emailProtection".view())
+                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 8) {
+                            spec_atom!("timeStamping".view())
+                        } else if usage == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 9) {
+                            spec_atom!("oCSPSigning".view())
+                        } else if usage == spec_oid!(2, 5, 29, 37) {
+                            spec_atom!("any".view())
+                        } else {
+                            spec_str!(BasicFacts::spec_oid_to_string(usage))
+                        };
+
+                    spec_fact!("extendedKeyUsage", t.spec_cert(), usage_term)
+                })
+            } else {
+                seq![
+                    spec_fact!("extendedKeyUsageExt", t.spec_cert(), spec_bool!(false)),
+                ]
+            }
+        } else {
+            seq![
+                spec_fact!("extendedKeyUsageExt", t.spec_cert(), spec_bool!(false)),
+            ]
+        })
+    }
+
+    #[verifier::loop_isolation(false)]
+    fn facts(t: &CertIndexed<&'b CertificateValue<'a>>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
+        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 1); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 1));
+        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 2); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 2));
+        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 3); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 3));
+        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 4); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 4));
+        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 8); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 8));
+        let oid = oid!(1, 3, 6, 1, 5, 5, 7, 3, 9); assert(oid@ == spec_oid!(1, 3, 6, 1, 5, 5, 7, 3, 9));
+        let oid = oid!(2, 5, 29, 37); assert(oid@ == spec_oid!(2, 5, 29, 37));
+
+        if let OptionDeep::Some(ext) = get_extension(t.x, &oid) {
+            if let ExtensionParamValue::ExtendedKeyUsage(usages) = &ext.param {
+                out.push(RuleX::fact("extendedKeyUsageExt", vec![ t.cert(), TermX::bool(true) ]));
+                out.push(RuleX::fact("extendedKeyUsageCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
+
+                let len = usages.len();
+                for i in 0..len
+                    invariant
+                        len == usages@.len(),
+                        out@ =~~= old(out)@ + Self::spec_facts(t@).unwrap().take(i + 2),
+                {
+                    let usage = usages.get(i);
+                    let usage_term =
+                        if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 1)) { TermX::atom("serverAuth") }
+                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 2)) { TermX::atom("clientAuth") }
+                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 3)) { TermX::atom("codeSigning") }
+                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 4)) { TermX::atom("emailProtection") }
+                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 8)) { TermX::atom("timeStamping") }
+                        else if usage.polyfill_eq(&oid!(1, 3, 6, 1, 5, 5, 7, 3, 9)) { TermX::atom("oCSPSigning") }
+                        else if usage.polyfill_eq(&oid!(2, 5, 29, 37)) { TermX::atom("any") }
+                        else { TermX::str(BasicFacts::oid_to_string(usage).as_str()) };
+
+                    out.push(RuleX::fact("extendedKeyUsage", vec![ t.cert(), usage_term ]));
+                }
+
+                return Ok(());
+            }
+        }
+
+        out.push(RuleX::fact("extendedKeyUsageExt", vec![ t.cert(), TermX::bool(false) ]));
+        Ok(())
+    }
+}
+
+impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtCertificatePoliciesFacts {
     closed spec fn spec_facts(t: CertIndexed<SpecCertificateValue>) -> Option<Seq<SpecRule>> {
         Some(if let OptionDeep::Some(ext) = spec_get_extension(t.x, spec_oid!(2, 5, 29, 32)) {
             if let SpecExtensionParamValue::CertificatePolicies(policies) = ext.param {
