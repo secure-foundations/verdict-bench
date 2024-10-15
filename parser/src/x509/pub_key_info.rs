@@ -19,6 +19,28 @@ asn1! {
     }
 }
 
+// RSAPublicKey ::= SEQUENCE {
+//     modulus            INTEGER, -- n
+//     publicExponent     INTEGER  -- e --
+// }
+asn1! {
+    seq RSAPublicKey {
+        n: ASN1<BigInt> = ASN1(BigInt),
+        e: ASN1<BigInt> = ASN1(BigInt),
+    }
+}
+
+// DigestInfo ::= SEQUENCE {
+//     digestAlgorithm AlgorithmIdentifier,
+//     digest OCTET STRING
+// }
+asn1! {
+    seq DigestInfo {
+        alg: ASN1<AlgorithmIdentifier> = ASN1(AlgorithmIdentifier),
+        digest: ASN1<OctetString> = ASN1(OctetString),
+    }
+}
+
 }
 
 #[cfg(test)]

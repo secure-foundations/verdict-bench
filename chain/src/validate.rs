@@ -8,6 +8,7 @@ use vpl::*;
 use crate::specs::*;
 use crate::facts::*;
 use crate::error::*;
+use crate::rsa;
 
 verus! {
 
@@ -167,7 +168,23 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
     ensures res == spec_verify_signature(issuer@, subject@)
 {
     // TODO: verify signature
-    subject.get().sig_alg.polyfill_eq(&subject.get().cert.get().signature)
+    if !subject.get().sig_alg.polyfill_eq(&subject.get().cert.get().signature) {
+        return false;
+    }
+
+    if subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
+       subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
+       subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
+       subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
+        return rsa::rsa_pkcs1_v1_5_verify(
+            &subject.get().sig_alg,
+            issuer.get().cert.get().subject_key.pub_key.bytes(),
+            subject.get().sig.bytes(),
+            subject.get().cert.serialize(),
+        ).is_ok();
+    }
+
+    false
 }
 
 pub fn valid_domain<'a, 'b, B: Backend, E>(

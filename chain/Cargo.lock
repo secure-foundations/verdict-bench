@@ -87,12 +87,12 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 [[package]]
 name = "builtin"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#0fe1a1b6a38352eea3ecf87ff0ab7446f712daf4"
+source = "git+https://github.com/verus-lang/verus?branch=main#8d76baba9d778c26c78abcfe00d749903d57d2c4"
 
 [[package]]
 name = "builtin_macros"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#0fe1a1b6a38352eea3ecf87ff0ab7446f712daf4"
+source = "git+https://github.com/verus-lang/verus?branch=main#8d76baba9d778c26c78abcfe00d749903d57d2c4"
 dependencies = [
  "prettyplease_verus",
  "proc-macro2",
@@ -116,9 +116,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.1.24"
+version = "1.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "812acba72f0a070b003d3697490d2b55b837230ae7c6c6497f05cc2ddbb8d938"
+checksum = "b16803a61b81d9eabb7eae2588776c4c1e584b738ede45fdbb4c972cec1e9945"
 dependencies = [
  "jobserver",
  "libc",
@@ -167,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.18"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0956a43b323ac1afaffc053ed5c4b7c1f1800bacd1683c353aabbb752515dd3"
+checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -177,9 +177,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.18"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d72166dd41634086d5803a47eb71ae740e61d84709c36f3c34110173db3961b"
+checksum = "19bc80abd44e4bed93ca373a0704ccbd1b710dc5749406201bb018272808dc54"
 dependencies = [
  "anstream",
  "anstyle",
@@ -259,6 +259,12 @@ dependencies = [
  "libc",
  "wasi",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hax-lib"
@@ -360,6 +366,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexmap"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+dependencies = [
+ "autocfg",
+ "hashbrown",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -382,9 +398,9 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.70"
+version = "0.3.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1868808506b929d7b0cfa8f75951347aa71bb21144b7791bae35d9bccfcfe37a"
+checksum = "6a88f1bda2bd75b0452a14784937d796722fdebfe50df998aeb3f0b7603019a9"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -398,7 +414,7 @@ checksum = "561d97a539a36e26a9a5fad1ea11a3039a67714694aaa379433e580854bc3dc5"
 [[package]]
 name = "libcrux"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-alpha.1 (git+https://github.com/hacspec/hax/?branch=main)",
  "hax-lib-macros 0.1.0-alpha.1 (git+https://github.com/hacspec/hax/?branch=main)",
@@ -415,7 +431,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdh"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
  "rand",
@@ -424,7 +440,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hacl"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "cc",
  "libcrux-platform",
@@ -433,7 +449,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hkdf"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
 ]
@@ -441,7 +457,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hmac"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
  "libcrux-hkdf",
@@ -450,12 +466,12 @@ dependencies = [
 [[package]]
 name = "libcrux-intrinsics"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 
 [[package]]
 name = "libcrux-kem"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-ecdh",
  "libcrux-ml-kem",
@@ -466,7 +482,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ml-kem"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-alpha.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -478,7 +494,7 @@ dependencies = [
 [[package]]
 name = "libcrux-platform"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libc",
 ]
@@ -486,7 +502,7 @@ dependencies = [
 [[package]]
 name = "libcrux-sha3"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#9f0de7fd00e15b176df131372174fa44e09d8b8f"
+source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-alpha.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -549,12 +565,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.20.1"
+version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82881c4be219ab5faaf2ad5e5e5ecdff8c66bd7402ca3160975c93b24961afd1"
-dependencies = [
- "portable-atomic",
-]
+checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "parser"
@@ -614,12 +627,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "portable-atomic"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
-
-[[package]]
 name = "ppv-lite86"
 version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -631,7 +638,7 @@ dependencies = [
 [[package]]
 name = "prettyplease_verus"
 version = "0.1.15"
-source = "git+https://github.com/verus-lang/verus?branch=main#0fe1a1b6a38352eea3ecf87ff0ab7446f712daf4"
+source = "git+https://github.com/verus-lang/verus?branch=main#8d76baba9d778c26c78abcfe00d749903d57d2c4"
 dependencies = [
  "proc-macro2",
  "syn_verus",
@@ -663,9 +670,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.86"
+version = "1.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
+checksum = "b3e4daa0dcf6feba26f985457cdf104d4b4256fc5a09547140f3631bb076b19a"
 dependencies = [
  "unicode-ident",
 ]
@@ -767,6 +774,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "state_machines_macros"
+version = "0.1.0"
+source = "git+https://github.com/verus-lang/verus?branch=main#8d76baba9d778c26c78abcfe00d749903d57d2c4"
+dependencies = [
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "syn_verus",
+]
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -797,7 +815,7 @@ dependencies = [
 [[package]]
 name = "syn_verus"
 version = "1.0.95"
-source = "git+https://github.com/verus-lang/verus?branch=main#0fe1a1b6a38352eea3ecf87ff0ab7446f712daf4"
+source = "git+https://github.com/verus-lang/verus?branch=main#8d76baba9d778c26c78abcfe00d749903d57d2c4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -908,10 +926,11 @@ dependencies = [
 [[package]]
 name = "vstd"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#0fe1a1b6a38352eea3ecf87ff0ab7446f712daf4"
+source = "git+https://github.com/verus-lang/verus?branch=main#8d76baba9d778c26c78abcfe00d749903d57d2c4"
 dependencies = [
  "builtin",
  "builtin_macros",
+ "state_machines_macros",
 ]
 
 [[package]]
@@ -922,9 +941,9 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.93"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a82edfc16a6c469f5f44dc7b571814045d60404b55a0ee849f9bcfa2e63dd9b5"
+checksum = "128d1e363af62632b8eb57219c8fd7877144af57558fb2ef0368d0087bddeb2e"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -933,9 +952,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-backend"
-version = "0.2.93"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9de396da306523044d3302746f1208fa71d7532227f15e347e2d93e4145dd77b"
+checksum = "cb6dd4d3ca0ddffd1dd1c9c04f94b868c37ff5fac97c30b97cff2d74fce3a358"
 dependencies = [
  "bumpalo",
  "log",
@@ -948,9 +967,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.93"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "585c4c91a46b072c92e908d99cb1dcdf95c5218eeb6f3bf1efa991ee7a68cccf"
+checksum = "e79384be7f8f5a9dd5d7167216f022090cf1f9ec128e6e6a482a2cb5c5422c56"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -958,9 +977,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.93"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afc340c74d9005395cf9dd098506f7f44e38f2b4a21c6aaacf9a105ea5e1e836"
+checksum = "26c6ab57572f7a24a4985830b120de1594465e5d500f24afe89e16b4e833ef68"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -971,9 +990,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.93"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c62a0a307cb4a311d3a07867860911ca130c3494e8c2719593806c08bc5d0484"
+checksum = "65fc09f10666a9f147042251e0dda9c18f166ff7de300607007e96bdebc1068d"
 
 [[package]]
 name = "windows-core"

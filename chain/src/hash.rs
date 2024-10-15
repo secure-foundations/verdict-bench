@@ -8,13 +8,38 @@ verus! {
 
 /// TODO: specify this
 pub closed spec fn spec_to_hex_upper(data: Seq<u8>) -> Seq<char>;
+
+pub closed spec fn spec_sha224_digest(data: Seq<u8>) -> Seq<u8>;
 pub closed spec fn spec_sha256_digest(data: Seq<u8>) -> Seq<u8>;
+pub closed spec fn spec_sha384_digest(data: Seq<u8>) -> Seq<u8>;
+pub closed spec fn spec_sha512_digest(data: Seq<u8>) -> Seq<u8>;
+
+#[verifier::external_body]
+pub fn sha224_digest(data: &[u8]) -> (res: [u8; 28])
+    ensures res@ == spec_sha224_digest(data@)
+{
+    digest::sha2_224(data)
+}
 
 #[verifier::external_body]
 pub fn sha256_digest(data: &[u8]) -> (res: [u8; 32])
     ensures res@ == spec_sha256_digest(data@)
 {
     digest::sha2_256(data)
+}
+
+#[verifier::external_body]
+pub fn sha384_digest(data: &[u8]) -> (res: [u8; 48])
+    ensures res@ == spec_sha384_digest(data@)
+{
+    digest::sha2_384(data)
+}
+
+#[verifier::external_body]
+pub fn sha512_digest(data: &[u8]) -> (res: [u8; 64])
+    ensures res@ == spec_sha512_digest(data@)
+{
+    digest::sha2_512(data)
 }
 
 /// Convert a sequence of data to a hex string in upper case

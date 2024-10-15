@@ -3,6 +3,7 @@ mod specs;
 mod validate;
 mod hash;
 mod facts;
+mod rsa;
 
 use vstd::prelude::*;
 
@@ -89,6 +90,98 @@ fn main_args(args: Args) -> Result<(), Error> {
     let chain = chain_bytes.iter().map(|cert_bytes| {
         parse_x509_bytes(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?;
+
+    ///////////////// test libcrux-hacl
+    // use libcrux_hacl::{Hacl_RSAPSS_new_rsapss_load_pkey, Hacl_RSAPSS_rsa_decrypt};
+
+    // checking cert(0)'s signature with cert(1)'s public key
+    let cert = &roots[2];
+    let cert_child = &roots[2];
+
+    let pub_key = cert.get().cert.get().subject_key.pub_key.bytes();
+    let sig = cert_child.get().sig.bytes();
+    // let trailing_zeros = cert.get().cert.get().subject_key.pub_key.trailing_zeros();
+
+    eprintln!("rsa verify result: {:?}", rsa::rsa_pkcs1_v1_5_verify(
+        &cert_child.get().sig_alg,
+        pub_key,
+        sig,
+        cert_child.get().cert.serialize(),
+    ));
+
+    // let (_, pub_key) = parser::asn1::ASN1(x509::RSAPublicKey).parse(pub_key)?;
+
+    // println!("rsa pub_key: {:?}", pub_key);
+
+    // let n = pub_key.n.bytes();
+    // let n = if n[0] == 0 {
+    //     &n[1..]
+    // } else {
+    //     &n
+    // };
+
+    // let pkey = unsafe {
+    //     Hacl_RSAPSS_new_rsapss_load_pkey(
+    //         (n.len() * 8).try_into().unwrap(),
+    //         17,
+    //         n.as_ptr() as _,
+    //         pub_key.e.bytes().as_ptr() as _,
+    //     )
+    // };
+
+    // println!("pkey: {:?}", pkey);
+
+    // let mut decoded: Vec<u8> = vec![0; n.len()];
+
+    // let signature = cert_child.get().sig.bytes();
+
+    // let res = unsafe {
+    //     Hacl_RSAPSS_rsa_decrypt(
+    //         (n.len() * 8).try_into().unwrap(),
+    //         17,
+    //         pkey,
+    //         signature.len() as u32,
+    //         signature.as_ptr() as _,
+    //         decoded.as_mut_ptr() as _,
+    //     )
+    // };
+
+    // println!("rsa decode result: {:?}", res);
+
+    // eprint!("decoded:");
+    // // print out hex of decoded
+    // for byte in decoded.iter() {
+    //     eprint!(" {:02x}", byte);
+    // }
+    // eprintln!("");
+
+    // // Remove padding
+    // assert!(decoded[0] == 0x00);
+    // assert!(decoded[1] == 0x01);
+
+    // let mut i = 2;
+    // while i < decoded.len() && decoded[i] == 0xff {
+    //     i += 1;
+    // }
+
+    // assert!(decoded[i] == 0x00);
+    // let dig_info_enc = &decoded[i + 1..];
+
+    // let (_, dig_info) = parser::asn1::ASN1(x509::DigestInfo).parse(dig_info_enc)?;
+
+    // eprintln!("digest info: {:?}", dig_info);
+
+    // eprint!("hash:");
+    // for byte in dig_info.digest {
+    //     eprint!(" {:02x}", byte);
+    // }
+    // eprintln!("");
+
+    // // assuming SHA256
+    // let expected_hash = hash::to_hex_upper(&hash::sha256_digest(cert_child.get().cert.serialize()));
+    // eprintln!("expected hash: {}", expected_hash);
+
+    ///////////////// test libcrux-hacl
 
     // Print some general information about the certs
     eprintln!("{} root certificate(s)", roots.len());

@@ -93,6 +93,12 @@ impl<'a> BigIntValue<'a> {
         self.0.len() - 1
     }
 
+    pub fn bytes(&self) -> (res: &[u8])
+        ensures res@ == self@
+    {
+        self.0
+    }
+
     // TODO: add more methods to interpret BigIntValue as an integer
 }
 

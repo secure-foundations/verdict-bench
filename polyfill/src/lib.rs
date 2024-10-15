@@ -51,6 +51,13 @@ pub fn str_eq_str(s1: &str, s2: &str) -> (res: bool)
 }
 
 #[verifier::external_body]
+pub fn slice_eq<T: PartialEq>(a: &[T], b: &[T]) -> (res: bool)
+    ensures res == (a@ == b@)
+{
+    a == b
+}
+
+#[verifier::external_body]
 pub fn rc_as_ref<T: View>(rc: &Rc<T>) -> (res: &T)
     ensures
         rc.view() == res.view(),
@@ -81,6 +88,23 @@ pub fn option_ok_or<T, E>(option: Option<T>, err: E) -> (res: Result<T, E>)
     ensures res == spec_option_ok_or(option, err),
 {
     option.ok_or(err)
+}
+
+#[verifier::inline]
+pub open spec fn spec_result_or<T, E, E2>(result: Result<T, E>, default: Result<T, E2>) -> Result<T, E2>
+{
+    match result {
+        Ok(t) => Ok(t),
+        Err(..) => default,
+    }
+}
+
+#[verifier::external_fn_specification]
+#[verifier::when_used_as_spec(spec_result_or)]
+pub fn result_or<T, E, E2>(result: Result<T, E>, default: Result<T, E2>) -> (res: Result<T, E2>)
+    ensures res == spec_result_or(result, default),
+{
+    result.or(default)
 }
 
 /// Currently we do not have a specification in Verus for UTF-8
@@ -294,6 +318,14 @@ pub fn i64_try_into_usize(x: i64) -> (res: Result<usize, TryFromIntError>)
         res matches Ok(y) ==> x as int == y as int,
 {
     x.try_into()
+}
+
+#[verifier::external_body]
+pub fn usize_into_u32(x: usize) -> (res: u32)
+    requires x <= u32::MAX
+    ensures res == x
+{
+    x.try_into().unwrap()
 }
 
 // TODO: can we support println! in verus code?

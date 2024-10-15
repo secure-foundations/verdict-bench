@@ -9,6 +9,7 @@ use parser::{*, asn1::*, x509::*};
 use parser::OptionDeep::*;
 
 use crate::facts::*;
+use crate::rsa;
 
 verus! {
 
@@ -149,7 +150,20 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
     // Signature algorithm is consistent in the subject cert
     &&& subject.sig_alg =~= subject.cert.signature
 
-    // TODO: actually check the signature
+    // TODO: support more algorithms
+    &&& {
+        ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA224)
+        ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA256)
+        ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA384)
+        ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA512)
+    }
+    &&& ASN1(TBSCertificate)@.spec_serialize(subject.cert) matches Ok(tbs_cert)
+    &&& rsa::spec_rsa_pkcs1_v1_5_verify(
+        subject.sig_alg,
+        BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),
+        BitStringValue::spec_bytes(subject.sig),
+        tbs_cert,
+    )
 }
 
 }
