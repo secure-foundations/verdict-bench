@@ -18,3 +18,4 @@ thiserror = "1.0.63"
 libcrux = { git = "https://github.com/zhengyao-lin/libcrux.git" }
 libcrux-hacl = { git = "https://github.com/zhengyao-lin/libcrux.git" }
 chrono = "0.4.38"
+aws-lc-rs = "1.10.0"

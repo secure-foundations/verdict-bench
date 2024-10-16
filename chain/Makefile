@@ -1,7 +1,7 @@
 NAME = chain
-TARGETS = chain
+TARGETS = chain libchain.rlib
 
-CARGO_DEPS = macros base64 clap thiserror libcrux libcrux-hacl chrono
+CARGO_DEPS = macros base64 clap thiserror libcrux libcrux-hacl chrono aws-lc-rs
 VERUS_DEPS = parser polyfill vest vpl
 TEST_TARGETS = test-policy-chrome test-policy-firefox
 

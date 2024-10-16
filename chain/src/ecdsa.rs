@@ -5,6 +5,7 @@ use vstd::prelude::*;
 use polyfill::slice_drop_first;
 
 use libcrux::signature::{Signature, EcDsaP256Signature, Algorithm, DigestAlgorithm, verify};
+use aws_lc_rs::signature::VerificationAlgorithm;
 
 use parser::PolyfillEq;
 use parser::Combinator;
@@ -56,6 +57,8 @@ pub closed spec fn spec_ecdsa_p256_verify(
     msg: Seq<u8>,
 ) -> bool;
 
+/// Verify ECDSA P-256 signature with SHA-256/SHA-384/SHA-512
+/// through libcrux/EverCrypt
 #[verifier::external_body]
 pub fn ecdsa_p256_verify(
     alg: &AlgorithmIdentifierValue,
@@ -100,6 +103,37 @@ pub fn ecdsa_p256_verify(
         s,
         msg,
     ) {
+        Ok(())
+    } else {
+        Err(ECDSAError::VerificationFailed)
+    }
+}
+
+pub closed spec fn spec_ecdsa_p384_verify(
+    alg: SpecAlgorithmIdentifierValue,
+    pub_key: Seq<u8>,
+    sig: Seq<u8>,
+    msg: Seq<u8>,
+) -> bool;
+
+/// Verify ECDSA P-384 signature with SHA-384
+/// (currently other SHA-2 hash functions are not supported
+/// since only P-384 + SHA-384 is verified in AWS-LC)
+#[verifier::external_body]
+pub fn ecdsa_p384_verify(
+    alg: &AlgorithmIdentifierValue,
+    pub_key: &[u8],
+    sig: &[u8],
+    msg: &[u8],
+) -> (res: Result<(), ECDSAError>)
+    ensures
+        res.is_ok() == spec_ecdsa_p384_verify(alg@, pub_key@, sig@, msg@),
+{
+    if !alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
+        return Err(ECDSAError::UnsupportedAlgorithm);
+    }
+
+    if aws_lc_rs::signature::ECDSA_P384_SHA384_ASN1.verify_sig(pub_key, msg, sig).is_ok() {
         Ok(())
     } else {
         Err(ECDSAError::VerificationFailed)

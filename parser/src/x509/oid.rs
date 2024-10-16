@@ -42,6 +42,10 @@ macro_rules! oid_name {
     (RSA_ENCRYPTION)        => { [1, 2, 840, 113549, 1, 1, 1] };
     (EC_PUBLIC_KEY)         => { [1, 2, 840, 10045, 2, 1] };
 
+    // EC curves
+    (EC_P_256)              => { [1, 2, 840, 10045, 3, 1, 7] };
+    (EC_P_384)              => { [1, 3, 132, 0, 34] };
+
     // Directory names
     (COMMON_NAME)           => { [2, 5, 4, 3] };
     (COUNTRY_NAME)          => { [2, 5, 4, 6] };

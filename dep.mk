@@ -23,10 +23,10 @@ SOURCE = $(call rwildcard,src,*.rs)
 SOURCE += $(foreach dep,$(VERUS_DEPS),$(call rwildcard,../$(dep)/src,*.rs))
 
 .PHONY: debug
-debug: $(foreach target,$(TARGETS),target/debug/$(target))
+debug: target/debug/$(FIRST_TARGET)
 
 .PHONY: release
-release: $(foreach target,$(TARGETS),target/release/$(target))
+release: target/release/$(FIRST_TARGET)
 
 # Build each dependency in CARGO_DEPS
 .PHONY: rust-deps-%

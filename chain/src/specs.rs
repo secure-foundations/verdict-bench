@@ -157,6 +157,7 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
     &&& {
         // RSA
         ||| {
+            &&& issuer.cert.subject_key.alg.param is RSAEncryption
             &&& {
                 ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA224)
                 ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA256)
@@ -171,15 +172,29 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
             )
         }
 
-        // ECDSA
+        // ECDSA P-256
         ||| {
+            &&& issuer.cert.subject_key.alg.param matches SpecAlgorithmParamValue::ECPublicKey(curve)
+            &&& curve == spec_oid!(EC_P_256)
             &&& {
-                ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA224)
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA256)
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA384)
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA512)
             }
             &&& ecdsa::spec_ecdsa_p256_verify(
+                subject.sig_alg,
+                BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),
+                BitStringValue::spec_bytes(subject.sig),
+                tbs_cert,
+            )
+        }
+
+        // ECDSA P-384
+        ||| {
+            &&& issuer.cert.subject_key.alg.param matches SpecAlgorithmParamValue::ECPublicKey(curve)
+            &&& curve == spec_oid!(EC_P_384)
+            &&& subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA384)
+            &&& ecdsa::spec_ecdsa_p384_verify(
                 subject.sig_alg,
                 BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),
                 BitStringValue::spec_bytes(subject.sig),

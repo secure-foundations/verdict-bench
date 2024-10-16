@@ -175,31 +175,69 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
 
     let tbs_cert = subject.get().cert.serialize();
 
-    if subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
-       subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
-       subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
-       subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
-        return rsa::rsa_pkcs1_v1_5_verify(
-            &subject.get().sig_alg,
-            issuer.get().cert.get().subject_key.pub_key.bytes(),
-            subject.get().sig.bytes(),
-            tbs_cert,
-        ).is_ok();
-    }
+    let sig_alg = &subject.get().sig_alg;
+    let pub_key = issuer.get().cert.get().subject_key.pub_key.bytes();
+    let sig = subject.get().sig.bytes();
 
-    if subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA224)) ||
-       subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
-       subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) ||
-       subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA512)) {
-        return ecdsa::ecdsa_p256_verify(
-            &subject.get().sig_alg,
-            issuer.get().cert.get().subject_key.pub_key.bytes(),
-            subject.get().sig.bytes(),
-            tbs_cert,
-        ).is_ok();
+    match &issuer.get().cert.get().subject_key.alg.param {
+        // RSA PKCS#1 v1.5
+        AlgorithmParamValue::RSAEncryption(..) => {
+            if  subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
+                subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
+                subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
+                subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
+                return rsa::rsa_pkcs1_v1_5_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
+            }
+        }
+
+        // ECDSA P-256 and P-384
+        AlgorithmParamValue::ECPublicKey(curve) => {
+            if curve.polyfill_eq(&oid!(EC_P_256)) && (
+                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
+                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) ||
+                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA512))
+            ) {
+                return ecdsa::ecdsa_p256_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
+            }
+
+            if curve.polyfill_eq(&oid!(EC_P_384)) &&
+               subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
+                return ecdsa::ecdsa_p384_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
+            }
+        }
+
+        _ => {}
     }
 
     false
+
+    // if issuer.get().cert.get().subject_key.alg.param.polyfill_eq(
+    //     &AlgorithmParamValue::ECPublicKey(oid!(EC_P_256))
+    // ) && (
+    //     subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
+    //     subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
+    //     subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512))
+    // ) {
+    //     return rsa::rsa_pkcs1_v1_5_verify(
+    //         &subject.get().sig_alg,
+    //         issuer.get().cert.get().subject_key.pub_key.bytes(),
+    //         subject.get().sig.bytes(),
+    //         tbs_cert,
+    //     ).is_ok();
+    // }
+
+    // // Check if the scheme is P-384 + SHA-384
+    // if issuer.get().cert.get().subject_key.alg.param.polyfill_eq(
+    //     &AlgorithmParamValue::ECPublicKey(oid!(EC_P_384))
+    // ) && subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
+    //     return ecdsa::ecdsa_p384_verify(
+    //         &subject.get().sig_alg,
+    //         issuer.get().cert.get().subject_key.pub_key.bytes(),
+    //         subject.get().sig.bytes(),
+    //         tbs_cert,
+    //     ).is_ok();
+    // }
+    // false
 }
 
 pub fn valid_domain<'a, 'b, B: Backend, E>(
