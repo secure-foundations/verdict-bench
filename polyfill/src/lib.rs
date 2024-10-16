@@ -58,6 +58,14 @@ pub fn slice_eq<T: PartialEq>(a: &[T], b: &[T]) -> (res: bool)
 }
 
 #[verifier::external_body]
+pub fn slice_skip_copy<T: PartialEq + Copy>(a: &mut [T], skip: usize, b: &[T])
+    requires old(a)@.len() >= b@.len() + skip
+    ensures a@ == old(a)@.take(skip as int) + b@ + old(a)@.skip(skip + b.len())
+{
+    (&mut a[skip..skip + b.len()]).copy_from_slice(b)
+}
+
+#[verifier::external_body]
 pub fn rc_as_ref<T: View>(rc: &Rc<T>) -> (res: &T)
     ensures
         rc.view() == res.view(),

@@ -34,15 +34,17 @@ fn ecdsa_p256_verify_internal(
     msg: &[u8],
 ) -> bool
 {
-    if r.len() != 32 || s.len() != 32 {
+    if r.len() > 32 || s.len() > 32 {
         return false;
     }
 
-    let sig = Signature::EcDsaP256(EcDsaP256Signature::from_raw(
-        r.try_into().unwrap(),
-        s.try_into().unwrap(),
-        alg,
-    ));
+    let mut r_copy = [0; 32];
+    let mut s_copy = [0; 32];
+
+    (&mut r_copy[32 - r.len()..]).copy_from_slice(r);
+    (&mut s_copy[32 - s.len()..]).copy_from_slice(s);
+
+    let sig = Signature::EcDsaP256(EcDsaP256Signature::from_raw(r_copy, s_copy, alg));
 
     verify(msg, &sig, pub_key).is_ok()
 }
