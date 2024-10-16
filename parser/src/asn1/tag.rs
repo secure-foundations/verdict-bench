@@ -421,6 +421,7 @@ impl<T: ASN1Tagged + Combinator> Combinator for ASN1<T> where
 
 /// Macro to generate a ASN1Tagged and ViewWithASN1Tagged trait impl
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! asn1_tagged {
     ($ty:ident, $tag:expr) => {
         ::builtin_macros::verus! {
@@ -440,7 +441,7 @@ macro_rules! asn1_tagged {
         }
     };
 }
-pub(crate) use asn1_tagged;
+pub use asn1_tagged;
 
 /// Tags of common ASN.1 types
 #[allow(unused_macros)]

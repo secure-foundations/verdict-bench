@@ -32,9 +32,15 @@ macro_rules! oid_name {
     (RSA_SIGNATURE_SHA384)  => { [1, 2, 840, 113549, 1, 1, 12] };
     (RSA_SIGNATURE_SHA512)  => { [1, 2, 840, 113549, 1, 1, 13] };
     (RSA_SIGNATURE_SHA224)  => { [1, 2, 840, 113549, 1, 1, 14] };
-
     (DSA_SIGNATURE)         => { [1, 2, 840, 10040, 4, 1] };
+
+    (ECDSA_SIGNATURE_SHA224) => { [1, 2, 840, 10045, 4, 3, 1] };
+    (ECDSA_SIGNATURE_SHA256) => { [1, 2, 840, 10045, 4, 3, 2] };
+    (ECDSA_SIGNATURE_SHA384) => { [1, 2, 840, 10045, 4, 3, 3] };
+    (ECDSA_SIGNATURE_SHA512) => { [1, 2, 840, 10045, 4, 3, 4] };
+
     (RSA_ENCRYPTION)        => { [1, 2, 840, 113549, 1, 1, 1] };
+    (EC_PUBLIC_KEY)         => { [1, 2, 840, 10045, 2, 1] };
 
     // Directory names
     (COMMON_NAME)           => { [2, 5, 4, 3] };
@@ -92,16 +98,12 @@ gen_oid_axioms! {
     RSA_SIGNATURE_SHA512
     RSA_SIGNATURE_SHA224
     DSA_SIGNATURE
+    ECDSA_SIGNATURE_SHA224
+    ECDSA_SIGNATURE_SHA256
+    ECDSA_SIGNATURE_SHA384
+    ECDSA_SIGNATURE_SHA512
     RSA_ENCRYPTION
-    COMMON_NAME
-    COUNTRY_NAME
-    LOCALITY_NAME
-    STATE_NAME
-    ORGANIZATION_NAME
-    ORGANIZATIONAL_UNIT
-    STREET_ADDRESS
-    SERIAL_NUMBER
-    EMAIL_ADDRESS
+    EC_PUBLIC_KEY
 }
 
 impl ObjectIdentifierValue {
@@ -172,7 +174,7 @@ macro_rules! gen_lemma_disjoint_helper {
     ($($term:expr),* ; ) => { true };
 
     ($($prev_term:expr),* ; $term:expr $(, $rest_term:expr)*) => {
-        $(!ext_equal($prev_term, $term) &&)* true && gen_lemma_disjoint_helper!($($prev_term,)* $term ; $($rest_term),*)
+        $(::builtin_macros::verus_proof_expr! { $prev_term != $term } &&)* true && gen_lemma_disjoint_helper!($($prev_term,)* $term ; $($rest_term),*)
     };
 }
 pub use gen_lemma_disjoint_helper;

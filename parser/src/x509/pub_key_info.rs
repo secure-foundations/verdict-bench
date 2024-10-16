@@ -8,36 +8,41 @@ use super::macros::*;
 
 verus! {
 
-// SubjectPublicKeyInfo  ::=  SEQUENCE  {
-//     algorithm            AlgorithmIdentifier,
-//     subjectPublicKey     BIT STRING
-// }
 asn1! {
+    // SubjectPublicKeyInfo  ::=  SEQUENCE  {
+    //     algorithm            AlgorithmIdentifier,
+    //     subjectPublicKey     BIT STRING
+    // }
     seq PublicKeyInfo {
         alg: ASN1<AlgorithmIdentifier> = ASN1(AlgorithmIdentifier),
         pub_key: ASN1<BitString> = ASN1(BitString),
     }
-}
 
-// RSAPublicKey ::= SEQUENCE {
-//     modulus            INTEGER, -- n
-//     publicExponent     INTEGER  -- e --
-// }
-asn1! {
+    // RSAPublicKey ::= SEQUENCE {
+    //     modulus            INTEGER, -- n
+    //     publicExponent     INTEGER  -- e --
+    // }
     seq RSAPublicKey {
         n: ASN1<BigInt> = ASN1(BigInt),
         e: ASN1<BigInt> = ASN1(BigInt),
     }
-}
 
-// DigestInfo ::= SEQUENCE {
-//     digestAlgorithm AlgorithmIdentifier,
-//     digest OCTET STRING
-// }
-asn1! {
+    // DigestInfo ::= SEQUENCE {
+    //     digestAlgorithm AlgorithmIdentifier,
+    //     digest OCTET STRING
+    // }
     seq DigestInfo {
         alg: ASN1<AlgorithmIdentifier> = ASN1(AlgorithmIdentifier),
         digest: ASN1<OctetString> = ASN1(OctetString),
+    }
+
+    // Ecdsa-Sig-Value  ::=  SEQUENCE  {
+    //     r     INTEGER,
+    //     s     INTEGER
+    // }
+    seq ECDSASigValue {
+        r: ASN1<BigInt> = ASN1(BigInt),
+        s: ASN1<BigInt> = ASN1(BigInt),
     }
 }
 

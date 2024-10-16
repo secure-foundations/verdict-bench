@@ -9,6 +9,7 @@ use crate::specs::*;
 use crate::facts::*;
 use crate::error::*;
 use crate::rsa;
+use crate::ecdsa;
 
 verus! {
 
@@ -172,6 +173,8 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
         return false;
     }
 
+    let tbs_cert = subject.get().cert.serialize();
+
     if subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
        subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
        subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
@@ -180,7 +183,19 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
             &subject.get().sig_alg,
             issuer.get().cert.get().subject_key.pub_key.bytes(),
             subject.get().sig.bytes(),
-            subject.get().cert.serialize(),
+            tbs_cert,
+        ).is_ok();
+    }
+
+    if subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA224)) ||
+       subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
+       subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) ||
+       subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA512)) {
+        return ecdsa::ecdsa_p256_verify(
+            &subject.get().sig_alg,
+            issuer.get().cert.get().subject_key.pub_key.bytes(),
+            subject.get().sig.bytes(),
+            tbs_cert,
         ).is_ok();
     }
 
