@@ -53,6 +53,10 @@ struct Args {
     /// Enable debug mode
     #[arg(long, default_value_t = false)]
     debug: bool,
+
+    /// Override the current time with the given timestamp
+    #[clap(short = 't', long)]
+    override_time: Option<i64>,
 }
 
 /// Read the given PEM file and return a vector of Vec<u8>'s
@@ -144,6 +148,7 @@ fn main_args(args: Args) -> Result<(), Error> {
         roots: &VecDeep::from_vec(roots),
         chain: &VecDeep::from_vec(chain),
         domain: &args.domain,
+        now: args.override_time.unwrap_or(chrono::Utc::now().timestamp()),
     };
 
     // Call the main validation routine

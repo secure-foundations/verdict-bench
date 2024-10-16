@@ -12,7 +12,7 @@ verus! {
 
 broadcast use vpl::lemma_ext_equal_deep;
 
-pub type QueryFacts = seq_facts![ ChainFacts, RootFacts ];
+pub type QueryFacts = seq_facts![ ChainFacts, RootFacts, EnvFacts ];
 
 /// Generate all facts about a chain of certificates
 pub struct ChainFacts;
@@ -21,6 +21,9 @@ pub struct ChainFacts;
 /// any of the chain certificates
 pub struct RootFacts;
 
+/// Environment facts
+pub struct EnvFacts;
+
 /// A query consists of root certificates, certificate chain (leaf and intermediates),
 /// and a domain to be validated
 #[derive(View)]
@@ -28,6 +31,7 @@ pub struct QueryPoly<Certs, Domain> {
     pub roots: Certs,
     pub chain: Certs,
     pub domain: Domain,
+    pub now: i64, // current UNIX timestamp
 }
 
 pub type SpecQuery = QueryPoly<Seq<SpecCertificateValue>, SpecStringLiteral>;
@@ -171,6 +175,23 @@ impl<'a, 'b> Facts<Query<'a, 'b>> for RootFacts {
             }
         }
 
+        Ok(())
+    }
+}
+
+impl<'a, 'b> Facts<Query<'a, 'b>> for EnvFacts {
+    closed spec fn spec_facts(t: SpecQuery) -> Option<Seq<SpecRule>>
+    {
+        Some(seq![
+            spec_fact!("envDomain", spec_str!(t.domain)),
+            spec_fact!("envNow", spec_int!(t.now as int)),
+        ])
+    }
+
+    fn facts(t: &Query<'a, 'b>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>)
+    {
+        out.push(RuleX::fact("envDomain", vec![ TermX::str(t.domain) ]));
+        out.push(RuleX::fact("envNow", vec![ TermX::int(t.now) ]));
         Ok(())
     }
 }
