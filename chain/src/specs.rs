@@ -193,7 +193,10 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
         ||| {
             &&& issuer.cert.subject_key.alg.param matches SpecAlgorithmParamValue::ECPublicKey(curve)
             &&& curve == spec_oid!(EC_P_384)
-            &&& subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA384)
+            &&& {
+                ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA256)
+                ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA384)
+            }
             &&& ecdsa::spec_ecdsa_p384_verify(
                 subject.sig_alg,
                 BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),

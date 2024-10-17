@@ -340,6 +340,48 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                     now: timestamp,
                 };
 
+                if args.debug {
+                    eprintln!("=================== cert info {} ===================", &entry.hash);
+                    // Print some general information about the certs
+                    eprintln!("{} root certificate(s)", roots.len());
+                    eprintln!("{} certificate(s) in the chain", chain.len());
+
+                    for (i, cert) in chain.to_vec().iter().enumerate() {
+                        eprintln!("cert {}:", i);
+                        eprintln!("  issuer: {}", cert.get().cert.get().issuer);
+                        eprintln!("  subject: {}", cert.get().cert.get().subject);
+                        eprintln!("  signature algorithm: {:?}", cert.get().sig_alg);
+                        eprintln!("  signature: {:?}", cert.get().cert.get().signature);
+                        eprintln!("  subject key info: {:?}", cert.get().cert.get().subject_key);
+                    }
+
+                    // Check that for each i, cert[i + 1] issued cert[i]
+                    for i in 0..chain.len() - 1 {
+                        if chain::validate::likely_issued(chain.get(i + 1), chain.get(i)) {
+                            if chain::validate::verify_signature(chain.get(i + 1), chain.get(i)) {
+                                eprintln!("cert {} issued cert {}", i + 1, i);
+                            } else {
+                                eprintln!("cert {} issued cert {} (but signature error)", i + 1, i);
+                            }
+                        }
+                    }
+
+                    // Check if root cert issued any of the chain certs
+                    for (i, root) in roots.to_vec().iter().enumerate() {
+                        for (j, chain_cert) in chain.to_vec().iter().enumerate() {
+                            if chain::validate::likely_issued(root, chain_cert) {
+                                if chain::validate::verify_signature(root, chain_cert) {
+                                    eprintln!("root cert {} issued cert {}", i, j);
+                                } else {
+                                    eprintln!("root cert {} issued cert {} (but signature error)", i, j);
+                                }
+                            }
+                        }
+                    }
+
+                    eprintln!("=================== end cert info {} ===================", &entry.hash);
+                }
+
                 chain::validate::valid_domain::<_, Error>(
                     &mut swipl_backend,
                     policy,

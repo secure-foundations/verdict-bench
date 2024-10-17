@@ -129,11 +129,15 @@ pub fn ecdsa_p384_verify(
     ensures
         res.is_ok() == spec_ecdsa_p384_verify(alg@, pub_key@, sig@, msg@),
 {
-    if !alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
+    let scheme = if alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) {
+        &aws_lc_rs::signature::ECDSA_P384_SHA256_ASN1
+    } else if alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
+        &aws_lc_rs::signature::ECDSA_P384_SHA384_ASN1
+    } else {
         return Err(ECDSAError::UnsupportedAlgorithm);
-    }
+    };
 
-    if aws_lc_rs::signature::ECDSA_P384_SHA384_ASN1.verify_sig(pub_key, msg, sig).is_ok() {
+    if scheme.verify_sig(pub_key, msg, sig).is_ok() {
         Ok(())
     } else {
         Err(ECDSAError::VerificationFailed)

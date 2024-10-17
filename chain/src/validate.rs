@@ -200,8 +200,10 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
                 return ecdsa::ecdsa_p256_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
 
-            if curve.polyfill_eq(&oid!(EC_P_384)) &&
-               subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
+            if curve.polyfill_eq(&oid!(EC_P_384)) && (
+                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
+                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384))
+            ) {
                 return ecdsa::ecdsa_p384_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
         }
