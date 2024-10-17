@@ -38,17 +38,25 @@ pub fn solve_and_validate<B: Backend, E: From<B::Error> + From<ProofError>>(
 {
     let mut instance = backend.solve(program, goal)?;
     let mut validator = TraceValidator::new(program);
+    let mut goal_thm: Option<Theorem> = None;
 
     {
         let mut events = instance.events()?;
 
         // Process all events until the goal is proven or the backend terminates
-        loop invariant validator.wf(program@)
+        loop
+            invariant
+                validator.wf(program@),
+                goal_thm matches Some(thm) ==> {
+                    &&& thm@.wf(program@)
+                    &&& thm@.stmt == goal@
+                },
         {
             if let Some(event) = events.next()? {
                 let thm = validator.process_event(&program, &event, debug, allow_unsupported_builtin, true)?;
                 if (&thm.stmt).eq(goal) {
-                    return Ok(ValidationResult::Success(thm.clone()));
+                    goal_thm = Some(thm.clone());
+                    break;
                 }
             } else {
                 break;
@@ -57,7 +65,11 @@ pub fn solve_and_validate<B: Backend, E: From<B::Error> + From<ProofError>>(
     }
 
     if instance.proven()? {
-        Ok(ValidationResult::ProofFailure)
+        if let Some(thm) = goal_thm {
+            Ok(ValidationResult::Success(thm))
+        } else {
+            Ok(ValidationResult::ProofFailure)
+        }
     } else {
         Ok(ValidationResult::BackendFailure)
     }

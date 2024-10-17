@@ -1,7 +1,7 @@
 use vstd::prelude::*;
 
 use std::process::{Child, Command, Stdio, ChildStdout};
-use std::io::{self, Write, Lines, BufReader, BufRead};
+use std::io::{self, BufRead, BufReader, Lines, Write};
 use std::collections::HashMap;
 
 use tempfile::NamedTempFile;
@@ -105,7 +105,8 @@ impl Backend for SwiplBackend {
             .arg(format!("prove({})", goal))
             .arg("-g")
             .arg("halt")
-            .stdout(Stdio::piped());
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
 
         // Spawn the swipl process
         let swipl = swipl_cmd.spawn()?;

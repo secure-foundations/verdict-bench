@@ -67,6 +67,10 @@ struct ValidateCTLogArgs {
     #[clap(num_args = 1..)]
     csv_files: Vec<String>,
 
+    /// Only test the certificate with the given hash
+    #[clap(long)]
+    hash: Option<String>,
+
     /// Store the results as CSV files in the given directory
     #[clap(short = 'o', long)]
     out_dir: Option<String>,
@@ -263,33 +267,49 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         for entry in reader.deserialize() {
             let entry: CTLogEntry = entry?;
 
+            // If a specific hash is specified, only check certificate with that hash
+            if let Some(hash) = &args.hash {
+                if hash != &entry.hash {
+                    continue;
+                }
+            }
+
             // Look up the intermediate certificate <args.interm_dir>/<entry.interm_cert>.pem
-            let mut chain_bytes = vec![base64::prelude::BASE64_STANDARD.decode(entry.cert_base64)?];
-            chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", args.interm_dir, entry.interm_cert))?);
+            let validate = || {
+                let mut chain_bytes = vec![base64::prelude::BASE64_STANDARD.decode(entry.cert_base64)?];
+                chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", args.interm_dir, entry.interm_cert))?);
 
-            let mut chain =
-                chain_bytes.iter().map(|bytes| parse_x509_bytes(bytes)).collect::<Result<Vec<_>, _>>()?;
+                let mut chain =
+                    chain_bytes.iter().map(|bytes| parse_x509_bytes(bytes)).collect::<Result<Vec<_>, _>>()?;
 
-            let chain = parser::VecDeep::from_vec(chain);
+                let chain = parser::VecDeep::from_vec(chain);
 
-            // TODO: move parsing outside
-            let (policy, _) = vpl::parse_program(&source, &args.policy)?;
+                // TODO: move parsing outside
+                let (policy, _) = vpl::parse_program(&source, &args.policy)?;
 
-            let query = chain::facts::Query {
-                roots: &roots,
-                chain: &chain,
-                domain: &entry.domain,
-                now: timestamp,
+                let query = chain::facts::Query {
+                    roots: &roots,
+                    chain: &chain,
+                    domain: &entry.domain.to_lowercase(),
+                    now: timestamp,
+                };
+
+                chain::validate::valid_domain::<_, Error>(
+                    &mut swipl_backend,
+                    policy,
+                    &query,
+                    args.debug,
+                )
             };
 
-            let res = chain::validate::valid_domain::<_, Error>(
-                &mut swipl_backend,
-                policy,
-                &query,
-                args.debug,
-            )?;
-
-            println!("{},{},{}", entry.hash, entry.domain, res);
+            match validate() {
+                Ok(res) => {
+                    println!("{},{},{}", entry.hash, entry.domain, res);
+                }
+                Err(err) => {
+                    println!("{},{},crash: {}", entry.hash, entry.domain, err);
+                }
+            }
         }
     }
 

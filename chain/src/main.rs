@@ -147,7 +147,7 @@ fn main_args(args: Args) -> Result<(), Error> {
     let query = Query {
         roots: &VecDeep::from_vec(roots),
         chain: &VecDeep::from_vec(chain),
-        domain: &args.domain,
+        domain: &args.domain.to_lowercase(),
         now: args.override_time.unwrap_or(chrono::Utc::now().timestamp()),
     };
 
