@@ -1013,9 +1013,7 @@ impl Theorem {
                 if s1.to_lowercase() == s2.as_ref() {
                     return Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
                 }
-            }
-        } else if let Ok(args) = goal.headed_by("string_lower", 2) {
-            if let (
+            } else if let (
                 TermX::Literal(Literal::Atom(s1)),
                 TermX::Literal(Literal::String(s2)),
             ) = (rc_as_ref(&args[0]), rc_as_ref(&args[1])) {
