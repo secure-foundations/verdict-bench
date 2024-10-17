@@ -240,10 +240,10 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
     // false
 }
 
-pub fn valid_domain<'a, 'b, B: Backend, E>(
+pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
     backend: &mut B,
     mut policy: Program,
-    query: &Query<'a, 'b>,
+    query: &Query<'a, 'b, 'c, 'd, 'e>,
     debug: bool,
 ) -> (res: Result<bool, E>)
     where

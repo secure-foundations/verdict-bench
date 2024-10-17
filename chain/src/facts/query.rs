@@ -27,15 +27,15 @@ pub struct EnvFacts;
 /// A query consists of root certificates, certificate chain (leaf and intermediates),
 /// and a domain to be validated
 #[derive(View)]
-pub struct QueryPoly<Certs, Domain> {
-    pub roots: Certs,
-    pub chain: Certs,
+pub struct QueryPoly<Roots, Chain, Domain> {
+    pub roots: Roots,
+    pub chain: Chain,
     pub domain: Domain,
     pub now: i64, // current UNIX timestamp
 }
 
-pub type SpecQuery = QueryPoly<Seq<SpecCertificateValue>, SpecStringLiteral>;
-pub type Query<'a, 'b> = QueryPoly<&'b VecDeep<CertificateValue<'a>>, &'b str>;
+pub type SpecQuery = QueryPoly<Seq<SpecCertificateValue>, Seq<SpecCertificateValue>, SpecStringLiteral>;
+pub type Query<'a, 'b, 'c, 'd, 'e> = QueryPoly<&'a VecDeep<CertificateValue<'b>>, &'c VecDeep<CertificateValue<'d>>, &'e str>;
 
 impl SpecQuery {
     /// Get a chain certificate and assign a unique index
@@ -51,9 +51,9 @@ impl SpecQuery {
     }
 }
 
-impl<'a, 'b> Query<'a, 'b> {
+impl<'a, 'b, 'c, 'd, 'e> Query<'a, 'b, 'c, 'd, 'e> {
     /// Exec version of SpecQuery::get_chain
-    pub fn get_chain(&self, i: usize) -> (res: CertIndexed<&'b CertificateValue<'a>>)
+    pub fn get_chain(&self, i: usize) -> (res: CertIndexed<&'c CertificateValue<'d>>)
         requires i < self.chain@.len()
         ensures res@ == self@.get_chain(i as int)
     {
@@ -61,7 +61,7 @@ impl<'a, 'b> Query<'a, 'b> {
     }
 
     /// Exec version of SpecQuery::get_root
-    pub fn get_root(&self, i: usize) -> (res: CertIndexed<&'b CertificateValue<'a>>)
+    pub fn get_root(&self, i: usize) -> (res: CertIndexed<&'a CertificateValue<'b>>)
         requires
             i < self.roots@.len(),
             i + self.chain@.len() <= LiteralInt::MAX as usize,
@@ -72,7 +72,7 @@ impl<'a, 'b> Query<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Facts<Query<'a, 'b>> for ChainFacts {
+impl<'a, 'b, 'c, 'd, 'e> Facts<Query<'a, 'b, 'c, 'd, 'e>> for ChainFacts {
     closed spec fn spec_facts(t: SpecQuery) -> Option<Seq<SpecRule>>
     {
         if_let! {
@@ -83,7 +83,7 @@ impl<'a, 'b> Facts<Query<'a, 'b>> for ChainFacts {
         }
     }
 
-    fn facts(t: &Query<'a, 'b>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
+    fn facts(t: &Query<'a, 'b, 'c, 'd, 'e>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
         let len = t.chain.len();
 
         if len > LiteralInt::MAX as usize {
@@ -115,12 +115,12 @@ impl<'a, 'b> Facts<Query<'a, 'b>> for ChainFacts {
     }
 }
 
-impl<'a, 'b> Facts<Query<'a, 'b>> for RootFacts {
+impl<'a, 'b, 'c, 'd, 'e> Facts<Query<'a, 'b, 'c, 'd, 'e>> for RootFacts {
     closed spec fn spec_facts(t: SpecQuery) -> Option<Seq<SpecRule>> {
         Self::spec_facts_helper(t, 0)
     }
 
-    fn facts(t: &Query<'a, 'b>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
+    fn facts(t: &Query<'a, 'b, 'c, 'd, 'e>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>) {
         let roots_len = t.roots.len();
         let chain_len = t.chain.len();
 
@@ -179,7 +179,7 @@ impl<'a, 'b> Facts<Query<'a, 'b>> for RootFacts {
     }
 }
 
-impl<'a, 'b> Facts<Query<'a, 'b>> for EnvFacts {
+impl<'a, 'b, 'c, 'd, 'e> Facts<Query<'a, 'b, 'c, 'd, 'e>> for EnvFacts {
     closed spec fn spec_facts(t: SpecQuery) -> Option<Seq<SpecRule>>
     {
         Some(seq![
@@ -188,7 +188,7 @@ impl<'a, 'b> Facts<Query<'a, 'b>> for EnvFacts {
         ])
     }
 
-    fn facts(t: &Query<'a, 'b>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>)
+    fn facts(t: &Query<'a, 'b, 'c, 'd, 'e>, out: &mut VecDeep<Rule>) -> (res: Result<(), ValidationError>)
     {
         out.push(RuleX::fact("envDomain", vec![ TermX::str(t.domain) ]));
         out.push(RuleX::fact("envNow", vec![ TermX::int(t.now) ]));
