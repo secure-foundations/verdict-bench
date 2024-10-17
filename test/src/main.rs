@@ -180,7 +180,7 @@ struct CTLogEntry {
     cert_base64: String,
     hash: String, // SHA-256 hash of the entire certificate
     domain: String,
-    interm_cert: String,
+    interm_certs: String,
 }
 
 fn parse_cert_ct_logs(args: ParseCTLogArgs) -> Result<(), Error>
@@ -274,10 +274,14 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 }
             }
 
-            // Look up the intermediate certificate <args.interm_dir>/<entry.interm_cert>.pem
             let validate = || {
                 let mut chain_bytes = vec![base64::prelude::BASE64_STANDARD.decode(entry.cert_base64)?];
-                chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", args.interm_dir, entry.interm_cert))?);
+
+                // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
+                // `entry.interm_certs` is a comma-separated list
+                for interm_cert in entry.interm_certs.split(",") {
+                    chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", args.interm_dir, interm_cert))?);
+                }
 
                 let mut chain =
                     chain_bytes.iter().map(|bytes| parse_x509_bytes(bytes)).collect::<Result<Vec<_>, _>>()?;

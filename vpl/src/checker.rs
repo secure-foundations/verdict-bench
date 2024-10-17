@@ -1014,6 +1014,15 @@ impl Theorem {
                     return Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
                 }
             }
+        } else if let Ok(args) = goal.headed_by("string_lower", 2) {
+            if let (
+                TermX::Literal(Literal::Atom(s1)),
+                TermX::Literal(Literal::String(s2)),
+            ) = (rc_as_ref(&args[0]), rc_as_ref(&args[1])) {
+                if s1.to_lowercase() == s2.as_ref() {
+                    return Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
+                }
+            }
         } else if let Ok(args) = goal.headed_by("uri_encoded", 3) {
             // TODO: uri_encoded(path, <atom>, <string>) doesn't seem to work
             if let (
@@ -1054,7 +1063,7 @@ impl Theorem {
         }
 
         if allow_unsupported_builtin {
-            println_join!("unsupported built-in: ", goal);
+            eprintln_join!("unsupported built-in: ", goal);
             return Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
         }
 
