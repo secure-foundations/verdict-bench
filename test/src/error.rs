@@ -29,6 +29,9 @@ pub enum Error {
 
     #[error("validation error: {0:?}")]
     ChainValidationError(ValidationError),
+
+    #[error("regex error: {0}")]
+    RegexError(#[from] regex::Error),
 }
 
 #[derive(Error, Debug)]

@@ -1,7 +1,7 @@
 NAME = test
 TARGETS = test
 
-CARGO_DEPS = macros base64 clap thiserror csv serde chrono
+CARGO_DEPS = macros base64 clap thiserror csv serde chrono regex
 VERUS_DEPS = parser polyfill vest vpl chain
 TEST_TARGETS =
 VERUS_FLAGS = --no-lifetime

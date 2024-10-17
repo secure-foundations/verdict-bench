@@ -1101,6 +1101,7 @@ dependencies = [
  "clap",
  "csv",
  "parser",
+ "regex",
  "serde",
  "thiserror",
  "vpl",
