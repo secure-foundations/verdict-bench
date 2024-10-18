@@ -4,8 +4,9 @@ use base64::{Engine, prelude::BASE64_STANDARD};
 use std::io;
 use std::process::ExitCode;
 use std::fs::File;
-
 use std::collections::HashMap;
+use std::sync::{Arc, mpsc};
+use std::thread;
 
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
@@ -214,6 +215,12 @@ fn parse_cert_ct_logs(args: ParseCTLogArgs) -> Result<(), Error>
     Ok(())
 }
 
+struct ValidationResult {
+    hash: String,
+    domain: String,
+    result: Result<bool, Error>,
+}
+
 fn validate_ct_logs_job<B: vpl::Backend>(
     args: &ValidateCTLogArgs,
     policy: &vpl::Program,
@@ -258,37 +265,90 @@ fn validate_ct_logs_job<B: vpl::Backend>(
 
 fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 {
+    let args = Arc::new(args);
+
     eprintln!("validating {} CT log file(s)", args.csv_files.len());
-
-    // Parse root certificates
-    let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
-    let roots =
-        roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
-    let roots = parser::VecDeep::from_vec(roots);
-
-    // Load swipl backend parameters
-    let mut swipl_backend = vpl::SwiplBackend {
-        debug: args.debug,
-        swipl_bin: args.swipl_bin.clone(),
-    };
-
-    // Parse the policy source file
-    let policy_src = std::fs::read_to_string(&args.policy)?;
-    let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
 
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp());
 
-    // Open the output file if it exists, otherwise use stdout
-    let mut handle: Box<dyn io::Write> = if let Some(out_path) = &args.out_csv {
-        Box::new(File::create(out_path)?)
-    } else {
-        Box::new(std::io::stdout())
-    };
-    let mut output_writer =
-        WriterBuilder::new().has_headers(false).from_writer(handle);
+    let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();
+    let (tx_res, rx_res) = mpsc::channel();
+
+    // Spawn <num_jobs> many worker threads
+    let mut workers = (0..args.num_jobs).map(|_| {
+        let rx_job = rx_job.clone();
+        let tx_res = tx_res.clone();
+        let args = args.clone();
+
+        // Each worker thread waits for jobs, does the validation, and thens send back the result
+        thread::spawn(move || {
+            (|| -> Result<(), Error> {
+                // Each thread has to parse its own copy of the root certs and policy
+
+                // Parse root certificates
+                let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
+                let roots =
+                    roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
+                let roots = parser::VecDeep::from_vec(roots);
+
+                // Load swipl backend parameters
+                let mut swipl_backend = vpl::SwiplBackend {
+                    debug: args.debug,
+                    swipl_bin: args.swipl_bin.clone(),
+                };
+
+                // Parse the policy source file
+                let policy_src = std::fs::read_to_string(&args.policy)?;
+                let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
+
+                while let Ok(entry) = rx_job.recv() {
+                    tx_res.send(ValidationResult {
+                        hash: entry.hash.clone(),
+                        domain: entry.domain.clone(),
+                        result: validate_ct_logs_job(
+                            &args,
+                            &policy,
+                            &roots,
+                            &swipl_backend,
+                            timestamp,
+                            &entry,
+                        ),
+                    }).unwrap();
+                }
+
+                Ok(())
+            })().unwrap()
+        })
+    }).collect::<Vec<_>>();
+
+    // Spawn another thread to collect results and write to output
+    let out_csv = args.out_csv.clone();
+    workers.push(thread::spawn(move || {
+        // Open the output file if it exists, otherwise use stdout
+        let mut handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
+            Box::new(File::create(out_path).unwrap())
+        } else {
+            Box::new(std::io::stdout())
+        };
+        let mut output_writer =
+            WriterBuilder::new().has_headers(false).from_writer(handle);
+
+        while let Ok(res) = rx_res.recv() {
+            let result_str = match res.result {
+                Ok(res) => res.to_string(),
+                Err(err) => format!("fail: {}", err),
+            };
+
+            output_writer.serialize(CTLogResult {
+                hash: res.hash,
+                domain: res.domain,
+                result: result_str,
+            }).unwrap();
+            output_writer.flush().unwrap();
+        }
+    }));
 
     let mut found_hash = false;
-
     for path in &args.csv_files {
         let file = File::open(path)?;
         let mut reader = ReaderBuilder::new()
@@ -307,29 +367,21 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 }
             }
 
-            let result = match validate_ct_logs_job(
-                &args,
-                &policy,
-                &roots,
-                &swipl_backend,
-                timestamp,
-                &entry,
-            ) {
-                Ok(res) => res.to_string(),
-                Err(err) => format!("fail: {}", err),
-            };
-
-            output_writer.serialize(CTLogResult {
-                hash: entry.hash,
-                domain: entry.domain,
-                result: result,
-            })?;
-            output_writer.flush()?;
+            tx_job.send(entry).unwrap();
         }
     }
 
     if args.hash.is_some() && !found_hash {
         eprintln!("hash {} not found in the given CSV files", args.hash.as_ref().unwrap());
+    }
+
+    // Signal no more jobs
+    drop(tx_job);
+    drop(tx_res);
+
+    // Join all workers at the end
+    for worker in workers {
+        worker.join().unwrap();
     }
 
     Ok(())
