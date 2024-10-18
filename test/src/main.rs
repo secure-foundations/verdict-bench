@@ -17,6 +17,7 @@ use regex::Regex;
 
 use chain::utils::*;
 use parser::{x509, VecDeep};
+use vpl::Backend;
 use error::*;
 
 #[derive(Parser, Debug)]
@@ -221,15 +222,15 @@ struct ValidationResult {
     result: Result<bool, Error>,
 }
 
-fn validate_ct_logs_job<B: vpl::Backend>(
+fn validate_ct_logs_job<C: vpl::Compiled>(
     args: &ValidateCTLogArgs,
     policy: &vpl::Program,
     roots: &VecDeep<x509::CertificateValue>,
-    backend: &B,
+    compiled: &C,
     timestamp: i64,
     entry: &CTLogEntry,
 ) -> Result<bool, Error> where
-    Error: From<<B as vpl::Backend>::Error>
+    Error: From<<C as vpl::Compiled>::Error>
 {
     let mut chain_bytes = vec![BASE64_STANDARD.decode(&entry.cert_base64)?];
 
@@ -256,8 +257,8 @@ fn validate_ct_logs_job<B: vpl::Backend>(
     }
 
     chain::validate::valid_domain::<_, Error>(
-        backend,
-        policy.clone(),
+        compiled,
+        &policy,
         &query,
         args.debug,
     )
@@ -290,15 +291,17 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
             let roots = parser::VecDeep::from_vec(roots);
 
-            // Load swipl backend parameters
+            // Parse the policy source file
+            let policy_src = std::fs::read_to_string(&args.policy)?;
+            let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
+
+            // Load swipl backend and compile the policy
             let mut swipl_backend = vpl::SwiplBackend {
                 debug: args.debug,
                 swipl_bin: args.swipl_bin.clone(),
             };
 
-            // Parse the policy source file
-            let policy_src = std::fs::read_to_string(&args.policy)?;
-            let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
+            let compiled = swipl_backend.compile(&policy)?;
 
             while let Ok(entry) = rx_job.recv() {
                 tx_res.send(ValidationResult {
@@ -308,7 +311,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                         &args,
                         &policy,
                         &roots,
-                        &swipl_backend,
+                        &compiled,
                         timestamp,
                         &entry,
                     ),

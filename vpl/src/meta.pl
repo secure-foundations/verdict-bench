@@ -67,7 +67,7 @@ prove(forall(member(X, L), Goal), Id) :-
     forall(member(X, L), Goal),
     % If successful, rerun all goals to gather proofs
     findall(Id, (member(X, L), once(prove(Goal, Id))), Ids),
-    
+
     % Ids should have the same length as L, as a sanity check
     % length(Ids, N),
     % length(L, M),
@@ -94,7 +94,7 @@ prove(Goal, Id) :-
     % write(Goal), write(", "), writeln(P),
     (
         predicate_property(Goal, built_in);
-        
+
         % TODO: rule out all libraries in https://www.swi-prolog.org/pldoc/man?section=libpl
         predicate_property(Goal, imported_from(lists));
         predicate_property(Goal, imported_from(strings));
@@ -110,20 +110,23 @@ prove(Goal, Id) :-
 prove(Goal, Id) :-
     clause(Goal, Body, Ref),
     clause_property(Ref, line_count(Line)),
-    % clause_property(Ref, file(File)),
-    
+    clause_property(Ref, file(File)),
+
     (   clause_property(Ref, fact)
-    
+
     ->  % If it's a fact, simplify the tactic and just use the "fact" tactic
         % (otherwise it might generate a new "true" tactic)
         log_proof(Id, Goal),
-        write("fact("), write(Line), writeln(")")
+        write("fact("),
+        write("\""), write(File), write("\":"),
+        write(Line),
+        writeln(")")
 
     ;   % Otherwise, apply the body
         prove(Body, BodyId),
         log_proof(Id, Goal),
         write("apply("), write(BodyId), write(", "),
-        % write(File), write(":"),
+        write("\""), write(File), write("\":"),
         write(Line),
         writeln(")")
     ).

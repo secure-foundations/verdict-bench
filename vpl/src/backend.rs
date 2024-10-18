@@ -2,7 +2,7 @@ use vstd::prelude::*;
 
 use std::process::{Child, Command, Stdio, ChildStdout};
 use std::io::{self, BufRead, BufReader, Lines, Write};
-use std::collections::HashMap;
+use std::sync::Arc;
 
 use tempfile::NamedTempFile;
 
@@ -17,12 +17,21 @@ verus! {
 /// as long as the they can return a valid sequence of proof
 /// events, then the result is sound
 pub trait Backend {
+    type Compiled: Compiled<Error = Self::Error>;
+    type Error;
+
+    /// Return a compiled version of the program that can be
+    /// repeatedly called with new facts and goals
+    fn compile(&self, program: &Program) -> Result<Self::Compiled, Self::Error>;
+}
+
+pub trait Compiled {
     type Instance: Instance<Error = Self::Error>;
     type Error;
 
-    /// Start solving the given goal in the program
+    /// Start solving the given goal with some additional facts in the program
     /// and return the solver instance to interact with
-    fn solve(&self, program: &Program, goal: &Term) -> Result<Self::Instance, Self::Error>;
+    fn solve(&self, facts: &Vec<Rule>, goal: &Term) -> Result<Self::Instance, Self::Error>;
 }
 
 /// Used for avoiding this: https://github.com/rust-lang/rust/issues/87479
@@ -56,25 +65,34 @@ pub struct SwiplBackend {
     pub swipl_bin: String,
 }
 
+pub struct SwiplCompiled {
+    debug: bool,
+    swipl_bin: String,
+    meta_file: NamedTempFile,
+    src_file: NamedTempFile,
+    line_map: LineMap,
+}
+
 pub struct SwiplInstance {
     debug: bool,
     child: Child,
-    meta_file: NamedTempFile,
-    src_file: NamedTempFile,
-    line_map: HashMap<usize, RuleId>,
+    facts_file: NamedTempFile,
+    line_map: LineMap,
 }
 
 pub struct SwiplInstanceIterator<'a> {
     debug: bool,
-    line_map: &'a HashMap<usize, RuleId>,
+    line_map: &'a LineMap,
     lines: Lines<BufReader<&'a mut ChildStdout>>,
 }
 
 impl Backend for SwiplBackend {
-    type Instance = SwiplInstance;
+    type Compiled = SwiplCompiled;
     type Error = io::Error;
 
-    fn solve(&self, program: &Program, goal: &Term) -> Result<Self::Instance, Self::Error> {
+    /// Currently this does not actually do any compilation but just writes
+    /// the program to a temporary file
+    fn compile(&self, program: &Program) -> Result<Self::Compiled, Self::Error> {
         let mut meta_file = NamedTempFile::new()?;
         let mut src_file = NamedTempFile::new()?;
 
@@ -90,17 +108,57 @@ impl Backend for SwiplBackend {
         }
 
         // Each rule takes exactly one line, so the line map is i |-> i - 1
-        let line_map = (0..program.rules.len()).map(|i| (i + 1, i)).collect();
+        let src_file_name: Arc<str> = src_file.path().to_string_lossy().into();
+        let line_map = (0..program.rules.len())
+            .map(|i| ((src_file_name.clone(), i + 1), i))
+            .collect();
         write!(src_file, "{}", program)?;
         src_file.flush()?;
+
+        Ok(SwiplCompiled {
+            debug: self.debug,
+            swipl_bin: self.swipl_bin.clone(),
+            meta_file,
+            src_file,
+            line_map,
+        })
+    }
+}
+
+impl Compiled for SwiplCompiled {
+    type Instance = SwiplInstance;
+    type Error = io::Error;
+
+    fn solve(&self, facts: &Vec<Rule>, goal: &Term) -> Result<Self::Instance, Self::Error> {
+        let mut facts_file = NamedTempFile::new()?;
+
+        // Write all facts
+        if self.debug {
+            eprintln!("[debug] writing facts to {}", facts_file.path().display());
+        }
+        for fact in facts {
+            writeln!(facts_file, "{}", fact)?;
+        }
+        facts_file.flush()?;
+
+        // Update the line map with the lines of the additional facts
+        let mut line_map = self.line_map.clone();
+        let offset = line_map.len();
+
+        let facts_file_path: Arc<str> = facts_file.path().to_string_lossy().into();
+        line_map.extend((0..facts.len()).map(|i| {
+            ((facts_file_path.clone(), i + 1), offset + i)
+        }));
 
         // Run the main goal in swipl with the meta interpreter
         let mut swipl_cmd = Command::new(&self.swipl_bin);
         swipl_cmd
             .arg("-s")
-            .arg(meta_file.path())
+            .arg(self.meta_file.path())
             .arg("-s")
-            .arg(src_file.path())
+            .arg(self.src_file.path())
+            .arg("-s")
+            .arg(facts_file.path())
             .arg("-g")
             .arg(format!("prove({})", goal))
             .arg("-g")
@@ -118,8 +176,7 @@ impl Backend for SwiplBackend {
         Ok(SwiplInstance {
             debug: self.debug,
             child: swipl,
-            meta_file,
-            src_file,
+            facts_file,
             line_map,
         })
     }

@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use clap::{command, Parser};
 
 use parser::VecDeep;
-use vpl::{parse_program, SwiplBackend};
+use vpl::{parse_program, SwiplBackend, Backend};
 
 use validate::*;
 use facts::*;
@@ -81,9 +81,10 @@ fn main_args(args: Args) -> Result<(), Error> {
     }
 
     // Call the main validation routine
+    let compiled = swipl_backend.compile(&policy)?;
     let res = valid_domain::<_, Error>(
-        &swipl_backend,
-        policy,
+        &compiled,
+        &policy,
         &query,
         args.debug,
     )?;

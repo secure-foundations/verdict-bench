@@ -12,15 +12,15 @@ use crate::trace::*;
 /// when displaying, all variables starting with % is replaced with _
 pub const ANON_VAR_PREFIX: &'static str = "%";
 
-struct ParserState<'a> {
-    source: &'a str,
+struct ParserState {
+    source: Arc<str>,
     anon_var_counter: Cell<usize>,
 }
 
-impl ParserState<'_> {
+impl ParserState {
     fn new(source: &str) -> ParserState {
         ParserState {
-            source,
+            source: source.into(),
             anon_var_counter: Cell::new(0),
         }
     }
@@ -36,6 +36,8 @@ enum UnescapeState {
     Normal,
     Escape,
 }
+
+pub type LineMap = HashMap<(Arc<str>, usize), RuleId>;
 
 /// Unescape a string
 /// e.g. "\\n" => "\n"
@@ -283,10 +285,10 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
             }
 
     /// Returns a program and a map from line number to rule id
-    pub rule program() -> (Program, HashMap<usize, RuleId>)
+    pub rule program() -> (Program, LineMap)
         = _ rules:(clause() ** _) _ {
             let mut program_rules = vec![];
-            let mut line_map = HashMap::new();
+            let mut line_map = LineMap::new();
 
             let mut last_pos = 0;
             let mut num_lines = 1; // 1 + number of newline symbols in &source[0..last_pos]
@@ -304,14 +306,14 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
                 num_lines += new_lines;
 
                 program_rules.push(rule);
-                line_map.insert(num_lines, i);
+                line_map.insert((state.source.clone(), num_lines), i);
             }
 
             (Program::new(program_rules), line_map)
         }
 
     /// Parser of a trace event
-    pub rule event(line_map: &HashMap<usize, RuleId>) -> Event
+    pub rule event(line_map: &LineMap) -> Event
         = _ id:nat() _ "." _ term:canon_term() _ "by" _ tactic:tactic(line_map) _
             { Event { id, term: term, tactic: tactic } }
 
@@ -319,15 +321,15 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
         = v:nat() { vec![v] }
         / "[" _ l:(nested_nat_list() ** (_ "," _)) _ "]" { l.into_iter().flatten().collect() }
 
-    /// Read a line number, and convert it to a rule id
+    /// Read a file name and line number, and convert it to a rule id
     /// using the line_map; fails if no entry found in line_map
-    rule rule_id(line_map: &HashMap<usize, RuleId>) -> RuleId
-        = rule_line:nat() {?
-            line_map.get(&rule_line).cloned()
+    rule rule_id(line_map: &LineMap) -> RuleId
+        = file:string() _ ":" _ rule_line:nat() {?
+            line_map.get(&(file, rule_line)).cloned()
                 .ok_or("failed to find rule by the line number")
         }
 
-    rule tactic(line_map: &HashMap<usize, RuleId>) -> Tactic
+    rule tactic(line_map: &LineMap) -> Tactic
         = "fact" _ "(" _ id:rule_id(&line_map) _ ")"
             { Tactic::Apply { rule_id: id, subproof_ids: vec![] } }
         / "apply" _ "(" _ subgoals:nested_nat_list() _ "," _ id:rule_id(&line_map) _ ")"
@@ -359,7 +361,7 @@ pub struct ParseError(
 pub fn parse_program(
     source: impl AsRef<str>,
     path: impl AsRef<str>,
-) -> Result<(Program, HashMap<usize, RuleId>), ParseError> {
+) -> Result<(Program, LineMap), ParseError> {
     let state = ParserState::new(source.as_ref());
     prolog::program(source.as_ref(), &state)
         .map_err(|e| ParseError(Some(path.as_ref().to_string()), e))
@@ -374,7 +376,7 @@ pub fn parse_term(source: impl AsRef<str>) -> Result<Term, ParseError> {
 /// Parse a trace event
 pub fn parse_trace_event(
     source: impl AsRef<str>,
-    line_map: &HashMap<usize, RuleId>,
+    line_map: &LineMap,
 ) -> Result<Event, ParseError> {
     let state = ParserState::new(source.as_ref());
     prolog::event(source.as_ref(), &state, &line_map).map_err(|e| ParseError(None, e))

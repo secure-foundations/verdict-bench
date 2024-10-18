@@ -67,9 +67,12 @@ fn main_args(mut args: Args) -> Result<(), Error> {
         swipl_bin: args.swipl_bin.clone(),
     };
 
+    let compiled = swipl_backend.compile(&program)?;
+
     match solve_and_validate::<_, Error>(
-        &mut swipl_backend,
+        &compiled,
         &program,
+        vec![],
         &goal,
         args.debug,
         args.allow_unsupported_builtin,

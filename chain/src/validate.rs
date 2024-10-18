@@ -213,14 +213,14 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
     false
 }
 
-pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
-    backend: &B,
-    mut policy: Program,
+pub fn valid_domain<'a, 'b, 'c, 'd, 'e, C: Compiled, E>(
+    compiled: &C,
+    policy: &Program,
     query: &Query<'a, 'b, 'c, 'd, 'e>,
     debug: bool,
 ) -> (res: Result<bool, E>)
     where
-        E: std::convert::From<B::Error>,
+        E: std::convert::From<C::Error>,
         E: std::convert::From<ValidationError>,
         E: std::convert::From<ProofError>,
 
@@ -230,12 +230,11 @@ pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
         Err(ValidationError::EmptyChain)?;
     }
 
-    let ghost old_policy = policy@;
-
     // Add all generated facts to the policy
-    let mut facts = vec_deep![];
-    QueryFacts::facts(&query, &mut facts)?;
-    let mut facts = facts.to_vec_owned();
+    let mut facts_deep = vec_deep![];
+    QueryFacts::facts(&query, &mut facts_deep)?;
+    let facts = facts_deep.to_vec_owned();
+    assert(facts.deep_view() =~= facts_deep@);
 
     if debug {
         eprintln_join!("[debug] facts:");
@@ -244,17 +243,11 @@ pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
         }
     }
 
-    policy.rules.append(&mut facts);
-
     let goal = TermX::app_str("certVerifiedChain", vec![ query.get_chain(0).cert() ]);
-
     assert(goal@->App_1 == seq![ query@.get_chain(0).spec_cert() ]);
-    assert(policy@ =~= SpecProgram {
-        rules: old_policy.rules + QueryFacts::spec_facts(query@).unwrap(),
-    });
 
     // Solve and validate the goal
-    match solve_and_validate::<B, E>(backend, &policy, &goal, debug, true)? {
+    match solve_and_validate::<C, E>(compiled, &policy, facts, &goal, debug, true)? {
         ValidationResult::Success(thm) => {
             Ok(true)
         }

@@ -1146,12 +1146,14 @@ impl Clone for Subst {
     }
 }
 
-}
-
 /// `Program::clone` is only used in non-Verus code right now
 impl Clone for Program {
-    fn clone(&self) -> Self
+    #[verifier::external_body]
+    fn clone(&self) -> (res: Self)
+        ensures self@ == res@
     {
         Program { rules: self.rules.clone() }
     }
+}
+
 }
