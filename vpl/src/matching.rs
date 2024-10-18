@@ -384,7 +384,7 @@ impl TermX {
         let ghost subst2 = pattern@.matches(inst@).unwrap();
         let ghost subst3 = old(subst)@.merge(subst2).unwrap();
 
-        match (rc_as_ref(pattern), rc_as_ref(inst)) {
+        match (arc_as_ref(pattern), arc_as_ref(inst)) {
             (TermX::Var(var), _) => {
                 if let Some(existing) = subst.get(var) {
                     if !existing.eq(inst) {

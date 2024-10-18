@@ -22,7 +22,7 @@ pub enum ValidationResult {
 /// The error type E should combine any errors from the backend
 /// as well as ProofError
 pub fn solve_and_validate<B: Backend, E: From<B::Error> + From<ProofError>>(
-    backend: &mut B,
+    backend: &B,
     program: &Program,
     goal: &Term,
 

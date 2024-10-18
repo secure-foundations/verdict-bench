@@ -82,7 +82,7 @@ fn main_args(args: Args) -> Result<(), Error> {
 
     // Call the main validation routine
     let res = valid_domain::<_, Error>(
-        &mut swipl_backend,
+        &swipl_backend,
         policy,
         &query,
         args.debug,
@@ -96,7 +96,7 @@ fn main_args(args: Args) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn main() -> ExitCode {
+fn main() -> ExitCode {
     match main_args(Args::parse()) {
         Ok(..) => ExitCode::from(0),
         Err(err) => {

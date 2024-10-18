@@ -520,7 +520,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtSubjectAltNameF
                         out@ =~~= prev_out + Self::spec_extract_general_names(names@)
                             .map_values(|v: (Seq<char>, SpecTerm)| spec_fact!("san", t.view().spec_cert(), v.1)).take(i as int),
                 {
-                    out.push(RuleX::fact("san", vec![ t.cert(), rc_clone(&typ_names.get(i).1) ]));
+                    out.push(RuleX::fact("san", vec![ t.cert(), arc_clone(&typ_names.get(i).1) ]));
                 }
 
                 return Ok(());
@@ -584,7 +584,7 @@ impl ExtNameConstraintsFacts {
                     vec![
                         t.cert(),
                         TermX::str(typ_names.get(k).0.as_str()),
-                        rc_clone(&typ_names.get(k).1),
+                        arc_clone(&typ_names.get(k).1),
                     ],
                 ));
             }

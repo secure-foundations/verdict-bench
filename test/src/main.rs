@@ -1,6 +1,6 @@
 mod error;
 
-use base64::Engine;
+use base64::{Engine, prelude::BASE64_STANDARD};
 use std::io;
 use std::process::ExitCode;
 use std::fs::File;
@@ -15,6 +15,7 @@ use clap::{command, Parser, Subcommand};
 use regex::Regex;
 
 use chain::utils::*;
+use parser::{x509, VecDeep};
 use error::*;
 
 #[derive(Parser, Debug)]
@@ -88,6 +89,9 @@ struct ValidateCTLogArgs {
     /// Override the current time with the given timestamp
     #[clap(short = 't', long)]
     override_time: Option<i64>,
+
+    #[clap(short = 'j', long = "jobs", default_value = "1")]
+    num_jobs: usize,
 }
 
 #[derive(Parser, Debug)]
@@ -177,7 +181,7 @@ fn parse_cert_ct_logs(args: ParseCTLogArgs) -> Result<(), Error>
         for result in reader.deserialize() {
             let result: CTLogEntry = result?;
 
-            let cert_bytes = base64::prelude::BASE64_STANDARD.decode(result.cert_base64)?;
+            let cert_bytes = BASE64_STANDARD.decode(result.cert_base64)?;
 
             match parse_x509_certificate(&cert_bytes) {
                 Ok(cert) => {
@@ -210,6 +214,48 @@ fn parse_cert_ct_logs(args: ParseCTLogArgs) -> Result<(), Error>
     Ok(())
 }
 
+fn validate_ct_logs_job<B: vpl::Backend>(
+    args: &ValidateCTLogArgs,
+    policy: &vpl::Program,
+    roots: &VecDeep<x509::CertificateValue>,
+    backend: &B,
+    timestamp: i64,
+    entry: &CTLogEntry,
+) -> Result<bool, Error> where
+    Error: From<<B as vpl::Backend>::Error>
+{
+    let mut chain_bytes = vec![BASE64_STANDARD.decode(&entry.cert_base64)?];
+
+    // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
+    // `entry.interm_certs` is a comma-separated list
+    for interm_cert in entry.interm_certs.split(",") {
+        chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
+    }
+
+    let mut chain =
+        chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
+
+    let chain = parser::VecDeep::from_vec(chain);
+
+    let query = chain::facts::Query {
+        roots: roots,
+        chain: &chain,
+        domain: &entry.domain.to_lowercase(),
+        now: timestamp,
+    };
+
+    if args.debug {
+        query.print_debug_info();
+    }
+
+    chain::validate::valid_domain::<_, Error>(
+        backend,
+        policy.clone(),
+        &query,
+        args.debug,
+    )
+}
+
 fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 {
     eprintln!("validating {} CT log file(s)", args.csv_files.len());
@@ -233,7 +279,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp());
 
     // Open the output file if it exists, otherwise use stdout
-    let mut handle: Box<dyn io::Write> = if let Some(out_path) = args.out_csv {
+    let mut handle: Box<dyn io::Write> = if let Some(out_path) = &args.out_csv {
         Box::new(File::create(out_path)?)
     } else {
         Box::new(std::io::stdout())
@@ -243,8 +289,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 
     let mut found_hash = false;
 
-    for path in args.csv_files {
-        let file = File::open(&path)?;
+    for path in &args.csv_files {
+        let file = File::open(path)?;
         let mut reader = ReaderBuilder::new()
             .has_headers(false)  // If your CSV has headers
             .from_reader(file);
@@ -261,40 +307,14 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 }
             }
 
-            let validate = || {
-                let mut chain_bytes = vec![base64::prelude::BASE64_STANDARD.decode(entry.cert_base64)?];
-
-                // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
-                // `entry.interm_certs` is a comma-separated list
-                for interm_cert in entry.interm_certs.split(",") {
-                    chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", args.interm_dir, interm_cert))?);
-                }
-
-                let mut chain =
-                    chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
-
-                let chain = parser::VecDeep::from_vec(chain);
-
-                let query = chain::facts::Query {
-                    roots: &roots,
-                    chain: &chain,
-                    domain: &entry.domain.to_lowercase(),
-                    now: timestamp,
-                };
-
-                if args.debug {
-                    query.print_debug_info();
-                }
-
-                chain::validate::valid_domain::<_, Error>(
-                    &mut swipl_backend,
-                    policy.clone(),
-                    &query,
-                    args.debug,
-                )
-            };
-
-            let result = match validate() {
+            let result = match validate_ct_logs_job(
+                &args,
+                &policy,
+                &roots,
+                &swipl_backend,
+                timestamp,
+                &entry,
+            ) {
                 Ok(res) => res.to_string(),
                 Err(err) => format!("fail: {}", err),
             };

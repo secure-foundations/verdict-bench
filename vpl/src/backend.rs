@@ -22,7 +22,7 @@ pub trait Backend {
 
     /// Start solving the given goal in the program
     /// and return the solver instance to interact with
-    fn solve(&mut self, program: &Program, goal: &Term) -> Result<Self::Instance, Self::Error>;
+    fn solve(&self, program: &Program, goal: &Term) -> Result<Self::Instance, Self::Error>;
 }
 
 /// Used for avoiding this: https://github.com/rust-lang/rust/issues/87479
@@ -74,7 +74,7 @@ impl Backend for SwiplBackend {
     type Instance = SwiplInstance;
     type Error = io::Error;
 
-    fn solve(&mut self, program: &Program, goal: &Term) -> Result<Self::Instance, Self::Error> {
+    fn solve(&self, program: &Program, goal: &Term) -> Result<Self::Instance, Self::Error> {
         let mut meta_file = NamedTempFile::new()?;
         let mut src_file = NamedTempFile::new()?;
 

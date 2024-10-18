@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use peg;
 
@@ -162,12 +162,12 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
 
     /// Prolog lists, e.g., [], [a,b|[]], [a,b,c]
     rule list(t: rule<Term>) -> Term
-        = "[" _ "]" { Rc::new(TermX::App(FnName::Nil, vec![])) }
+        = "[" _ "]" { Arc::new(TermX::App(FnName::Nil, vec![])) }
         / "[" _ elems:comma_sep_plus(<t()>) _ "]"
             {
-                let mut list = Rc::new(TermX::App(FnName::Nil, vec![]));
+                let mut list = Arc::new(TermX::App(FnName::Nil, vec![]));
                 for elem in elems.into_iter().rev() {
-                    list = Rc::new(TermX::App(FnName::Cons, vec![elem, list]));
+                    list = Arc::new(TermX::App(FnName::Cons, vec![elem, list]));
                 }
                 list
             }
@@ -175,7 +175,7 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
             {
                 let mut list = tail;
                 for head in heads.into_iter().rev() {
-                    list = Rc::new(TermX::App(FnName::Cons, vec![head, list]));
+                    list = Arc::new(TermX::App(FnName::Cons, vec![head, list]));
                 }
                 list
             }
@@ -186,9 +186,9 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
     ///
     /// See https://docs.rs/peg/latest/peg/ for precedence!
     pub rule term() -> Term = precedence! {
-        t1:@ _ ";" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_OR, 2), vec![t1, t2])) }
+        t1:@ _ ";" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_OR, 2), vec![t1, t2])) }
         --
-        t1:@ _ "," _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_AND, 2), vec![t1, t2])) }
+        t1:@ _ "," _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_AND, 2), vec![t1, t2])) }
         --
         t:small_term() { t }
     }
@@ -203,26 +203,26 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
     /// - Legal: [a|(b;c)]
     /// - Legal: [a|(b,c)]
     pub rule small_term() -> Term = precedence! {
-        "\\+" _ t:@ { Rc::new(TermX::App(FnName::user(FN_NAME_NOT, 1), vec![t])) }
+        "\\+" _ t:@ { Arc::new(TermX::App(FnName::user(FN_NAME_NOT, 1), vec![t])) }
         --
-        t1:@ _ "=" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_EQ, 2), vec![t1, t2])) }
-        t1:@ _ "\\=" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_NOT_EQ, 2), vec![t1, t2])) }
-        t1:@ _ "==" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_EQUIV, 2), vec![t1, t2])) }
-        t1:@ _ "\\==" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_NOT_EQUIV, 2), vec![t1, t2])) }
+        t1:@ _ "=" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_EQ, 2), vec![t1, t2])) }
+        t1:@ _ "\\=" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_NOT_EQ, 2), vec![t1, t2])) }
+        t1:@ _ "==" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_EQUIV, 2), vec![t1, t2])) }
+        t1:@ _ "\\==" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_NOT_EQUIV, 2), vec![t1, t2])) }
 
-        t1:@ _ ">" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_GT, 2), vec![t1, t2])) }
-        t1:@ _ ">=" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_GE, 2), vec![t1, t2])) }
-        t1:@ _ "<" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_LT, 2), vec![t1, t2])) }
-        t1:@ _ "=<" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_LE, 2), vec![t1, t2])) }
-        t1:@ _ "is" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_IS, 2), vec![t1, t2])) }
-        t1:@ _ "=:=" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_EVAL_EQ, 2), vec![t1, t2])) }
-        t1:@ _ "=\\=" _ t2:(@) { Rc::new(TermX::App(FnName::user(FN_NAME_EVAL_NOT_EQ, 2), vec![t1, t2])) }
+        t1:@ _ ">" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_GT, 2), vec![t1, t2])) }
+        t1:@ _ ">=" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_GE, 2), vec![t1, t2])) }
+        t1:@ _ "<" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_LT, 2), vec![t1, t2])) }
+        t1:@ _ "=<" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_LE, 2), vec![t1, t2])) }
+        t1:@ _ "is" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_IS, 2), vec![t1, t2])) }
+        t1:@ _ "=:=" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_EVAL_EQ, 2), vec![t1, t2])) }
+        t1:@ _ "=\\=" _ t2:(@) { Arc::new(TermX::App(FnName::user(FN_NAME_EVAL_NOT_EQ, 2), vec![t1, t2])) }
         --
-        t1:(@) _ "+" _ t2:@ { Rc::new(TermX::App(FnName::user(FN_NAME_ADD, 2), vec![t1, t2])) }
-        t1:(@) _ "-" _ t2:@ { Rc::new(TermX::App(FnName::user(FN_NAME_SUB, 2), vec![t1, t2])) }
+        t1:(@) _ "+" _ t2:@ { Arc::new(TermX::App(FnName::user(FN_NAME_ADD, 2), vec![t1, t2])) }
+        t1:(@) _ "-" _ t2:@ { Arc::new(TermX::App(FnName::user(FN_NAME_SUB, 2), vec![t1, t2])) }
         --
-        t1:(@) _ "*" _ t2:@ { Rc::new(TermX::App(FnName::user(FN_NAME_MUL, 2), vec![t1, t2])) }
-        t1:(@) _ "/" _ t2:@ { Rc::new(TermX::App(FnName::user(FN_NAME_PRED_IND, 2), vec![t1, t2])) }
+        t1:(@) _ "*" _ t2:@ { Arc::new(TermX::App(FnName::user(FN_NAME_MUL, 2), vec![t1, t2])) }
+        t1:(@) _ "/" _ t2:@ { Arc::new(TermX::App(FnName::user(FN_NAME_PRED_IND, 2), vec![t1, t2])) }
         --
 
         t:base_term(<ident()>, <small_term()>, <term()>) { t }
@@ -241,8 +241,8 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
         // Applications or atoms
         / name:id() args:app_args(<term_wo_comma()>)? {
             match args {
-                Some(args) => Rc::new(TermX::App(FnName::User(name, args.len()), args)),
-                None => Rc::new(TermX::Literal(Literal::Atom(name))),
+                Some(args) => Arc::new(TermX::App(FnName::User(name, args.len()), args)),
+                None => Arc::new(TermX::Literal(Literal::Atom(name))),
             }
         }
 
@@ -258,8 +258,8 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
         }
 
         // Literals
-        / i:int() { Rc::new(TermX::Literal(Literal::Int(i))) }
-        / s:string() { Rc::new(TermX::Literal(Literal::String(s))) }
+        / i:int() { Arc::new(TermX::Literal(Literal::Int(i))) }
+        / s:string() { Arc::new(TermX::Literal(Literal::String(s))) }
 
         // Lists
         / list:list(<term_wo_comma()>) { list }
@@ -278,7 +278,7 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
         // Headless clauses are converted into `true :- ... .`
         / pos:position!() ":-" _ body:term() _ "."
             {
-                let head = Rc::new(TermX::Literal(Literal::Directive));
+                let head = Arc::new(TermX::Literal(Literal::Directive));
                 (RuleX::new(head, vec![body]), pos)
             }
 

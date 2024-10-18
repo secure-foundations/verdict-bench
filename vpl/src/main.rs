@@ -87,7 +87,7 @@ fn main_args(mut args: Args) -> Result<(), Error> {
     }
 }
 
-pub fn main() -> ExitCode {
+fn main() -> ExitCode {
     match main_args(Args::parse()) {
         Ok(..) => ExitCode::from(0),
         Err(err) => {

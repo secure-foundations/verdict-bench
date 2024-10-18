@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::num::TryFromIntError;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::str::from_utf8;
 
 use vstd::prelude::*;
@@ -19,7 +20,23 @@ pub fn str_to_rc_str(s: &str) -> (res: Rc<str>)
 }
 
 #[verifier::external_body]
+pub fn str_to_arc_str(s: &str) -> (res: Arc<str>)
+    ensures
+        s@ == res@,
+{
+    s.into()
+}
+
+#[verifier::external_body]
 pub fn rc_str_to_str(s: &Rc<str>) -> (res: &str)
+    ensures
+        s@ == res@,
+{
+    s.as_ref()
+}
+
+#[verifier::external_body]
+pub fn arc_str_to_str(s: &Arc<str>) -> (res: &str)
     ensures
         s@ == res@,
 {
@@ -35,7 +52,23 @@ pub fn rc_str_eq(s1: &Rc<str>, s2: &Rc<str>) -> (res: bool)
 }
 
 #[verifier::external_body]
+pub fn arc_str_eq(s1: &Arc<str>, s2: &Arc<str>) -> (res: bool)
+    ensures
+        res == (s1@ == s2@),
+{
+    s1 == s2
+}
+
+#[verifier::external_body]
 pub fn rc_str_eq_str(s1: &Rc<str>, s2: &str) -> (res: bool)
+    ensures
+        res == (s1@ == s2@),
+{
+    s1.as_ref() == s2
+}
+
+#[verifier::external_body]
+pub fn arc_str_eq_str(s1: &Arc<str>, s2: &str) -> (res: bool)
     ensures
         res == (s1@ == s2@),
 {
@@ -74,11 +107,27 @@ pub fn rc_as_ref<T: View>(rc: &Rc<T>) -> (res: &T)
 }
 
 #[verifier::external_body]
+pub fn arc_as_ref<T: View>(arc: &Arc<T>) -> (res: &T)
+    ensures
+        arc.view() == res.view(),
+{
+    arc.as_ref()
+}
+
+#[verifier::external_body]
 pub fn rc_clone<T: View>(rc: &Rc<T>) -> (res: Rc<T>)
     ensures
         rc.view() == res.view(),
 {
     rc.clone()
+}
+
+#[verifier::external_body]
+pub fn arc_clone<T: View>(arc: &Arc<T>) -> (res: Arc<T>)
+    ensures
+        arc.view() == res.view(),
+{
+    arc.clone()
 }
 
 #[verifier::inline]

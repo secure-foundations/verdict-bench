@@ -1,11 +1,11 @@
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::checker::*;
 use crate::parser::{escape_string, ParseError};
 use crate::proof::*;
 
-fn fmt_symbol(symbol: &Rc<str>, f: &mut fmt::Formatter) -> fmt::Result {
+fn fmt_symbol(symbol: &Arc<str>, f: &mut fmt::Formatter) -> fmt::Result {
     if let Some(first) = symbol.chars().next() {
         if first.is_ascii_lowercase()
             && symbol

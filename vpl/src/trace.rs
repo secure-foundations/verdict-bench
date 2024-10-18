@@ -300,7 +300,7 @@ impl TraceValidator {
             }
 
             Tactic::BuiltIn => {
-                if let TermX::App(FnName::User(name, arity), args) = rc_as_ref(&event.term) {
+                if let TermX::App(FnName::User(name, arity), args) = arc_as_ref(&event.term) {
                     let thm = Theorem::try_built_in(program, &event.term, allow_unsupported_builtin)?;
                     return Ok(self.add_theorem(program, event.id, thm));
                 }

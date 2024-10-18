@@ -214,7 +214,7 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
 }
 
 pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
-    backend: &mut B,
+    backend: &B,
     mut policy: Program,
     query: &Query<'a, 'b, 'c, 'd, 'e>,
     debug: bool,

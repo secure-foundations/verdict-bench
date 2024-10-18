@@ -1,5 +1,5 @@
 use vstd::prelude::*;
-use std::rc::Rc;
+use std::sync::Arc;
 use polyfill::*;
 
 use crate::containers::StringHashMap;
@@ -12,16 +12,16 @@ verus! {
 
 broadcast use TermX::axiom_view, SpecTerm::axiom_subst, SpecTerm::axiom_matches, lemma_ext_equal_deep;
 
-pub type Var = Rc<str>;
-pub type UserFnName = Rc<str>;
+pub type Var = Arc<str>;
+pub type UserFnName = Arc<str>;
 pub type RuleId = usize;
 pub type Arity = usize;
 
 /// TODO: right now we limit integers to 64-bit
 /// but Prolog actually supports arbitrary precision integers
 pub type LiteralInt = i64;
-pub type LiteralString = Rc<str>;
-pub type LiteralAtom = Rc<str>;
+pub type LiteralString = Arc<str>;
+pub type LiteralAtom = Arc<str>;
 
 #[derive(Debug)]
 pub enum FnName {
@@ -39,7 +39,7 @@ pub enum Literal {
     Directive,
 }
 
-pub type Term = Rc<TermX>;
+pub type Term = Arc<TermX>;
 #[derive(Debug)]
 pub enum TermX {
     Var(Var),
@@ -47,7 +47,7 @@ pub enum TermX {
     App(FnName, Vec<Term>),
 }
 
-pub type Rule = Rc<RuleX>;
+pub type Rule = Arc<RuleX>;
 #[derive(Debug)]
 pub struct RuleX {
     pub head: Term,
@@ -86,7 +86,7 @@ impl FnName {
     pub fn user(name: &str, arity: usize) -> (res: FnName)
         ensures res@ == SpecFnName::User(name@, arity as int)
     {
-        FnName::User(str_to_rc_str(name), arity)
+        FnName::User(str_to_arc_str(name), arity)
     }
 
     pub fn eq(&self, other: &Self) -> (res: bool)
@@ -94,7 +94,7 @@ impl FnName {
     {
         match (self, other) {
             (FnName::User(name1, arity1), FnName::User(name2, arity2)) =>
-                rc_str_eq(name1, name2) && arity1 == arity2,
+                arc_str_eq(name1, name2) && arity1 == arity2,
             (FnName::Nil, FnName::Nil) => true,
             (FnName::Cons, FnName::Cons) => true,
             _ => false,
@@ -120,8 +120,8 @@ impl Literal {
     {
         match (self, other) {
             (Literal::Int(i1), Literal::Int(i2)) => i1 == i2,
-            (Literal::String(s1), Literal::String(s2)) => rc_str_eq(s1, s2),
-            (Literal::Atom(a1), Literal::Atom(a2)) => rc_str_eq(a1, a2),
+            (Literal::String(s1), Literal::String(s2)) => arc_str_eq(s1, s2),
+            (Literal::Atom(a1), Literal::Atom(a2)) => arc_str_eq(a1, a2),
             (Literal::Directive, Literal::Directive) => true,
             _ => false,
         }
@@ -133,19 +133,19 @@ impl TermX {
     pub fn var(v: &Var) -> (res: Term)
         ensures res@ == SpecTerm::Var(v@)
     {
-        Rc::new(TermX::Var(v.clone()))
+        Arc::new(TermX::Var(v.clone()))
     }
 
     pub fn var_str(v: &str) -> (res: Term)
         ensures res@ == SpecTerm::Var(v@)
     {
-        TermX::var(&str_to_rc_str(v))
+        TermX::var(&str_to_arc_str(v))
     }
 
     pub fn app(name: &FnName, args: Vec<Term>) -> (res: Term)
         ensures res@ == SpecTerm::App(name@, args.deep_view())
     {
-        Rc::new(TermX::App(name.clone(), args))
+        Arc::new(TermX::App(name.clone(), args))
     }
 
     pub fn app_str(name: &str, args: Vec<Term>) -> (res: Term)
@@ -166,7 +166,7 @@ impl TermX {
     pub fn atom(name: &str) -> (res: Term)
         ensures res@ == SpecTerm::Literal(SpecLiteral::Atom(name@))
     {
-        Rc::new(TermX::Literal(Literal::Atom(str_to_rc_str(name))))
+        Arc::new(TermX::Literal(Literal::Atom(str_to_arc_str(name))))
     }
 
     pub fn bool(b: bool) -> (res: Term)
@@ -178,20 +178,20 @@ impl TermX {
     pub fn int(i: LiteralInt) -> (res: Term)
         ensures res@ == SpecTerm::Literal(SpecLiteral::Int(i as int))
     {
-        Rc::new(TermX::Literal(Literal::Int(i)))
+        Arc::new(TermX::Literal(Literal::Int(i)))
     }
 
     pub fn str(s: &str) -> (res: Term)
         ensures res@ == SpecTerm::Literal(SpecLiteral::String(s@))
     {
-        Rc::new(TermX::Literal(Literal::String(str_to_rc_str(s))))
+        Arc::new(TermX::Literal(Literal::String(str_to_arc_str(s))))
     }
 
     /// Apply substitution to a term
     pub fn subst(term: &Term, subst: &Subst) -> (res: Term)
         ensures res@ == term@.subst(subst@)
     {
-        match rc_as_ref(term) {
+        match arc_as_ref(term) {
             TermX::Var(v) =>
                 if let Some(k) = subst.0.get(v) {
                     k.clone()
@@ -217,7 +217,7 @@ impl TermX {
         ensures res == (self@ == other@)
     {
         match (self, other) {
-            (TermX::Var(v1), TermX::Var(v2)) => rc_str_eq(v1, v2),
+            (TermX::Var(v1), TermX::Var(v2)) => arc_str_eq(v1, v2),
             (TermX::Literal(l1), TermX::Literal(l2)) => l1.eq(l2),
             (TermX::App(f1, args1), TermX::App(f2, args2)) => {
                 if !f1.eq(f2) {
@@ -329,7 +329,7 @@ impl TermX {
     pub fn not_unifiable(&self, other: &Term) -> (res: bool)
         ensures res == self@.not_unifiable(other@)
     {
-        match (self, rc_as_ref(other)) {
+        match (self, arc_as_ref(other)) {
             (TermX::Literal(l1), TermX::Literal(l2)) => !l1.eq(l2),
 
             // Distinct head symbol, or non-unifiable subterms
@@ -374,7 +374,7 @@ impl TermX {
         match self {
             TermX::App(FnName::User(name, arity), args) =>
                 if *arity == args.len() &&
-                    rc_str_eq_str(name, expected_name) &&
+                    arc_str_eq_str(name, expected_name) &&
                     *arity == expected_arity {
                     Ok(args)
                 } else {
@@ -424,7 +424,7 @@ impl RuleX {
     pub fn new(head: Term, body: Vec<Term>) -> (res: Rule)
         ensures res == (RuleX { head, body })
     {
-        Rc::new(RuleX { head, body })
+        Arc::new(RuleX { head, body })
     }
 
     pub fn fact(name: &str, args: Vec<Term>) -> (res: Rule)
@@ -761,7 +761,7 @@ impl Theorem {
             res matches Ok(thm) ==> thm.stmt@ == goal@ && thm.wf(program@)
     {
         // Get symbol, arity, and arguments from the goal term
-        let (symbol, arity, args) = if let TermX::App(FnName::User(name, arity), args) = rc_as_ref(goal) {
+        let (symbol, arity, args) = if let TermX::App(FnName::User(name, arity), args) = arc_as_ref(goal) {
             if *arity != args.len() {
                 return proof_err!("ill-formed term: ", goal);
             }
@@ -773,7 +773,7 @@ impl Theorem {
         // Theorem object if successful
         let success = Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
 
-        let result = match (rc_str_to_str(symbol), arity) {
+        let result = match (arc_str_to_str(symbol), arity) {
             // =/2, ==/2
             (FN_NAME_EQ, 2) => (&args[0]).eq(&args[1]),
             (FN_NAME_EQUIV, 2) => (&args[0]).eq(&args[1]),
@@ -783,7 +783,7 @@ impl Theorem {
             (FN_NAME_NOT_EQUIV, 2) => !(&args[0]).eq(&args[1]),
 
             // is/2
-            (FN_NAME_IS, 2) => (&args[0]).eq(&Rc::new(TermX::Literal(Literal::Int((&args[1]).eval_arith()?)))),
+            (FN_NAME_IS, 2) => (&args[0]).eq(&Arc::new(TermX::Literal(Literal::Int((&args[1]).eval_arith()?)))),
 
             // =:=/2, =\=/2
             (FN_NAME_EVAL_EQ, 2) => (&args[0]).eval_arith()? == (&args[1]).eval_arith()?,
@@ -822,17 +822,17 @@ impl Theorem {
 
 
             // nonvar/1, var/1
-            (FN_NAME_NONVAR, 1) => match rc_as_ref(&args[0]) {
+            (FN_NAME_NONVAR, 1) => match arc_as_ref(&args[0]) {
                 TermX::Var(..) => false,
                 _ => true,
             },
-            (FN_NAME_VAR, 1) => match rc_as_ref(&args[0]) {
+            (FN_NAME_VAR, 1) => match arc_as_ref(&args[0]) {
                 TermX::Var(..) => true,
                 _ => false,
             },
 
             // atom_string/2
-            (FN_NAME_ATOM_STRING, 2) => rc_str_eq((&args[0]).as_atom()?, (&args[1]).as_string()?),
+            (FN_NAME_ATOM_STRING, 2) => arc_str_eq((&args[0]).as_atom()?, (&args[1]).as_string()?),
 
             // string_chars/2
             (FN_NAME_STRING_CHARS, 2) => {
@@ -874,7 +874,7 @@ impl Theorem {
                     if let Some(sum) = end.checked_add(after) {
                         string.unicode_len() == sum &&
                         substring.unicode_len() == len &&
-                        (len == 0 || rc_str_eq_str(substring, string.substring_char(before, end)))
+                        (len == 0 || arc_str_eq_str(substring, string.substring_char(before, end)))
                     } else {
                         return proof_err!("potential overflow in goal: ", goal);
                     }
@@ -925,14 +925,14 @@ impl Theorem {
                             i == split_strs.len(),
                             forall |j| 0 <= j < i ==> #[trigger] list[j]@ =~= SpecTerm::Literal(SpecLiteral::String(split_strs[j]@)),
                     {
-                        split_strs.push(rc_str_to_str((&list[i]).as_string()?));
+                        split_strs.push(arc_str_to_str((&list[i]).as_string()?));
                     }
 
                     assert(split_strs@.map_values(|s: &str| s@)
                         =~= Seq::new(list.deep_view().len(), |i| list.deep_view()[i]->Literal_0->String_0));
 
                     let joined_string = join_strs(&split_strs, sep);
-                    rc_str_eq_str(string, joined_string.as_str())
+                    arc_str_eq_str(string, joined_string.as_str())
                 } else {
                     return proof_err!("unsupported goal: ", goal);
                 }
@@ -1009,14 +1009,14 @@ impl Theorem {
             if let (
                 TermX::Literal(Literal::String(s1)),
                 TermX::Literal(Literal::String(s2)),
-            ) = (rc_as_ref(&args[0]), rc_as_ref(&args[1])) {
+            ) = (arc_as_ref(&args[0]), arc_as_ref(&args[1])) {
                 if s1.to_lowercase() == s2.as_ref() {
                     return Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
                 }
             } else if let (
                 TermX::Literal(Literal::Atom(s1)),
                 TermX::Literal(Literal::String(s2)),
-            ) = (rc_as_ref(&args[0]), rc_as_ref(&args[1])) {
+            ) = (arc_as_ref(&args[0]), arc_as_ref(&args[1])) {
                 if s1.to_lowercase() == s2.as_ref() {
                     return Ok(Theorem { stmt: goal.clone(), proof: Ghost(SpecProof::BuiltIn) });
                 }
@@ -1039,14 +1039,14 @@ impl Theorem {
                 TermX::Literal(Literal::Atom(component)),
                 TermX::Literal(Literal::String(s1)),
                 TermX::Literal(Literal::String(s2)),
-            ) = (rc_as_ref(&args[0]), rc_as_ref(&args[1]), rc_as_ref(&args[2])) {
-                let mode = if rc_str_eq_str(component, "query_value") {
+            ) = (arc_as_ref(&args[0]), arc_as_ref(&args[1]), arc_as_ref(&args[2])) {
+                let mode = if arc_str_eq_str(component, "query_value") {
                     URIEncodeMode::QueryValue
-                } else if rc_str_eq_str(component, "fragment") {
+                } else if arc_str_eq_str(component, "fragment") {
                     URIEncodeMode::Fragment
-                } else if rc_str_eq_str(component, "path") {
+                } else if arc_str_eq_str(component, "path") {
                     URIEncodeMode::Path
-                } else if rc_str_eq_str(component, "segment") {
+                } else if arc_str_eq_str(component, "segment") {
                     URIEncodeMode::Segment
                 } else {
                     return proof_err!("unsupported uri_encoded mode: ", component);
@@ -1134,7 +1134,7 @@ impl Subst {
     pub fn insert(&mut self, var: Var, term: Term)
         ensures self@.0 =~= old(self)@.0.insert(var@, term@),
     {
-        self.0.insert(rc_str_to_str(&var).to_string(), term);
+        self.0.insert(arc_str_to_str(&var).to_string(), term);
     }
 }
 
