@@ -280,53 +280,51 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         let tx_res = tx_res.clone();
         let args = args.clone();
 
-        // Each worker thread waits for jobs, does the validation, and thens send back the result
-        thread::spawn(move || {
-            (|| -> Result<(), Error> {
-                // Each thread has to parse its own copy of the root certs and policy
+        // Each worker thread waits for jobs, does the validation, and then sends back the result
+        thread::spawn(move || -> Result<(), Error> {
+            // Each thread has to parse its own copy of the root certs and policy
 
-                // Parse root certificates
-                let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
-                let roots =
-                    roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
-                let roots = parser::VecDeep::from_vec(roots);
+            // Parse root certificates
+            let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
+            let roots =
+                roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
+            let roots = parser::VecDeep::from_vec(roots);
 
-                // Load swipl backend parameters
-                let mut swipl_backend = vpl::SwiplBackend {
-                    debug: args.debug,
-                    swipl_bin: args.swipl_bin.clone(),
-                };
+            // Load swipl backend parameters
+            let mut swipl_backend = vpl::SwiplBackend {
+                debug: args.debug,
+                swipl_bin: args.swipl_bin.clone(),
+            };
 
-                // Parse the policy source file
-                let policy_src = std::fs::read_to_string(&args.policy)?;
-                let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
+            // Parse the policy source file
+            let policy_src = std::fs::read_to_string(&args.policy)?;
+            let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
 
-                while let Ok(entry) = rx_job.recv() {
-                    tx_res.send(ValidationResult {
-                        hash: entry.hash.clone(),
-                        domain: entry.domain.clone(),
-                        result: validate_ct_logs_job(
-                            &args,
-                            &policy,
-                            &roots,
-                            &swipl_backend,
-                            timestamp,
-                            &entry,
-                        ),
-                    }).unwrap();
-                }
+            while let Ok(entry) = rx_job.recv() {
+                tx_res.send(ValidationResult {
+                    hash: entry.hash.clone(),
+                    domain: entry.domain.clone(),
+                    result: validate_ct_logs_job(
+                        &args,
+                        &policy,
+                        &roots,
+                        &swipl_backend,
+                        timestamp,
+                        &entry,
+                    ),
+                })?;
+            }
 
-                Ok(())
-            })().unwrap()
+            Ok(())
         })
     }).collect::<Vec<_>>();
 
     // Spawn another thread to collect results and write to output
     let out_csv = args.out_csv.clone();
-    workers.push(thread::spawn(move || {
+    workers.push(thread::spawn(move || -> Result<(), Error> {
         // Open the output file if it exists, otherwise use stdout
         let mut handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
-            Box::new(File::create(out_path).unwrap())
+            Box::new(File::create(out_path)?)
         } else {
             Box::new(std::io::stdout())
         };
@@ -343,9 +341,11 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 hash: res.hash,
                 domain: res.domain,
                 result: result_str,
-            }).unwrap();
-            output_writer.flush().unwrap();
+            })?;
+            output_writer.flush()?;
         }
+
+        Ok(())
     }));
 
     let mut found_hash = false;
@@ -367,12 +367,14 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 }
             }
 
-            tx_job.send(entry).unwrap();
+            tx_job.send(entry)?;
         }
     }
 
-    if args.hash.is_some() && !found_hash {
-        eprintln!("hash {} not found in the given CSV files", args.hash.as_ref().unwrap());
+    if let Some(hash) = &args.hash {
+        if !found_hash {
+            eprintln!("hash {} not found in the given CSV files", hash);
+        }
     }
 
     // Signal no more jobs
@@ -380,8 +382,16 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
     drop(tx_res);
 
     // Join all workers at the end
-    for worker in workers {
-        worker.join().unwrap();
+    for (i, worker) in workers.into_iter().enumerate() {
+        match worker.join() {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                eprintln!("worker {} failed with error: {}", i, err);
+            }
+            Err(err) => {
+                eprintln!("failed to join worker {}: {:?}", i, err);
+            }
+        }
     }
 
     Ok(())

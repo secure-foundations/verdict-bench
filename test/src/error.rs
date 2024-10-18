@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use std::sync::mpsc::{RecvError, SendError};
+
 use parser::ParseError as X509ParseError;
 use vpl::{ProofError as VPLProofError, ParseError as VPLParseError};
 use chain::error::{Error as ChainError, ValidationError};
@@ -35,6 +37,12 @@ pub enum Error {
 
     #[error("regex error: {0}")]
     RegexError(#[from] regex::Error),
+
+    #[error("channel send error: {0}")]
+    SendError(String),
+
+    #[error("channel receive error: {0}")]
+    RecvError(String),
 }
 
 #[derive(Error, Debug)]
@@ -73,5 +81,29 @@ impl From<ValidationError> for Error {
 impl From<ChainError> for Error {
     fn from(err: ChainError) -> Self {
         Error::ChainError(err)
+    }
+}
+
+impl<T> From<SendError<T>> for Error {
+    fn from(err: SendError<T>) -> Self {
+        Error::SendError(err.to_string())
+    }
+}
+
+impl<T> From<crossbeam::channel::SendError<T>> for Error {
+    fn from(err: crossbeam::channel::SendError<T>) -> Self {
+        Error::SendError(err.to_string())
+    }
+}
+
+impl From<RecvError> for Error {
+    fn from(err: RecvError) -> Self {
+        Error::RecvError(err.to_string())
+    }
+}
+
+impl From<crossbeam::channel::RecvError> for Error {
+    fn from(err: crossbeam::channel::RecvError) -> Self {
+        Error::RecvError(err.to_string())
     }
 }
