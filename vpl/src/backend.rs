@@ -76,7 +76,6 @@ pub struct SwiplCompiled {
 pub struct SwiplInstance {
     debug: bool,
     child: Child,
-    facts_file: NamedTempFile,
     line_map: LineMap,
 }
 
@@ -130,26 +129,6 @@ impl Compiled for SwiplCompiled {
     type Error = io::Error;
 
     fn solve(&self, facts: &Vec<Rule>, goal: &Term) -> Result<Self::Instance, Self::Error> {
-        let mut facts_file = NamedTempFile::new()?;
-
-        // Write all facts
-        if self.debug {
-            eprintln!("[debug] writing facts to {}", facts_file.path().display());
-        }
-        for fact in facts {
-            writeln!(facts_file, "{}", fact)?;
-        }
-        facts_file.flush()?;
-
-        // Update the line map with the lines of the additional facts
-        let mut line_map = self.line_map.clone();
-        let offset = line_map.len();
-
-        let facts_file_path: Arc<str> = facts_file.path().to_string_lossy().into();
-        line_map.extend((0..facts.len()).map(|i| {
-            ((facts_file_path.clone(), i + 1), offset + i)
-        }));
-
         // Run the main goal in swipl with the meta interpreter
         let mut swipl_cmd = Command::new(&self.swipl_bin);
         swipl_cmd
@@ -157,26 +136,44 @@ impl Compiled for SwiplCompiled {
             .arg(self.meta_file.path())
             .arg("-s")
             .arg(self.src_file.path())
-            .arg("-s")
-            .arg(facts_file.path())
+            // Certificate facts and the final goal are written though stdin
             .arg("-g")
-            .arg(format!("prove({})", goal))
-            .arg("-g")
-            .arg("halt")
+            .arg("load_files('facts', [stream(user_input)])")
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+            .stderr(Stdio::inherit());
 
         // Spawn the swipl process
-        let swipl = swipl_cmd.spawn()?;
+        let mut swipl = swipl_cmd.spawn()?;
 
         if self.debug {
             eprintln!("[debug] running swipl command: {:?}", &swipl_cmd);
         }
 
+        // Write all facts to swipl's stdin then drop
+        let mut swipl_stdin = swipl.stdin.take()
+            .ok_or(io::Error::other("failed to open swipl stdin"))?;
+        writeln!(swipl_stdin, ":- style_check(-(discontiguous)).")?;
+        for fact in facts {
+            writeln!(swipl_stdin, "{}", fact)?;
+        }
+        // Write the final goal
+        writeln!(swipl_stdin, ":- prove({}), halt(0); halt(1).", goal)?;
+        swipl_stdin.flush()?;
+        drop(swipl_stdin);
+
+        // Update the line map with the lines of the additional facts
+        let mut line_map = self.line_map.clone();
+        let offset = line_map.len();
+
+        let facts_file_path: Arc<str> = "facts".into();
+        line_map.extend((0..facts.len()).map(|i| {
+            ((facts_file_path.clone(), i + 1), offset + i)
+        }));
+
         Ok(SwiplInstance {
             debug: self.debug,
             child: swipl,
-            facts_file,
             line_map,
         })
     }

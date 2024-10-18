@@ -270,6 +270,18 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 
     eprintln!("validating {} CT log file(s)", args.csv_files.len());
 
+    // Parse the policy source file
+    let policy_src = std::fs::read_to_string(&args.policy)?;
+    let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
+    let policy = Arc::new(policy);
+
+    // Load swipl backend and compile the policy
+    let mut swipl_backend = vpl::SwiplBackend {
+        debug: args.debug,
+        swipl_bin: args.swipl_bin.clone(),
+    };
+    let compiled = Arc::new(swipl_backend.compile(&policy)?);
+
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp());
 
     let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();
@@ -280,28 +292,19 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         let rx_job = rx_job.clone();
         let tx_res = tx_res.clone();
         let args = args.clone();
+        let policy = policy.clone();
+        let compiled = compiled.clone();
 
         // Each worker thread waits for jobs, does the validation, and then sends back the result
         thread::spawn(move || -> Result<(), Error> {
             // Each thread has to parse its own copy of the root certs and policy
 
             // Parse root certificates
+            // TODO: move this outside
             let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
             let roots =
                 roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
             let roots = parser::VecDeep::from_vec(roots);
-
-            // Parse the policy source file
-            let policy_src = std::fs::read_to_string(&args.policy)?;
-            let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
-
-            // Load swipl backend and compile the policy
-            let mut swipl_backend = vpl::SwiplBackend {
-                debug: args.debug,
-                swipl_bin: args.swipl_bin.clone(),
-            };
-
-            let compiled = swipl_backend.compile(&policy)?;
 
             while let Ok(entry) = rx_job.recv() {
                 tx_res.send(ValidationResult {
@@ -311,7 +314,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                         &args,
                         &policy,
                         &roots,
-                        &compiled,
+                        compiled.as_ref(),
                         timestamp,
                         &entry,
                     ),

@@ -2091,6 +2091,50 @@ certVerifiedChain(Cert):-
 
 go :- certVerifiedChain(cert(0)).
 
+% Facts may be defined in multiple files
+:- multifile(basicConstraintsCritical/2).
+:- multifile(basicConstraintsExt/2).
+:- multifile(certificatePolicies/2).
+:- multifile(certificatePoliciesCritical/2).
+:- multifile(certificatePoliciesExt/2).
+:- multifile(commonName/2).
+:- multifile(extendedKeyUsage/2).
+:- multifile(extendedKeyUsageCritical/2).
+:- multifile(extendedKeyUsageExt/2).
+:- multifile(fingerprint/2).
+:- multifile(inhibitAnyPolicyExt/2).
+:- multifile(isCA/2).
+:- multifile(issuer/2).
+:- multifile(keyAlgorithm/2).
+:- multifile(keyLen/2).
+:- multifile(keyUsage/2).
+:- multifile(keyUsageCritical/2).
+:- multifile(keyUsageExt/2).
+:- multifile(nameConstraintsExt/2).
+:- multifile(nameConstraintsCritical/2).
+:- multifile(nameConstraintsPermitted/3).
+:- multifile(nameConstraintsExcluded/3).
+:- multifile(notAfter/2).
+:- multifile(notBefore/2).
+:- multifile(pathLimit/2).
+:- multifile(policyConstraintsExt/2).
+:- multifile(policyConstraintsCritical/2).
+:- multifile(requireExplicitPolicy/2).
+:- multifile(policyMappingsExt/2).
+:- multifile(policyMappings/3).
+:- multifile(san/2).
+:- multifile(sanCritical/2).
+:- multifile(sanExt/2).
+:- multifile(serialNumber/2).
+:- multifile(signatureAlgorithm/2).
+:- multifile(subjectKeyIdentifier/2).
+:- multifile(subjectKeyIdentifierCritical/2).
+:- multifile(subjectKeyIdentifierExt/2).
+:- multifile(version/2).
+:- multifile(ocspResponse/2).
+:- multifile(stapledResponse/2).
+:- multifile(spkiDSAParameters/4).
+
 basicConstraintsCritical(hack, hack).
 basicConstraintsExt(hack, hack).
 certificatePolicies(hack, hack).

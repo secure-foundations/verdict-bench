@@ -72,6 +72,7 @@ pub struct Theorem {
 pub struct ProofError(pub String);
 
 /// A helper macro for constructing Err(ProofError(..))
+#[cfg(debug_assertions)]
 #[allow(unused_macros)]
 #[macro_export]
 macro_rules! proof_err {
@@ -79,6 +80,17 @@ macro_rules! proof_err {
         Err(ProofError(join!(file!(), ":", line!(), ": ", $($args),+)))
     };
 }
+
+/// Release version of proof_err, which omits the error message
+#[cfg(not(debug_assertions))]
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! proof_err {
+    ($($args:expr),+) => {
+        Err(ProofError("<omitted>".to_string()))
+    };
+}
+
 #[allow(unused_imports)]
 pub use proof_err;
 
