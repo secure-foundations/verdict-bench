@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use parser::ParseError as X509ParseError;
 use vpl::{ProofError as VPLProofError, ParseError as VPLParseError};
-use chain::error::ValidationError;
+use chain::error::{Error as ChainError, ValidationError};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -29,6 +29,9 @@ pub enum Error {
 
     #[error("validation error: {0:?}")]
     ChainValidationError(ValidationError),
+
+    #[error("chain error: {0}")]
+    ChainError(ChainError),
 
     #[error("regex error: {0}")]
     RegexError(#[from] regex::Error),
@@ -64,5 +67,11 @@ impl From<VPLProofError> for Error {
 impl From<ValidationError> for Error {
     fn from(err: ValidationError) -> Self {
         Error::ChainValidationError(err)
+    }
+}
+
+impl From<ChainError> for Error {
+    fn from(err: ChainError) -> Self {
+        Error::ChainError(err)
     }
 }

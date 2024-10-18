@@ -280,3 +280,75 @@ impl RootFacts {
 }
 
 }
+
+use chrono::{DateTime, NaiveDateTime, Utc};
+
+impl Query<'_, '_, '_, '_, '_> {
+    /// Print some information about the query for debugging purposes
+    pub fn print_debug_info(&self)
+    {
+        eprintln!("=================== query info ===================");
+        // Print some general information about the certs
+        eprintln!("{} root certificate(s)", self.roots.len());
+        eprintln!("{} certificate(s) in the chain", self.chain.len());
+
+        // Check that for each i, cert[i + 1] issued cert[i]
+        for i in 0..self.chain.len() - 1 {
+            if likely_issued(self.chain.get(i + 1), self.chain.get(i)) {
+                if verify_signature(self.chain.get(i + 1), self.chain.get(i)) {
+                    eprintln!("cert {} issued cert {}", i + 1, i);
+                } else {
+                    eprintln!("cert {} issued cert {} (but signature error)", i + 1, i);
+                }
+            }
+        }
+
+        let mut used_roots = Vec::new();
+
+        // Check if root cert issued any of the chain certs
+        for (i, root) in self.roots.to_vec().iter().enumerate() {
+            let mut used = false;
+
+            for (j, chain_cert) in self.chain.to_vec().iter().enumerate() {
+                if likely_issued(root, chain_cert) {
+                    used = true;
+
+                    if verify_signature(root, chain_cert) {
+                        eprintln!("root cert {} issued cert {}", i, j);
+                    } else {
+                        eprintln!("root cert {} issued cert {} (but signature error)", i, j);
+                    }
+                }
+            }
+
+            if used {
+                used_roots.push(i);
+            }
+        }
+
+        let print_cert = |cert: &CertificateValue| {
+            eprintln!("  subject: {}", cert.get().cert.get().subject);
+            eprintln!("  issued by: {}", cert.get().cert.get().issuer);
+            eprintln!("  signed with: {:?}", cert.get().sig_alg);
+            eprintln!("  subject key: {:?}", cert.get().cert.get().subject_key.alg);
+        };
+
+        for (i, cert) in self.chain.to_vec().iter().enumerate() {
+            eprintln!("cert {}:", i);
+            print_cert(cert);
+        }
+
+        for i in used_roots.iter() {
+            eprintln!("root cert {}:", i);
+            print_cert(self.roots.get(*i));
+        }
+
+        eprintln!("domain to validate: {}", self.domain);
+        eprintln!("timestamp: {} ({})", self.now, match DateTime::<Utc>::from_timestamp(self.now, 0) {
+            Some(dt) => dt.to_string(),
+            None => "invalid".to_string(),
+        });
+
+        eprintln!("=================== end query info ===================");
+    }
+}

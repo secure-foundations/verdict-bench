@@ -168,7 +168,6 @@ pub fn same_attr(a: &AttributeTypeAndValueValue, b: &AttributeTypeAndValueValue)
 pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -> (res: bool)
     ensures res == spec_verify_signature(issuer@, subject@)
 {
-    // TODO: verify signature
     if !subject.get().sig_alg.polyfill_eq(&subject.get().cert.get().signature) {
         return false;
     }
@@ -212,34 +211,6 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
     }
 
     false
-
-    // if issuer.get().cert.get().subject_key.alg.param.polyfill_eq(
-    //     &AlgorithmParamValue::ECPublicKey(oid!(EC_P_256))
-    // ) && (
-    //     subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
-    //     subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
-    //     subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512))
-    // ) {
-    //     return rsa::rsa_pkcs1_v1_5_verify(
-    //         &subject.get().sig_alg,
-    //         issuer.get().cert.get().subject_key.pub_key.bytes(),
-    //         subject.get().sig.bytes(),
-    //         tbs_cert,
-    //     ).is_ok();
-    // }
-
-    // // Check if the scheme is P-384 + SHA-384
-    // if issuer.get().cert.get().subject_key.alg.param.polyfill_eq(
-    //     &AlgorithmParamValue::ECPublicKey(oid!(EC_P_384))
-    // ) && subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) {
-    //     return ecdsa::ecdsa_p384_verify(
-    //         &subject.get().sig_alg,
-    //         issuer.get().cert.get().subject_key.pub_key.bytes(),
-    //         subject.get().sig.bytes(),
-    //         tbs_cert,
-    //     ).is_ok();
-    // }
-    // false
 }
 
 pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
@@ -269,7 +240,7 @@ pub fn valid_domain<'a, 'b, 'c, 'd, 'e, B: Backend, E>(
     if debug {
         eprintln_join!("[debug] facts:");
         for i in 0..facts.len() {
-            eprintln_join!("  - ", &facts[i]);
+            eprintln_join!("  ", &facts[i]);
         }
     }
 

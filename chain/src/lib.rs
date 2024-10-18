@@ -5,3 +5,4 @@ pub mod hash;
 pub mod facts;
 pub mod rsa;
 pub mod ecdsa;
+pub mod utils;

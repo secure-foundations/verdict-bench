@@ -1147,3 +1147,11 @@ impl Clone for Subst {
 }
 
 }
+
+/// `Program::clone` is only used in non-Verus code right now
+impl Clone for Program {
+    fn clone(&self) -> Self
+    {
+        Program { rules: self.rules.clone() }
+    }
+}

@@ -38,6 +38,9 @@ pub enum Error {
     #[error("found BEGIN CERTIFICATE without matching END CERTIFICATE")]
     NoMatchingEndCertificate,
 
+    #[error("found END CERTIFICATE without matching BEGIN CERTIFICATE")]
+    NoMatchingBeginCertificate,
+
     #[error("base64 decode error: {0}")]
     Base64DecodeError(#[from] base64::DecodeError),
 

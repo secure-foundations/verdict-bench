@@ -1,9 +1,7 @@
 mod error;
 
-use vstd::prelude::*;
-
 use base64::Engine;
-use std::io::{self, BufRead};
+use std::io;
 use std::process::ExitCode;
 use std::fs::File;
 
@@ -16,7 +14,7 @@ use clap::{command, Parser, Subcommand};
 
 use regex::Regex;
 
-use parser::{Combinator, x509};
+use chain::utils::*;
 use error::*;
 
 #[derive(Parser, Debug)]
@@ -114,88 +112,30 @@ struct DiffResultsArgs {
     classes: Vec<String>,
 }
 
-verus! {
-    fn parse_x509_bytes<'a>(bytes: &'a [u8]) -> Result<x509::CertificateValue<'a>, parser::ParseError> {
-        let (n, cert) = x509::Certificate.parse(bytes)?;
-        if n != bytes.len() {
-            return Err(parser::ParseError::Other("trailing bytes in certificate".to_string()));
-        }
-        Ok(cert)
-    }
-}
-
-/// Read the given PEM file and return a vector of Vec<u8>'s
-/// such that each correspond to one certificate
-///
-/// TODO: Merge with the same function in chain
-fn read_pem_file_as_bytes(path: &str) -> Result<Vec<Vec<u8>>, Error> {
-    let src = std::fs::read_to_string(path)?;
-    let mut certs = vec![];
-
-    const PREFIX: &'static str = "-----BEGIN CERTIFICATE-----";
-    const SUFFIX: &'static str = "-----END CERTIFICATE-----";
-
-    for chunk in src.split(PREFIX).skip(1) {
-        let Some(cert_src) = chunk.split(SUFFIX).next() else {
-            return Err(ParseActionError::NoMatchingEndCertificate)?;
-        };
-
-        let cert_base64 = cert_src.split_whitespace().collect::<String>();
-        let cert_bytes = base64::prelude::BASE64_STANDARD.decode(cert_base64)?;
-
-        certs.push(cert_bytes);
-    }
-
-    Ok(certs)
-}
-
 /// Read from stdin a sequence of PEM-encoded certificates, parse them, and print them to stdout
 fn parse_cert_from_stdin(args: ParseArgs) -> Result<(), Error>
 {
     const PREFIX: &'static str = "-----BEGIN CERTIFICATE-----";
     const SUFFIX: &'static str = "-----END CERTIFICATE-----";
 
-    let mut cur_cert_base64 = None;
     let mut num_parsed = 0;
 
-    for line in io::stdin().lock().lines() {
-        let line = line?;
-        let line_trimmed = line.trim();
-
-        if line_trimmed == PREFIX {
-            if cur_cert_base64.is_some() {
-                Err(ParseActionError::NoMatchingEndCertificate)?;
+    for cert_bytes in read_pem_as_bytes(io::stdin().lock())? {
+        match parse_x509_certificate(&cert_bytes) {
+            Ok(cert) => {
+                println!("{:?}", cert.get().cert.get().subject_key.alg);
+                // println!("{:?}", cert);
             }
-
-            cur_cert_base64 = Some(String::new());
-        } else if line_trimmed == SUFFIX {
-            match cur_cert_base64.take() {
-                Some(cert_base64) => {
-                    num_parsed += 1;
-
-                    let cert_bytes = base64::prelude::BASE64_STANDARD.decode(cert_base64)?;
-
-                    match parse_x509_bytes(&cert_bytes) {
-                        Ok(cert) => {
-                            println!("{:?}", cert.get().cert.get().subject_key.alg);
-                            // println!("{:?}", cert);
-                        }
-                        Err(err) => {
-                            if !args.ignore_parse_errors {
-                                Err(err)?;
-                            } else {
-                                eprintln!("error parsing certificate {}, ignored", num_parsed);
-                            }
-                        }
-                    }
-                }
-                None => {
-                    Err(ParseActionError::NoMatchingBeginCertificate)?;
+            Err(err) => {
+                if !args.ignore_parse_errors {
+                    Err(err)?;
+                } else {
+                    eprintln!("error parsing certificate {}, ignored", num_parsed);
                 }
             }
-        } else if let Some(cur_cert_base64) = cur_cert_base64.as_mut() {
-            cur_cert_base64.push_str(line_trimmed);
         }
+
+        num_parsed += 1;
     }
 
     Ok(())
@@ -239,7 +179,7 @@ fn parse_cert_ct_logs(args: ParseCTLogArgs) -> Result<(), Error>
 
             let cert_bytes = base64::prelude::BASE64_STANDARD.decode(result.cert_base64)?;
 
-            match parse_x509_bytes(&cert_bytes) {
+            match parse_x509_certificate(&cert_bytes) {
                 Ok(cert) => {
                     let alg_str = format!("{:?}", cert.get().cert.get().subject_key.alg);
                     *subject_keys.entry(alg_str).or_insert(0) += 1;
@@ -276,8 +216,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 
     // Parse root certificates
     let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
-    let roots: Vec<parser::CachedValue<'_, parser::asn1::ASN1<x509::CertificateInner>>> =
-        roots_bytes.iter().map(|bytes| parse_x509_bytes(bytes)).collect::<Result<Vec<_>, _>>()?;
+    let roots =
+        roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
     let roots = parser::VecDeep::from_vec(roots);
 
     // Load swipl backend parameters
@@ -286,8 +226,9 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         swipl_bin: args.swipl_bin.clone(),
     };
 
-    // Parse the source file
-    let source = std::fs::read_to_string(&args.policy)?;
+    // Parse the policy source file
+    let policy_src = std::fs::read_to_string(&args.policy)?;
+    let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
 
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp());
 
@@ -299,6 +240,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
     };
     let mut output_writer =
         WriterBuilder::new().has_headers(false).from_writer(handle);
+
+    let mut found_hash = false;
 
     for path in args.csv_files {
         let file = File::open(&path)?;
@@ -313,6 +256,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             if let Some(hash) = &args.hash {
                 if hash != &entry.hash {
                     continue;
+                } else {
+                    found_hash = true;
                 }
             }
 
@@ -326,12 +271,9 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 }
 
                 let mut chain =
-                    chain_bytes.iter().map(|bytes| parse_x509_bytes(bytes)).collect::<Result<Vec<_>, _>>()?;
+                    chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
 
                 let chain = parser::VecDeep::from_vec(chain);
-
-                // TODO: move parsing outside
-                let (policy, _) = vpl::parse_program(&source, &args.policy)?;
 
                 let query = chain::facts::Query {
                     roots: &roots,
@@ -341,50 +283,12 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 };
 
                 if args.debug {
-                    eprintln!("=================== cert info {} ===================", &entry.hash);
-                    // Print some general information about the certs
-                    eprintln!("{} root certificate(s)", roots.len());
-                    eprintln!("{} certificate(s) in the chain", chain.len());
-
-                    for (i, cert) in chain.to_vec().iter().enumerate() {
-                        eprintln!("cert {}:", i);
-                        eprintln!("  issuer: {}", cert.get().cert.get().issuer);
-                        eprintln!("  subject: {}", cert.get().cert.get().subject);
-                        eprintln!("  signature algorithm: {:?}", cert.get().sig_alg);
-                        eprintln!("  signature: {:?}", cert.get().cert.get().signature);
-                        eprintln!("  subject key info: {:?}", cert.get().cert.get().subject_key);
-                    }
-
-                    // Check that for each i, cert[i + 1] issued cert[i]
-                    for i in 0..chain.len() - 1 {
-                        if chain::validate::likely_issued(chain.get(i + 1), chain.get(i)) {
-                            if chain::validate::verify_signature(chain.get(i + 1), chain.get(i)) {
-                                eprintln!("cert {} issued cert {}", i + 1, i);
-                            } else {
-                                eprintln!("cert {} issued cert {} (but signature error)", i + 1, i);
-                            }
-                        }
-                    }
-
-                    // Check if root cert issued any of the chain certs
-                    for (i, root) in roots.to_vec().iter().enumerate() {
-                        for (j, chain_cert) in chain.to_vec().iter().enumerate() {
-                            if chain::validate::likely_issued(root, chain_cert) {
-                                if chain::validate::verify_signature(root, chain_cert) {
-                                    eprintln!("root cert {} issued cert {}", i, j);
-                                } else {
-                                    eprintln!("root cert {} issued cert {} (but signature error)", i, j);
-                                }
-                            }
-                        }
-                    }
-
-                    eprintln!("=================== end cert info {} ===================", &entry.hash);
+                    query.print_debug_info();
                 }
 
                 chain::validate::valid_domain::<_, Error>(
                     &mut swipl_backend,
-                    policy,
+                    policy.clone(),
                     &query,
                     args.debug,
                 )
@@ -402,6 +306,10 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             })?;
             output_writer.flush()?;
         }
+    }
+
+    if args.hash.is_some() && !found_hash {
+        eprintln!("hash {} not found in the given CSV files", args.hash.as_ref().unwrap());
     }
 
     Ok(())
