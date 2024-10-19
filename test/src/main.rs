@@ -238,8 +238,6 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
 ) -> Result<bool, Error> where
     Error: From<<C as vpl::Compiled>::Error>
 {
-    let begin = ThreadTime::try_now()?;
-
     let mut chain_bytes = vec![BASE64_STANDARD.decode(&entry.cert_base64)?];
 
     // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
@@ -263,6 +261,8 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
     if args.debug {
         query.print_debug_info();
     }
+
+    let begin = ThreadTime::try_now()?;
 
     let res = chain::validate::valid_domain::<_, Error>(
         compiled,
@@ -288,7 +288,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
     let policy = Arc::new(policy);
 
     // Load swipl backend and compile the policy
-    let mut swipl_backend = vpl::SwiplBackend {
+    let mut swipl_backend = vpl::SwiplCompiledBackend {
         debug: args.debug,
         swipl_bin: args.swipl_bin.clone(),
     };
@@ -368,8 +368,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             })?;
             output_writer.flush()?;
 
-            if num_res % 100 == 0 {
-                eprint!("\r{:.5}s", timer.lock().unwrap().as_secs_f64() / num_res as f64);
+            if num_res % 50 == 0 {
+                eprint!("\r{:.7}s", timer.lock().unwrap().as_secs_f64() / num_res as f64);
             }
             num_res += 1;
         }

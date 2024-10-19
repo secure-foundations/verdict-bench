@@ -1,8 +1,6 @@
 % A meta-interpreter for Prolog that outputs a Hilbert-style proof trace.
 % To use, run the desired goal with `prove(Goal)`.
 
-:- nb_setval(proof_id, 0).
-
 gen_id(Id) :-
     nb_getval(proof_id, Id),
     NewId is Id + 1,
@@ -132,4 +130,5 @@ prove(Goal, Id) :-
     ).
 
 prove(Goal) :-
+    nb_setval(proof_id, 0),
     prove(Goal, _).

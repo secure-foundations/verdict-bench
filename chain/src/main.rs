@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use clap::{command, Parser};
 
 use parser::VecDeep;
-use vpl::{parse_program, SwiplBackend, Backend};
+use vpl::{parse_program, SwiplInterpretedBackend, Backend};
 
 use validate::*;
 use facts::*;
@@ -60,7 +60,7 @@ fn main_args(args: Args) -> Result<(), Error> {
         utils::parse_x509_certificate(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?;
 
-    let mut swipl_backend = SwiplBackend {
+    let mut swipl_backend = SwiplInterpretedBackend {
         debug: args.debug,
         swipl_bin: args.swipl_bin.clone(),
     };

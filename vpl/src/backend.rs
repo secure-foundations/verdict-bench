@@ -60,16 +60,31 @@ pub trait EventIterator<'a> {
 /// A backend that uses SWI-Prolog to solve goals
 /// A meta interpreter (meta.pl) is used to extract
 /// the proof events
-pub struct SwiplBackend {
+///
+/// The interpreted version is faster on small programs
+pub struct SwiplInterpretedBackend {
+    pub debug: bool,
+    pub swipl_bin: String,
+}
+
+pub struct SwiplInterpreted {
+    debug: bool,
+    swipl_bin: String,
+    meta_file: NamedTempFile,
+    src_file: NamedTempFile,
+    line_map: LineMap,
+}
+
+/// Similar to `SwiplInterpretedBackend`,
+/// but compiles the program first
+pub struct SwiplCompiledBackend {
     pub debug: bool,
     pub swipl_bin: String,
 }
 
 pub struct SwiplCompiled {
     debug: bool,
-    swipl_bin: String,
-    meta_file: NamedTempFile,
-    src_file: NamedTempFile,
+    compiled_binary: NamedTempFile,
     line_map: LineMap,
 }
 
@@ -85,8 +100,9 @@ pub struct SwiplInstanceIterator<'a> {
     lines: Lines<BufReader<&'a mut ChildStdout>>,
 }
 
-impl Backend for SwiplBackend {
-    type Compiled = SwiplCompiled;
+/// A backend that calls swipl interpreter
+impl Backend for SwiplInterpretedBackend {
+    type Compiled = SwiplInterpreted;
     type Error = io::Error;
 
     /// Currently this does not actually do any compilation but just writes
@@ -114,7 +130,7 @@ impl Backend for SwiplBackend {
         write!(src_file, "{}", program)?;
         src_file.flush()?;
 
-        Ok(SwiplCompiled {
+        Ok(SwiplInterpreted {
             debug: self.debug,
             swipl_bin: self.swipl_bin.clone(),
             meta_file,
@@ -124,7 +140,7 @@ impl Backend for SwiplBackend {
     }
 }
 
-impl Compiled for SwiplCompiled {
+impl Compiled for SwiplInterpreted {
     type Instance = SwiplInstance;
     type Error = io::Error;
 
@@ -139,6 +155,114 @@ impl Compiled for SwiplCompiled {
             // Certificate facts and the final goal are written though stdin
             .arg("-g")
             .arg("load_files('facts', [stream(user_input)])")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped());
+
+        // Spawn the swipl process
+        let mut swipl = swipl_cmd.spawn()?;
+
+        if self.debug {
+            eprintln!("[debug] running swipl command: {:?}", &swipl_cmd);
+        }
+
+        // Write all facts to swipl's stdin then drop
+        let mut swipl_stdin = swipl.stdin.take()
+            .ok_or(io::Error::other("failed to open swipl stdin"))?;
+        writeln!(swipl_stdin, ":- style_check(-(discontiguous)).")?;
+        for fact in facts {
+            writeln!(swipl_stdin, "{}", fact)?;
+        }
+        // Write the final goal
+        writeln!(swipl_stdin, ":- prove({}), halt(0); halt(1).", goal)?;
+        swipl_stdin.flush()?;
+        drop(swipl_stdin);
+
+        // Update the line map with the lines of the additional facts
+        let mut line_map = self.line_map.clone();
+        let offset = line_map.len();
+
+        let facts_file_path: Arc<str> = "facts".into();
+        line_map.extend((0..facts.len()).map(|i| {
+            ((facts_file_path.clone(), i + 1), offset + i)
+        }));
+
+        Ok(SwiplInstance {
+            debug: self.debug,
+            child: swipl,
+            line_map,
+        })
+    }
+}
+
+/// This backend compiles the given source file before solving
+impl Backend for SwiplCompiledBackend {
+    type Compiled = SwiplCompiled;
+    type Error = io::Error;
+
+    /// Currently this does not actually do any compilation but just writes
+    /// the program to a temporary file
+    fn compile(&self, program: &Program) -> Result<Self::Compiled, Self::Error> {
+        let mut meta_file = NamedTempFile::new()?;
+        let mut src_file = NamedTempFile::new()?;
+        let mut compiled_binary = NamedTempFile::new()?;
+
+        // Load the meta interpreter
+        if self.debug {
+            eprintln!("[debug] writing meta.pl to {}", meta_file.path().display());
+        }
+        write!(meta_file, "{}", include_str!("meta.pl"))?;
+        meta_file.flush()?;
+
+        if self.debug {
+            eprintln!("[debug] writing source file to {}", src_file.path().display());
+        }
+
+        // Each rule takes exactly one line, so the line map is i |-> i - 1
+        let src_file_name: Arc<str> = src_file.path().to_string_lossy().into();
+        let line_map = (0..program.rules.len())
+            .map(|i| ((src_file_name.clone(), i + 1), i))
+            .collect();
+        write!(src_file, "{}", program)?;
+        src_file.flush()?;
+
+        // Compile the program
+        let mut swipl_cmd = Command::new(&self.swipl_bin);
+        swipl_cmd
+            .arg("--goal=load_files('facts', [stream(user_input), optimise(true)])")
+            .arg("-O")
+            .arg("-o")
+            .arg(compiled_binary.path())
+            .arg("-c")
+            .arg(meta_file.path())
+            .arg(src_file.path())
+            .stderr(Stdio::null());
+
+        let mut swipl = swipl_cmd.spawn()?;
+
+        let status = swipl.wait()?;
+        if !status.success() {
+            return Err(io::Error::other(format!(
+                "swipl compilation failed with exit code: {:?}",
+                status.code()
+            )));
+        }
+
+        Ok(SwiplCompiled {
+            debug: self.debug,
+            compiled_binary,
+            line_map,
+        })
+    }
+}
+
+impl Compiled for SwiplCompiled {
+    type Instance = SwiplInstance;
+    type Error = io::Error;
+
+    fn solve(&self, facts: &Vec<Rule>, goal: &Term) -> Result<Self::Instance, Self::Error> {
+        // Run the main goal in swipl with the meta interpreter
+        let mut swipl_cmd = Command::new(&self.compiled_binary.path());
+        swipl_cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped());
 

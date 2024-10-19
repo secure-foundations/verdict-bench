@@ -62,7 +62,7 @@ fn main_args(mut args: Args) -> Result<(), Error> {
         }
     }
 
-    let mut swipl_backend = SwiplBackend {
+    let mut swipl_backend = SwiplInterpretedBackend {
         debug: args.debug,
         swipl_bin: args.swipl_bin.clone(),
     };
