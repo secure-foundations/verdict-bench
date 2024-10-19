@@ -5,8 +5,9 @@ use std::io;
 use std::process::ExitCode;
 use std::fs::File;
 use std::collections::HashMap;
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use clap::{command, Parser, Subcommand};
 
 use regex::Regex;
+
+use cpu_time::ThreadTime;
 
 use chain::utils::*;
 use parser::{x509, VecDeep};
@@ -222,6 +225,8 @@ struct ValidationResult {
     result: Result<bool, Error>,
 }
 
+type Timer = Arc<Mutex<Duration>>;
+
 fn validate_ct_logs_job<C: vpl::Compiled>(
     args: &ValidateCTLogArgs,
     policy: &vpl::Program,
@@ -229,9 +234,12 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
     compiled: &C,
     timestamp: i64,
     entry: &CTLogEntry,
+    timer: &Timer,
 ) -> Result<bool, Error> where
     Error: From<<C as vpl::Compiled>::Error>
 {
+    let begin = ThreadTime::try_now()?;
+
     let mut chain_bytes = vec![BASE64_STANDARD.decode(&entry.cert_base64)?];
 
     // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
@@ -256,12 +264,16 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
         query.print_debug_info();
     }
 
-    chain::validate::valid_domain::<_, Error>(
+    let res = chain::validate::valid_domain::<_, Error>(
         compiled,
         &policy,
         &query,
         args.debug,
-    )
+    );
+
+    *timer.lock().unwrap() += begin.try_elapsed()?;
+
+    res
 }
 
 fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
@@ -287,6 +299,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
     let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();
     let (tx_res, rx_res) = mpsc::channel();
 
+    let timer = Arc::new(Mutex::new(Duration::new(0, 0)));
+
     // Spawn <num_jobs> many worker threads
     let mut workers = (0..args.num_jobs).map(|_| {
         let rx_job = rx_job.clone();
@@ -294,6 +308,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         let args = args.clone();
         let policy = policy.clone();
         let compiled = compiled.clone();
+        let timer = timer.clone();
 
         // Each worker thread waits for jobs, does the validation, and then sends back the result
         thread::spawn(move || -> Result<(), Error> {
@@ -317,6 +332,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                         compiled.as_ref(),
                         timestamp,
                         &entry,
+                        &timer,
                     ),
                 })?;
             }
@@ -337,6 +353,8 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         let mut output_writer =
             WriterBuilder::new().has_headers(false).from_writer(handle);
 
+        let mut num_res = 0;
+
         while let Ok(res) = rx_res.recv() {
             let result_str = match res.result {
                 Ok(res) => res.to_string(),
@@ -349,7 +367,14 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 result: result_str,
             })?;
             output_writer.flush()?;
+
+            if num_res % 100 == 0 {
+                eprint!("\r{:.5}s", timer.lock().unwrap().as_secs_f64() / num_res as f64);
+            }
+            num_res += 1;
         }
+
+        eprintln!("");
 
         Ok(())
     }));

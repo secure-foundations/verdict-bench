@@ -140,8 +140,7 @@ impl Compiled for SwiplCompiled {
             .arg("-g")
             .arg("load_files('facts', [stream(user_input)])")
             .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stdout(Stdio::piped());
 
         // Spawn the swipl process
         let mut swipl = swipl_cmd.spawn()?;
