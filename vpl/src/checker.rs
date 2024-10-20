@@ -506,16 +506,12 @@ impl Theorem {
         })
     }
 
-    pub fn true_intro(program: &Program, goal: &Term) -> (res: Result<Theorem, ProofError>)
-        ensures res matches Ok(thm) ==> thm.stmt@ == goal@ && thm.wf(program@)
+    pub fn true_intro(program: &Program) -> (res: Theorem)
+        ensures res.wf(program@) && res.stmt@ == SpecTerm::Literal(SpecLiteral::Atom(FN_NAME_TRUE.view()))
     {
-        if goal.headed_by(FN_NAME_TRUE, 0).is_ok() || goal.eq(&TermX::atom(FN_NAME_TRUE)) {
-            Ok(Theorem {
-                stmt: goal.clone(),
-                proof: Ghost(SpecProof::TrueIntro),
-            })
-        } else {
-            proof_err!("true intro does not apply to goal: ", goal)
+        Theorem {
+            stmt: TermX::atom(FN_NAME_TRUE),
+            proof: Ghost(SpecProof::TrueIntro),
         }
     }
 

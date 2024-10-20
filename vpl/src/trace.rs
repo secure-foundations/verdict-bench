@@ -25,7 +25,7 @@ pub type EventId = usize;
 #[derive(Debug)]
 pub struct Event {
     pub id: EventId,
-    pub term: Term,
+    pub term: Option<Term>,
     pub tactic: Tactic,
 }
 
@@ -119,12 +119,12 @@ impl TraceValidator {
         debug: bool,
         allow_unsupported_builtin: bool,
 
-        // Do not check if the final statement after applying and/or intro
-        // is the same as the statement claimed
-        // This is to allow some flexibility in the trace
-        // e.g. findall(X, p(X), Xs) ~ findall(Y, p(Y), Xs)
-        // Since sometimes GC in Prolog will change internal variable names
-        no_stmt_check: bool,
+        // // Do not check if the final statement after applying and/or intro
+        // // is the same as the statement claimed
+        // // This is to allow some flexibility in the trace
+        // // e.g. findall(X, p(X), Xs) ~ findall(Y, p(Y), Xs)
+        // // Since sometimes GC in Prolog will change internal variable names
+        // no_stmt_check: bool,
     ) -> (res: Result<&Theorem, ProofError>)
         requires
             old(self).wf(program@),
@@ -137,7 +137,7 @@ impl TraceValidator {
                 &&& self.thms@.contains_key(event.id)
                 &&& self.thms@[event.id] == thm
 
-                &&& !no_stmt_check ==> event.term@ == thm.stmt@
+                // &&& !no_stmt_check ==> event.term@ == thm.stmt@
             }
     {
         match &event.tactic {
@@ -163,7 +163,12 @@ impl TraceValidator {
                 let mut subproofs: Vec<&Theorem> = vec![];
 
                 // Match rule head against goal first
-                TermX::match_terms(&mut subst, &rule.head, &event.term)?;
+                let goal = if let Some(term) = &event.term {
+                    term
+                } else {
+                    return proof_err!("missing goal for rule application");
+                };
+                TermX::match_terms(&mut subst, &rule.head, goal)?;
 
                 // Match each rule body against existing subproof
                 for i in 0..subproof_ids.len()
@@ -191,7 +196,7 @@ impl TraceValidator {
                 // Apply and proof-check the final result
                 let thm = Theorem::apply_rule(program, *rule_id, &subst, subproofs)?;
 
-                if (&thm.stmt).eq(&event.term) {
+                if (&thm.stmt).eq(goal) {
                     // Remove the used subproofs to save memory
                     // for i in 0..subproof_ids.len()
                     //     invariant self.wf(program@)
@@ -203,17 +208,12 @@ impl TraceValidator {
 
                     Ok(self.add_theorem(program, event.id, thm))
                 } else {
-                    proof_err!("incorrect proved result: expecting ", &event.term, ", got ", &thm.stmt)
+                    proof_err!("incorrect proved result: expecting ", goal, ", got ", &thm.stmt)
                 }
             }
 
             Tactic::TrueIntro => {
-                let thm = Theorem::true_intro(program, &event.term)?;
-                if (&thm.stmt).eq(&event.term) {
-                    Ok(self.add_theorem(program, event.id, thm))
-                } else {
-                    proof_err!("incorrect proved result: expecting ", &event.term, ", got ", &thm.stmt)
-                }
+                Ok(self.add_theorem(program, event.id, Theorem::true_intro(program)))
             }
 
             Tactic::AndIntro(left_id, right_id) => {
@@ -223,38 +223,29 @@ impl TraceValidator {
                     self.get_theorem(program, *right_id)?,
                 );
 
-                // Check if the statement is consistent with the statement in the trace event
-                if no_stmt_check || (&thm.stmt).eq(&event.term) {
-                    // self.remove_theorem(program, *left_id)?;
-                    // self.remove_theorem(program, *right_id)?;
-                    Ok(self.add_theorem(program, event.id, thm))
-                } else {
-                    proof_err!("incorrect proved result: expecting ", &event.term, ", got ", &thm.stmt)
-                }
+                Ok(self.add_theorem(program, event.id, thm))
             }
 
             Tactic::OrIntroLeft(subproof_id) => {
-                let args = (&event.term).headed_by(FN_NAME_OR, 2)?;
-                let thm = Theorem::or_intro_left(program, self.get_theorem(program, *subproof_id)?, &args[1]);
-
-                if no_stmt_check || (&thm.stmt).eq(&event.term) {
-                    // self.remove_theorem(program, *subproof_id)?;
-                    Ok(self.add_theorem(program, event.id, thm))
+                let goal = if let Some(term) = &event.term {
+                    term
                 } else {
-                    proof_err!("incorrect proved result: expecting ", &event.term, ", got ", &thm.stmt)
-                }
+                    return proof_err!("missing goal for or intro left");
+                };
+                let args = goal.headed_by(FN_NAME_OR, 2)?;
+                let thm = Theorem::or_intro_left(program, self.get_theorem(program, *subproof_id)?, &args[1]);
+                Ok(self.add_theorem(program, event.id, thm))
             }
 
             Tactic::OrIntroRight(subproof_id) => {
-                let args = (&event.term).headed_by(FN_NAME_OR, 2)?;
-                let thm = Theorem::or_intro_right(program, &args[0], self.get_theorem(program, *subproof_id)?);
-
-                if no_stmt_check || (&thm.stmt).eq(&event.term) {
-                    // self.remove_theorem(program, *subproof_id)?;
-                    Ok(self.add_theorem(program, event.id, thm))
+                let goal = if let Some(term) = &event.term {
+                    term
                 } else {
-                    proof_err!("incorrect proved result: expecting ", &event.term, ", got ", &thm.stmt)
-                }
+                    return proof_err!("missing goal for or intro right");
+                };
+                let args = goal.headed_by(FN_NAME_OR, 2)?;
+                let thm = Theorem::or_intro_right(program, &args[0], self.get_theorem(program, *subproof_id)?);
+                Ok(self.add_theorem(program, event.id, thm))
             }
 
             Tactic::ForallMember(subproof_ids) => {
@@ -270,11 +261,17 @@ impl TraceValidator {
                     subproofs.push(self.get_theorem(program, subproof_ids[i])?);
                 }
 
+                let goal = if let Some(term) = &event.term {
+                    term
+                } else {
+                    return proof_err!("missing goal for forall-member");
+                };
+
                 if debug {
-                    eprintln_join!("[debug] apply forall-member: ", &event.term);
+                    eprintln_join!("[debug] apply forall-member: ", goal);
                 }
 
-                let thm = Theorem::forall_member(program, &event.term, subproofs)?;
+                let thm = Theorem::forall_member(program, goal, subproofs)?;
                 Ok(self.add_theorem(program, event.id, thm))
             }
 
@@ -291,21 +288,33 @@ impl TraceValidator {
                     subproofs.push(self.get_theorem(program, subproof_ids[i])?);
                 }
 
+                let goal = if let Some(term) = &event.term {
+                    term
+                } else {
+                    return proof_err!("missing goal for forall-base");
+                };
+
                 if debug {
-                    eprintln_join!("[debug] apply forall-base: ", &event.term);
+                    eprintln_join!("[debug] apply forall-base: ", goal);
                 }
 
-                let thm = Theorem::forall_base(program, &event.term, subproofs)?;
+                let thm = Theorem::forall_base(program, goal, subproofs)?;
                 Ok(self.add_theorem(program, event.id, thm))
             }
 
             Tactic::BuiltIn => {
-                if let TermX::App(FnName::User(name, arity), args) = arc_as_ref(&event.term) {
-                    let thm = Theorem::try_built_in(program, &event.term, allow_unsupported_builtin)?;
+                let goal = if let Some(term) = &event.term {
+                    term
+                } else {
+                    return proof_err!("missing goal for built-in");
+                };
+
+                if let TermX::App(FnName::User(name, arity), args) = arc_as_ref(goal) {
+                    let thm = Theorem::try_built_in(program, goal, allow_unsupported_builtin)?;
                     return Ok(self.add_theorem(program, event.id, thm));
                 }
 
-                proof_err!("incorrect goal for BuiltIn: ", &event.term)
+                proof_err!("incorrect goal for BuiltIn: ", goal)
             }
         }
     }

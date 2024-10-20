@@ -69,7 +69,7 @@ pub fn solve_and_validate<C: Compiled, E: From<C::Error> + From<ProofError>>(
                 },
         {
             if let Some(event) = events.next()? {
-                let thm = validator.process_event(&ext_program, &event, debug, allow_unsupported_builtin, true)?;
+                let thm = validator.process_event(&ext_program, &event, debug, allow_unsupported_builtin)?;
                 if (&thm.stmt).eq(goal) {
                     goal_thm = Some(thm.clone());
                     break;

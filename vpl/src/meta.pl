@@ -12,51 +12,48 @@ gen_id(Id) :-
 %     write_term(Term, [quoted(true), numbervars(false)]).
 
 % Log a proof step
-log_proof(Id, Goal) :-
+log_proof(Id, Tactic, Goal) :-
     gen_id(Id),
-    write(Id), write(". "),
-    % TODO: ignore_ops(true) will produce things like ==(...)
+    write(Id), write(" "),
+    maplist(write, Tactic),
+    % TODO: ignore_ops(true) will produce terms like ==(...)
+    write(": "),
     write_term(Goal, [ignore_ops(true), quoted(true), numbervars(true)]),
-    % write_canonical(Goal),
-    % log_term(Goal),
-    write(" by ").
+    writeln(".").
 
-% Helper function for prove(maplist(...), ...)
-% prove_map(Fn, X, Y) :-
-%     % Construct a new term Fn(X, Y)
-%     Term =.. [Fn, X, Y],
-%     prove(Term).
+% Log a proof step with goal omitted
+log_proof(Id, Tactic) :-
+    gen_id(Id),
+    write(Id), write(" "),
+    maplist(write, Tactic),
+    writeln(".").
 
 % prove(Goal, Id) tries to prove Goal and if success,
 % the proof that Goal is true is associated with node Id
 prove(true, Id) :- !,
-    log_proof(Id, true),
-    writeln("true").
+    log_proof(Id, ["true"]).
 
 prove((A, B), Id) :- !,
     prove(A, Id1),
     prove(B, Id2),
-    log_proof(Id, (A, B)),
-    write("and("), write(Id1), write(", "), write(Id2), writeln(")").
+    log_proof(Id, ["and(", Id1, ", ", Id2, ")"]).
 
 prove((A; B), Id) :- !,
-    (prove(A, Id1), log_proof(Id, (A;B)), write("or-left("), write(Id1), writeln(")");
-     prove(B, Id2), log_proof(Id, (A;B)), write("or-right("), write(Id2), writeln(")")).
+    (prove(A, Id1), log_proof(Id, ["or-left(", Id1, ")"], (A; B));
+     prove(B, Id2), log_proof(Id, ["or-right(", Id2, ")"], (A; B))).
 
 % Special case for maplist
 prove(maplist(Fn, List, Results), Id) :-
     !,
     % maplist(prove_map(Fn), List, Results),
     maplist(Fn, List, Results),
-    log_proof(Id, maplist(Fn, List, Results)),
-    writeln("built-in").
+    log_proof(Id, ["built-in"], maplist(Fn, List, Results)).
 
 % Special case for include
 prove(include(Fn, List, Results), Id) :-
     !,
     include(Fn, List, Results),
-    log_proof(Id, include(Fn, List, Results)),
-    writeln("built-in").
+    log_proof(Id, ["built-in"], include(Fn, List, Results)).
 
 % Special case for forall(member(...), ...)
 prove(forall(member(X, L), Goal), Id) :-
@@ -71,8 +68,7 @@ prove(forall(member(X, L), Goal), Id) :-
     % length(L, M),
     % N == M,
 
-    log_proof(Id, forall(member(X, L), Goal)),
-    write("forall-member("), write(Ids), writeln(")").
+    log_proof(Id, ["forall-member(", Ids, ")"], forall(member(X, L), Goal)).
 
 % Special case for forall(...)
 prove(forall(Cond, Goal), Id) :-
@@ -83,8 +79,7 @@ prove(forall(Cond, Goal), Id) :-
     % there is an edge case where the goal can have
     % multiple solutions
     findall(Id, (Cond, once(prove(Goal, Id))), Ids),
-    log_proof(Id, forall(Cond, Goal)),
-    write("forall-base("), write(Ids), writeln(")").
+    log_proof(Id, ["forall-base(", Ids, ")"], forall(Cond, Goal)).
 
 % Builtin predicates
 prove(Goal, Id) :-
@@ -101,8 +96,7 @@ prove(Goal, Id) :-
     ),
     !,
     Goal,
-    log_proof(Id, Goal),
-    writeln("built-in").
+    log_proof(Id, ["built-in"], Goal).
 
 % Otherwise we try user-defined rule application
 prove(Goal, Id) :-
@@ -114,19 +108,11 @@ prove(Goal, Id) :-
 
     ->  % If it's a fact, simplify the tactic and just use the "fact" tactic
         % (otherwise it might generate a new "true" tactic)
-        log_proof(Id, Goal),
-        write("fact("),
-        write("\""), write(File), write("\":"),
-        write(Line),
-        writeln(")")
+        log_proof(Id, ["fact(\"", File, "\":", Line, ")"], Goal)
 
     ;   % Otherwise, apply the body
         prove(Body, BodyId),
-        log_proof(Id, Goal),
-        write("apply("), write(BodyId), write(", "),
-        write("\""), write(File), write("\":"),
-        write(Line),
-        writeln(")")
+        log_proof(Id, ["apply(", BodyId, ", \"", File, "\":", Line, ")"], Goal)
     ).
 
 prove(Goal) :-

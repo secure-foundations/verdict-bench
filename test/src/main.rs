@@ -262,6 +262,32 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
         query.print_debug_info();
     }
 
+    // use polyfill::*;
+    // use parser::{*, asn1::*, x509::*};
+    // use parser::OptionDeep::*;
+    // use vpl::*;
+
+    // use chain::specs::*;
+    // use chain::facts::*;
+    // use chain::error::*;
+
+    // let mut facts_deep = vec_deep![];
+    // QueryFacts::facts(&query, &mut facts_deep)?;
+    // let facts = facts_deep.to_vec_owned();
+
+    // let begin = ThreadTime::try_now()?;
+
+    // let goal = TermX::app_str("certVerifiedChain", vec![ query.get_chain(0).cert() ]);
+
+    // // Solve and validate the goal
+    // let res = match solve_and_validate::<C, error::Error>(compiled, &policy, facts, &goal, args.debug, true)? {
+    //     ValidationResult::Success(thm) => {
+    //         Ok(true)
+    //     }
+    //     ValidationResult::ProofFailure => Err(ValidationError::ProofFailure)?,
+    //     ValidationResult::BackendFailure => Ok(false),
+    // };
+
     let begin = ThreadTime::try_now()?;
 
     let res = chain::validate::valid_domain::<_, Error>(

@@ -314,8 +314,12 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
 
     /// Parser of a trace event
     pub rule event(line_map: &LineMap) -> Event
-        = _ id:nat() _ "." _ term:canon_term() _ "by" _ tactic:tactic(line_map) _
-            { Event { id, term: term, tactic: tactic } }
+        = _ id:nat() _ tactic:tactic(line_map) _ opt_term:opt_event_goal()
+            { Event { id, term: opt_term, tactic: tactic } }
+
+    rule opt_event_goal() -> Option<Term>
+        = ":" _ term:canon_term() _ "." { Some(term) }
+        / "." { None }
 
     rule nested_nat_list() -> Vec<usize>
         = v:nat() { vec![v] }
