@@ -314,7 +314,7 @@ peg::parser!(grammar prolog(state: &ParserState) for str {
 
     /// Parser of a trace event
     pub rule event(line_map: &LineMap) -> Event
-        = _ id:nat() _ tactic:tactic(line_map) _ opt_term:opt_event_goal()
+        = _ id:nat() _ tactic:tactic(line_map) _ opt_term:opt_event_goal() _
             { Event { id, term: opt_term, tactic: tactic } }
 
     rule opt_event_goal() -> Option<Term>

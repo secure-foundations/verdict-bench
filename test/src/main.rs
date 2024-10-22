@@ -7,7 +7,7 @@ use std::fs::File;
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
@@ -288,7 +288,10 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
     //     ValidationResult::BackendFailure => Ok(false),
     // };
 
-    let begin = ThreadTime::try_now()?;
+    // let begin = ThreadTime::try_now()?;
+    // let begin = Instant::now();
+
+    let begin = Instant::now();
 
     let res = chain::validate::valid_domain::<_, Error>(
         compiled,
@@ -297,7 +300,7 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
         args.debug,
     );
 
-    *timer.lock().unwrap() += begin.try_elapsed()?;
+    *timer.lock().unwrap() += begin.elapsed();
 
     res
 }
@@ -395,7 +398,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             output_writer.flush()?;
 
             if num_res % 50 == 0 {
-                eprint!("\r{:.7}s", timer.lock().unwrap().as_secs_f64() / num_res as f64);
+                eprint!("\r{:.7}s", timer.lock().unwrap().as_secs_f64() as f64 / num_res as f64);
             }
             num_res += 1;
         }

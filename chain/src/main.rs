@@ -9,6 +9,7 @@ mod utils;
 
 use std::fs;
 use std::process::ExitCode;
+use std::time::Instant;
 
 use clap::{command, Parser};
 
@@ -45,6 +46,10 @@ struct Args {
     /// Override the current time with the given timestamp
     #[clap(short = 't', long)]
     override_time: Option<i64>,
+
+    /// Generate timing stats in wall-clock time
+    #[clap(short = 's', long, default_value_t = false)]
+    stats: bool,
 }
 
 fn main_args(args: Args) -> Result<(), Error> {
@@ -82,13 +87,21 @@ fn main_args(args: Args) -> Result<(), Error> {
 
     // Call the main validation routine
     let compiled = swipl_backend.compile(&policy)?;
+
+    let begin = Instant::now();
+
     let res = valid_domain::<_, Error>(
         &compiled,
         &policy,
         &query,
         args.debug,
     )?;
+
     eprintln!("result: {}", res);
+
+    if args.stats {
+        eprintln!("validation took {}ms", begin.elapsed().as_micros() as f64 / 1000f64);
+    }
 
     if !res {
         return Err(Error::DomainValidationError);

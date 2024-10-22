@@ -4,6 +4,7 @@ TARGETS = chain libchain.rlib
 CARGO_DEPS = macros base64 clap thiserror libcrux libcrux-hacl chrono aws-lc-rs
 VERUS_DEPS = parser polyfill vest vpl
 TEST_TARGETS = test-policy-chrome test-policy-firefox
+TEST_TIME = 1725029869
 
 # Temporary fix for https://github.com/verus-lang/verus/issues/1288
 # TODO: this skips the lifetime check for proof-mode code
@@ -19,6 +20,12 @@ test-policy-%: target/debug/chain
 	@for domain in $(DOMAINS); do \
 		pem_file=tests/chains/$${domain%%.*}.pem; \
 		printf "[$*] $$domain: "; \
-		(target/debug/chain tests/policies/$*.pl tests/roots.pem $$pem_file $$domain 1>&2 2>/dev/null && echo "success") \
+		(target/debug/chain \
+			tests/policies/$*.pl \
+			tests/roots.pem \
+			$$pem_file \
+			$$domain \
+			-t $(TEST_TIME) \
+			-s) \
 		|| (echo "failed"; exit 1); \
 	done
