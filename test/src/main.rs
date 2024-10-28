@@ -95,8 +95,13 @@ struct ValidateCTLogArgs {
     #[clap(short = 't', long)]
     override_time: Option<i64>,
 
+    /// Number of parallel threads to run validation
     #[clap(short = 'j', long = "jobs", default_value = "1")]
     num_jobs: usize,
+
+    /// Only validate the first <limit> certificates, if specified
+    #[clap(short = 'l', long)]
+    limit: Option<usize>,
 }
 
 #[derive(Parser, Debug)]
@@ -308,6 +313,7 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
 fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 {
     let args = Arc::new(args);
+    // let heap_profiler = heappy::HeapProfilerGuard::new(1).unwrap();
 
     eprintln!("validating {} CT log file(s)", args.csv_files.len());
 
@@ -415,8 +421,14 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             .has_headers(false)  // If your CSV has headers
             .from_reader(file);
 
-        for entry in reader.deserialize() {
+        for (i, entry) in reader.deserialize().enumerate() {
             let entry: CTLogEntry = entry?;
+
+            if let Some(limit) = args.limit {
+                if i >= limit {
+                    break;
+                }
+            }
 
             // If a specific hash is specified, only check certificate with that hash
             if let Some(hash) = &args.hash {
@@ -453,6 +465,14 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             }
         }
     }
+
+    // let report = heap_profiler.report();
+
+    // let mut file = std::fs::File::create("memflame.svg").unwrap();
+    // report.flamegraph(&mut file);
+
+    // let mut file = std::fs::File::create("memflame.pb").unwrap();
+    // report.write_pprof(&mut file).unwrap();
 
     Ok(())
 }

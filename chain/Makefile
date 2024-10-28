@@ -20,6 +20,7 @@ test-policy-%: target/debug/chain
 	@for domain in $(DOMAINS); do \
 		pem_file=tests/chains/$${domain%%.*}.pem; \
 		printf "[$*] $$domain: "; \
+		echo "target/debug/chain tests/policies/$*.pl tests/roots.pem $$pem_file $$domain -t $(TEST_TIME) -s"; \
 		(target/debug/chain \
 			tests/policies/$*.pl \
 			tests/roots.pem \

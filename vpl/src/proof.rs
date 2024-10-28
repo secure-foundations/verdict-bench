@@ -555,6 +555,8 @@ impl SpecTheorem {
                         args,
                     )
                     // NOTE: this might be innefficient to check if implemented naively
+                    // TODO: if self.stmt is headed by a built-in, this might introduce
+                    // unsoundness
                     &&& forall|i|
                         0 <= i < program.rules.len() ==> (
                         #[trigger] program.rules[i]).head.not_unifiable(args[0])
