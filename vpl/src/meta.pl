@@ -70,6 +70,17 @@ prove(forall(member(X, L), Goal), Id) :-
 
     log_proof(Id, ["forall-member(", Ids, ")"], forall(member(X, L), Goal)).
 
+% Sometimes swipl expands the definition of forall
+% we need to revert that here
+prove(\+((member(X, L), \+Goal)), Id) :-
+    !,
+    % First prove the forall goal
+    forall(member(X, L), Goal),
+    % If successful, rerun all goals to gather proofs
+    findall(Id, (member(X, L), once(prove(Goal, Id))), Ids),
+
+    log_proof(Id, ["forall-member(", Ids, ")"], forall(member(X, L), Goal)).
+
 % Special case for forall(...)
 prove(forall(Cond, Goal), Id) :-
     !,
@@ -80,6 +91,21 @@ prove(forall(Cond, Goal), Id) :-
     % multiple solutions
     findall(Id, (Cond, once(prove(Goal, Id))), Ids),
     log_proof(Id, ["forall-base(", Ids, ")"], forall(Cond, Goal)).
+
+% Sometimes swipl expands the definition of forall
+% we need to revert that here
+prove(\+((Cond, \+Goal)), Id) :-
+    !,
+    forall(Cond, Goal),
+    % If successful, rerun all goals to gather proofs
+    % NOTE: Here for each goal we only prove once since
+    % there is an edge case where the goal can have
+    % multiple solutions
+    findall(Id, (Cond, once(prove(Goal, Id))), Ids),
+    log_proof(Id, ["forall-base(", Ids, ")"], forall(Cond, Goal)).
+
+prove(call(Goal), Id) :-
+    prove(Goal, Id).
 
 % Builtin predicates
 prove(Goal, Id) :-
