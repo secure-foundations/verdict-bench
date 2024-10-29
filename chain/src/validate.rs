@@ -1,4 +1,5 @@
 use vstd::prelude::*;
+use std::fmt;
 
 use polyfill::*;
 use parser::{*, asn1::*, x509::*};
@@ -213,7 +214,7 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
     false
 }
 
-pub fn valid_domain<'a, 'b, 'c, 'd, 'e, C: Compiled, E>(
+pub fn valid_domain<'a, 'b, 'c, 'd, 'e, C: Compiled, E: fmt::Debug>(
     compiled: &C,
     policy: &Program,
     query: &Query<'a, 'b, 'c, 'd, 'e>,

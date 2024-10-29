@@ -281,7 +281,7 @@ impl Compiled for SwiplCompiled {
             writeln!(swipl_stdin, "{}", fact)?;
         }
         // Write the final goal
-        writeln!(swipl_stdin, ":- prove({}), halt(0); halt(1).", goal)?;
+        writeln!(swipl_stdin, ":- (prove({}), halt(0)); halt(1).", goal)?;
         swipl_stdin.flush()?;
         drop(swipl_stdin);
 

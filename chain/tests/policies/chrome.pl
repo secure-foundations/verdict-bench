@@ -892,24 +892,51 @@ isPublicSuffix(NameLabels) :-
   reverse(SuffixLabels, SuffixLabelsReverse),
   suffixMatch(NameLabelsReverse, SuffixLabelsReverse).
 
-notSuffixMatchHelper([], [_|_]).
-notSuffixMatchHelper([Label|_], []) :- Label \= "*".
-notSuffixMatchHelper([NameLabel|_], [SuffixLabel|_]) :-
-  NameLabel \= "*",
-  NameLabel \= SuffixLabel.
-notSuffixMatchHelper([NameLabel|NameRest], [SuffixLabel|SuffixRest]) :-
-  NameLabel \= "*",
-  NameLabel = SuffixLabel,
-  notSuffixMatchHelper(NameRest, SuffixRest).
+% notSuffixMatchHelper([], [_|_]).
+% notSuffixMatchHelper([Label|_], []) :- Label \= "*".
+% notSuffixMatchHelper([NameLabel|_], [SuffixLabel|_]) :-
+%   NameLabel \= "*",
+%   NameLabel \= SuffixLabel.
+% notSuffixMatchHelper([NameLabel|NameRest], [SuffixLabel|SuffixRest]) :-
+%   NameLabel \= "*",
+%   NameLabel = SuffixLabel,
+%   notSuffixMatchHelper(NameRest, SuffixRest).
 
-notSuffixMatch(NameLabels, Suffix) :-
-  reverse(NameLabels, NameLabelsReverse),
+% notSuffixMatch(NameLabels, Suffix) :-
+%   reverse(NameLabels, NameLabelsReverse),
+%   split_string(Suffix, ".", "", SuffixLabels),
+%   reverse(SuffixLabels, SuffixLabelsReverse),
+%   notSuffixMatchHelper(NameLabelsReverse, SuffixLabelsReverse).
+
+% isNotPublicSuffix(NameLabels) :-
+%   forall(publicSuffix(Suffix), notSuffixMatch(NameLabels, Suffix)).
+
+notSuffixOf(A, B) :-
+  nth1(I, A, X),
+  nth1(I, B, Y),
+  X \= Y.
+
+isNotSuffixOfWildcard(Suffix, Rest) :-
   split_string(Suffix, ".", "", SuffixLabels),
-  reverse(SuffixLabels, SuffixLabelsReverse),
-  notSuffixMatchHelper(NameLabelsReverse, SuffixLabelsReverse).
+  notSuffixOf(Rest, SuffixLabels).
 
-isNotPublicSuffix(NameLabels) :-
-  forall(publicSuffix(Suffix), notSuffixMatch(NameLabels, Suffix)).
+% isNotSuffixOf(Suffix, NameLabels) :-
+%   split_string(Suffix, ".", "", SuffixLabels),
+%   notSuffixOf(SuffixLabels, NameLabels).
+
+% isNotPublicSuffix(["*"|Rest]) :-
+%   forall(publicSuffix(Suffix), isNotSuffixOfWildcard(Suffix, Rest)).
+
+% isNotPublicSuffix(NameLabels) :-
+%   forall(publicSuffix(Suffix), isNotSuffixOf(Suffix, NameLabels)).
+
+isNotPublicSuffix(Name) :-
+  % findall(Suffix, publicSuffix(Suffix), Suffixes),
+  split_string(Name, ".", "", NameLabels),
+  length(NameLabels, NameLabelsLength),
+  NameLabelsLength > 2,
+  ["*"|Rest] = NameLabels,
+  forall(publicSuffix(Suffix), isNotSuffixOfWildcard(Suffix, Rest)).
 
 % SAN/CN name validity, without wildcard
 nameValid(Name) :-
@@ -925,17 +952,13 @@ nameValid(Name) :-
   string_chars(Name, NameChars),
   % If there is (max) one wildcard, it must be first label
   count(NameChars, '*', 1),
-  sub_string(Name, 0, 1, _, FirstChar),
-  FirstChar = "*",
+  sub_string(Name, 0, 2, _, Prefix),
+  Prefix = "*.",
   sub_string(Name, _, 1, 0, LastChar),
   LastChar \= ".",
   % If there is a wildcard, there must be at least two labels
   % (other than the wildcard label)
-  split_string(Name, ".", "", NameLabels),
-  length(NameLabels, NameLabelsLength),
-  NameLabelsLength > 2,
-  % \+ isPublicSuffix(NameLabels)
-  isNotPublicSuffix(NameLabels).
+  isNotPublicSuffix(Name).
 
 cleanName(Name, Decoded) :-
   string_lower(Name, Lower),
