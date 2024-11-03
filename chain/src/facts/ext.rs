@@ -607,7 +607,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtNameConstraints
                 ] +
 
                 if let OptionDeep::Some(permitted) = param.permitted {
-                    Self::spec_gen_general_subtree_facts(t, permitted, "nameConstraintsPermited").flatten()
+                    Self::spec_gen_general_subtree_facts(t, permitted, "nameConstraintsPermitted").flatten()
                 } else {
                     seq![]
                 } +
@@ -632,7 +632,7 @@ impl<'a, 'b> Facts<CertIndexed<&'b CertificateValue<'a>>> for ExtNameConstraints
                 out.push(RuleX::fact("nameConstraintsCritical", vec![ t.cert(), TermX::bool(ext.critical) ]));
 
                 if let OptionDeep::Some(permitted) = &param.permitted {
-                    let permitted_facts = ExtNameConstraintsFacts::gen_general_subtree_facts(t, permitted, "nameConstraintsPermited");
+                    let permitted_facts = ExtNameConstraintsFacts::gen_general_subtree_facts(t, permitted, "nameConstraintsPermitted");
                     let permitted_facts = VecDeep::flatten(permitted_facts);
                     out.append_owned(permitted_facts);
                 }

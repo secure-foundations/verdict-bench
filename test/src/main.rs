@@ -16,8 +16,6 @@ use clap::{command, Parser, Subcommand};
 
 use regex::Regex;
 
-use cpu_time::ThreadTime;
-
 use chain::utils::*;
 use parser::{x509, VecDeep};
 use vpl::Backend;
@@ -133,9 +131,14 @@ fn parse_cert_from_stdin(args: ParseArgs) -> Result<(), Error>
     const SUFFIX: &'static str = "-----END CERTIFICATE-----";
 
     let mut num_parsed = 0;
+    let mut total_time = Duration::new(0, 0);
 
     for cert_bytes in read_pem_as_bytes(io::stdin().lock())? {
-        match parse_x509_certificate(&cert_bytes) {
+        let begin = Instant::now();
+        let parsed = parse_x509_certificate(&cert_bytes);
+        total_time += begin.elapsed();
+
+        match parsed {
             Ok(cert) => {
                 println!("{:?}", cert.get().cert.get().subject_key.alg);
                 // println!("{:?}", cert);
@@ -151,6 +154,8 @@ fn parse_cert_from_stdin(args: ParseArgs) -> Result<(), Error>
 
         num_parsed += 1;
     }
+
+    println!("time: {:.3}s", total_time.as_secs_f64());
 
     Ok(())
 }
