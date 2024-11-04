@@ -31,44 +31,12 @@ impl<'a, 'b> BinOpEq<&'a String, &'b str> for RSpec {
     }
 }
 
-// impl<'b> BinOpEq<str, &'b str> for RSpec {
-//     #[verifier::external_body]
-//     fn eq(a: &str, b: &&'b str) -> (res: bool)
-//     {
-//         a == *b
-//     }
-// }
-
-// impl BinOpEq<String, str> for RSpec {
-//     #[verifier::external_body]
-//     fn eq(a: &String, b: &str) -> (res: bool)
-//     {
-//         a == b
-//     }
-// }
-
 impl BinOpEq<u32, u32> for RSpec {
     fn eq(a: &u32, b: &u32) -> (res: bool)
     {
         a == b
     }
 }
-
-// pub trait AsRef<A: ?Sized> {
-//     fn as_ref(&self) -> &A;
-// }
-
-// impl<A: Sized> AsRef<A> for A {
-//     fn as_ref(&self) -> &A {
-//         self
-//     }
-// }
-
-// impl<A: ?Sized> AsRef<A> for &A {
-//     fn as_ref(&self) -> &A {
-//         *self
-//     }
-// }
 
 pub fn eq<A: View, B: View<V = A::V>>(a: A, b: B) -> (res: bool)
     where RSpec: BinOpEq<A, B>

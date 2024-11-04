@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::hash::Hash;
+use std::path;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, parse_str, AngleBracketedGenericArguments, BigAnd, BigOr, BinOp, Block, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, Ident, Item, ItemFn, ItemStruct, Lit, Local, ModeExec, Pat, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Stmt, Type, TypePath, TypeReference, UnOp};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
 
 struct Items(Vec<Item>);
 
@@ -21,85 +21,122 @@ impl Parse for Items {
 }
 
 struct Context {
-    custom_types: HashMap<String, (String, String)>,
-    functions: HashMap<String, String>,
+    structs: HashMap<String, ItemStruct>,
+    enums: HashMap<String, ItemEnum>,
+    fns: HashMap<String, ItemFn>,
 }
 
-/// Convert a &str into a simple type
-fn str_to_type(s: &str) -> Type {
-    Type::Path(TypePath {
-        qself: None,
-        path: Path {
+struct CompiledType {
+    /// When used in spec mode
+    spec: Type,
+    /// When used in exec mode
+    exec: Type,
+}
+
+macro_rules! path {
+    ($($segment:expr),*) => {
+        Path {
             leading_colon: None,
-            segments:
-                Punctuated::from_iter([
-                    PathSegment {
-                        ident: Ident::new(s, Span::call_site()),
-                        arguments: PathArguments::None,
-                    },
-                ]),
-        },
-    })
+            segments: Punctuated::from_iter([ $($segment),* ]),
+        }
+    };
+
+    (:: $($segment:expr),*) => {
+        Path {
+            leading_colon: Some(Default::default()),
+            segments: Punctuated::from_iter([ $($segment),* ]),
+        }
+    };
 }
 
-fn str_to_type_with_param(s: &str, param: Type) -> Type {
-    Type::Path(TypePath {
-        qself: None,
-        path: Path {
-            leading_colon: None,
-            segments:
-                Punctuated::from_iter([
-                    PathSegment {
-                        ident: Ident::new(s, Span::call_site()),
-
-                        // Add one type argument
-                        arguments: PathArguments::AngleBracketed(AngleBracketedGenericArguments {
-                            colon2_token: Default::default(),
-                            lt_token: Default::default(),
-                            args: {
-                                let mut args = Punctuated::new();
-                                args.push(syn_verus::GenericArgument::Type(param));
-                                args
-                            },
-                            gt_token: Default::default(),
-                        }),
-                    }
-                ]),
-        },
-    })
+macro_rules! seg {
+    ($name:expr $(, $param:expr)*) => {{
+        let params: Vec<GenericArgument> = vec![ $(GenericArgument::Type($param)),* ];
+        PathSegment {
+            ident: Ident::new($name, Span::call_site()),
+            arguments: if params.len() == 0 {
+                PathArguments::None
+            } else {
+                PathArguments::AngleBracketed(AngleBracketedGenericArguments {
+                    colon2_token: Default::default(),
+                    lt_token: Default::default(),
+                    args: Punctuated::from_iter(params),
+                    gt_token: Default::default(),
+                })
+            },
+        }
+    }};
 }
 
-fn path_to_rspec_lib(s: &str) -> Path {
-    Path {
-        leading_colon: Some(Default::default()),
-        segments:
-            Punctuated::from_iter([
-                PathSegment {
-                    ident: Ident::new("rspec_lib", Span::call_site()),
-                    arguments: PathArguments::None,
-                },
-                PathSegment {
-                    ident: Ident::new(s, Span::call_site()),
-                    arguments: PathArguments::None,
-                },
-            ]),
+macro_rules! expr_path {
+    ($($tt:tt)*) => {
+        Expr::Path(ExprPath {
+            attrs: Vec::new(),
+            qself: None,
+            path: path!($($tt)*),
+        })
     }
 }
 
-// /// Wrap an expr in reference
-// fn expr_reference(expr: Expr) -> Expr {
-//     Expr::Reference(ExprReference {
-//         attrs: Vec::new(),
-//         and_token: Default::default(),
-//         raw: Default::default(),
-//         mutability: None,
-//         expr: Box::new(Expr::Paren(ExprParen {
-//             attrs: Vec::new(),
-//             paren_token: Default::default(),
-//             expr: Box::new(expr),
-//         })),
-//     })
-// }
+macro_rules! expr_view {
+    ($expr:expr) => {
+        Expr::View(View {
+            attrs: Vec::new(),
+            expr: Box::new($expr),
+            at_token: Default::default(),
+        })
+    }
+}
+
+macro_rules! expr_binary {
+    ($left:expr, $op:ident, $right:expr) => {
+        Expr::Binary(ExprBinary {
+            attrs: Vec::new(),
+            left: Box::new($left),
+            op: BinOp::$op(Default::default()),
+            right: Box::new($right),
+        })
+    }
+}
+
+fn exec_type_name(name: &str) -> String {
+    format!("Exec{}", name)
+}
+
+fn exec_fn_name(name: &str) -> String {
+    format!("exec_{}", name)
+}
+
+/// Convert a &str into a simple type
+fn new_simple_type(s: &str) -> Type {
+    Type::Path(TypePath {
+        qself: None,
+        path: path![seg!(s)],
+    })
+}
+
+fn new_simple_type_with_param(s: &str, param: Type) -> Type {
+    Type::Path(TypePath {
+        qself: None,
+        path: path![seg!(s, param)],
+    })
+}
+
+/// Wrap an expr in reference
+fn new_expr_ref(expr: Expr) -> Expr {
+    Expr::Reference(ExprReference {
+        attrs: Vec::new(),
+        and_token: Default::default(),
+        raw: Default::default(),
+        mutability: None,
+        // TODO: is paren necessary?
+        expr: Box::new(Expr::Paren(ExprParen {
+            attrs: Vec::new(),
+            paren_token: Default::default(),
+            expr: Box::new(expr),
+        })),
+    })
+}
 
 // /// Wrap an expr in dereference
 // fn expr_dereference(expr: Expr) -> Expr {
@@ -111,7 +148,7 @@ fn path_to_rspec_lib(s: &str) -> Path {
 // }
 
 /// Wrap a reference around a type
-fn type_to_reference(ty: impl Into<Type>) -> Type {
+fn new_type_ref(ty: Type) -> Type {
     Type::Reference(TypeReference {
         and_token: Default::default(),
         lifetime: None,
@@ -122,7 +159,7 @@ fn type_to_reference(ty: impl Into<Type>) -> Type {
 
 /// Get the name of a type
 /// e.g. Option<..> => Option, i32 => i32
-fn get_type_name(ty: &Type) -> Result<String, Error> {
+fn get_simple_type_name(ty: &Type) -> Result<String, Error> {
     if let Type::Path(type_path) = ty {
         let segments: Vec<_> = type_path.path.segments.iter().collect();
         if segments.len() == 1 {
@@ -134,7 +171,7 @@ fn get_type_name(ty: &Type) -> Result<String, Error> {
 }
 
 /// Get the n-th type parameter
-fn get_type_param(ty: &Type, n: usize) -> Result<Type, Error> {
+fn get_simple_type_param(ty: &Type, n: usize) -> Result<Type, Error> {
     if let Type::Path(type_path) = ty {
         let segments: Vec<_> = type_path.path.segments.iter().collect();
         if segments.len() == 1 {
@@ -153,81 +190,52 @@ fn get_type_param(ty: &Type, n: usize) -> Result<Type, Error> {
     Err(Error::new_spanned(ty, "expect a simple type"))
 }
 
-struct CompiledType {
-    /// When used in spec mode
-    spec: Type,
-    /// When used in exec mode
-    exec: Type,
-}
+/// Convert a spec type to an exec type
+/// TODO: &SpecString => &str?
+fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
+    match ty {
+        Type::Reference(type_ref) => {
+            if type_ref.mutability.is_some() {
+                return Err(Error::new_spanned(ty, "mutable references are not supported"));
+            }
 
-/// Convert a rspec type to both spec and exec types
-fn type_to_spec_and_exec(ctx: &mut Context, ty: &Type) -> Result<CompiledType, Error> {
-    // If the type is a reference type, convert the inner type
-    if let Type::Reference(type_ref) = ty {
-        if type_ref.mutability.is_some() {
-            return Err(Error::new_spanned(ty, "mutable references are not supported"));
+            Ok(new_type_ref(compile_type(ctx, &type_ref.elem)?))
         }
 
-        let compiled = type_to_spec_and_exec(ctx, &type_ref.elem)?;
-        return Ok(CompiledType {
-            spec: type_to_reference(compiled.spec),
-            exec: type_to_reference(compiled.exec),
-        });
-    }
+        Type::Path(..) => {
+            let name = get_simple_type_name(ty)?;
 
-    let ident = get_type_name(ty)?;
+            // If this is a type defined in the context of rspec
+            // we directly use the name of the exec version of the type
+            if ctx.structs.contains_key(&name) {
+                return Ok(new_simple_type(&exec_type_name(&name)));
+            }
 
-    if let Some((spec_name, exec_name)) = ctx.custom_types.get(&ident.to_string()) {
-        return Ok(CompiledType {
-            spec: str_to_type(spec_name),
-            exec: str_to_type(exec_name),
-        });
-    }
+            match name.as_str() {
+                "SpecString" => Ok(new_simple_type("String")),
 
-    let typ_name = ident.to_string();
+                // Integer/float types can stay the same
+                "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128" |
+                "f32" | "f64" | "bool" | "char" =>
+                    Ok(ty.clone()),
 
-    match typ_name.as_str() {
-        "SpecString" => Ok(CompiledType {
-            spec: str_to_type_with_param("Seq", str_to_type("char")),
-            exec: str_to_type("String"),
-        }),
+                // TODO: do we want this?
+                "int" => Ok(new_simple_type("i64")),
 
-        // Integer/float types can stay the same
-        "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128" |
-        "f32" | "f64" | "bool" | "char" =>
-            Ok(CompiledType {
-                spec: ty.clone(),
-                exec: ty.clone(),
-            }),
+                // Option<T> => Option<exec(T)>
+                "Option" => {
+                    let param = get_simple_type_param(ty, 0)?;
+                    Ok(new_simple_type_with_param("Option", compile_type(ctx, &param)?))
+                }
 
-        "int" =>
-            Ok(CompiledType {
-                spec: str_to_type("i64"),
-                exec: str_to_type("i64"),
-            }),
+                // Seq<T> => Vec<exec(T)>
+                "Seq" => {
+                    let param = get_simple_type_param(ty, 0)?;
+                    Ok(new_simple_type_with_param("Vec", compile_type(ctx, &param)?))
+                }
 
-        // Option<T> => Option<spec T>, Option<exec T>
-        "Option" => {
-            // Get the type parameter
-            let param = get_type_param(ty, 0)?;
-            let compiled = type_to_spec_and_exec(ctx, &param)?;
-
-            Ok(CompiledType {
-                spec: str_to_type_with_param("Option", compiled.spec),
-                exec: str_to_type_with_param("Option", compiled.exec.clone()),
-            })
-        }
-
-        // Seq<T> => Seq<spec T>, Vec<exec T>
-        "Seq" => {
-            // Get the type parameter
-            let param = get_type_param(ty, 0)?;
-            let compiled = type_to_spec_and_exec(ctx, &param)?;
-
-            Ok(CompiledType {
-                spec: str_to_type_with_param("Seq", compiled.spec),
-                exec: str_to_type_with_param("Vec", compiled.exec.clone()),
-            })
+                _ => Err(Error::new_spanned(ty, "unsupported/unknown simple type")),
+            }
         }
 
         _ => Err(Error::new_spanned(ty, "unsupported/unknown type")),
@@ -237,7 +245,7 @@ fn type_to_spec_and_exec(ctx: &mut Context, ty: &Type) -> Result<CompiledType, E
 /// Generate a view expression for a field (from the original rspec definition)
 fn generate_field_view(field: &Field, field_expr: TokenStream2) -> TokenStream2 {
     // Use a deep view for Option and Seq
-    if let Ok(name) = get_type_name(&field.ty) {
+    if let Ok(name) = get_simple_type_name(&field.ty) {
         match name.as_str() {
             "Option" => {
                 return quote! {
@@ -262,30 +270,23 @@ fn generate_field_view(field: &Field, field_expr: TokenStream2) -> TokenStream2 
     quote! { #field_expr.view() }
 }
 
-/// Generate spec and exec versions of the given struct
-fn compile_struct(ctx: &mut Context, item_struct: &ItemStruct) -> Result<(ItemStruct, ItemStruct, TokenStream2), Error> {
+/// Generate exec version of the given struct as well as a deep View impl
+fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct, TokenStream2), Error> {
     if !item_struct.generics.params.is_empty() {
         return Err(Error::new_spanned(&item_struct.generics, "generics not supported"));
     }
 
-    let (spec_struct, exec_struct, view_impl) = match &item_struct.fields {
-        syn_verus::Fields::Named(fields_named) => {
-            let (spec_fields, exec_fields) =
+    match &item_struct.fields {
+        Fields::Named(fields_named) => {
+            // Convert each field type to the exec version
+            let exec_fields =
                 fields_named.named
                     .iter()
-                    .map(|field| {
-                        let compiled = type_to_spec_and_exec(ctx, &field.ty)?;
-                        Ok((
-                            Field { ty: compiled.spec, ..field.clone() },
-                            Field { ty: compiled.exec, ..field.clone() },
-                        ))
-                    })
-                    .collect::<Result<Vec<_>, Error>>()?
-                    .into_iter()
-                    .unzip();
+                    .map(|field| Ok(Field { ty: compile_type(ctx, &field.ty)?, ..field.clone() }))
+                    .collect::<Result<_, Error>>()?;
 
             let spec_name = &item_struct.ident;
-            let exec_name = Ident::new(&format!("Exec{}", item_struct.ident), Span::call_site());
+            let exec_name = Ident::new(&exec_type_name(&item_struct.ident.to_string()), Span::call_site());
 
             let field_views = fields_named.named.iter().map(|field| {
                 let field_name = &field.ident;
@@ -307,15 +308,7 @@ fn compile_struct(ctx: &mut Context, item_struct: &ItemStruct) -> Result<(ItemSt
             };
 
             // Construct two new structs with the fields replaced
-            (
-                ItemStruct {
-                    ident: item_struct.ident.clone(),
-                    fields: Fields::Named(FieldsNamed {
-                        named: spec_fields,
-                        ..fields_named.clone()
-                    }),
-                    ..item_struct.clone()
-                },
+            Ok((
                 ItemStruct {
                     ident: exec_name,
                     fields: Fields::Named(FieldsNamed {
@@ -324,20 +317,12 @@ fn compile_struct(ctx: &mut Context, item_struct: &ItemStruct) -> Result<(ItemSt
                     }),
                     ..item_struct.clone()
                 },
-                view_impl,
-            )
+                view_impl
+            ))
         }
-        syn_verus::Fields::Unnamed(..) => return Err(Error::new_spanned(item_struct, "unnamed fields not supported")),
-        syn_verus::Fields::Unit => return Err(Error::new_spanned(item_struct, "unit struct not supported")),
-    };
 
-    // Add an entry to the custom types map
-    ctx.custom_types.insert(
-        item_struct.ident.to_string(),
-        (spec_struct.ident.to_string(), exec_struct.ident.to_string()),
-    );
-
-    Ok((spec_struct, exec_struct, view_impl))
+        _ => return Err(Error::new_spanned(item_struct, "unsupported form of struct")),
+    }
 }
 
 /**
@@ -352,7 +337,7 @@ fn compile_struct(ctx: &mut Context, item_struct: &ItemStruct) -> Result<(ItemSt
  * - Block expr
  * - If stmt
  */
-fn compile_expr(ctx: &mut Context, expr: &Expr) -> Result<Expr, Error> {
+fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
     match expr {
         // Some of the operations (e.g. == for strings)
         // lack built-in exec support in Verus, so we replace
@@ -363,11 +348,7 @@ fn compile_expr(ctx: &mut Context, expr: &Expr) -> Result<Expr, Error> {
                 BinOp::Eq(..) =>
                     Ok(Expr::Call(ExprCall {
                         attrs: Vec::new(),
-                        func: Box::new(Expr::Path(ExprPath {
-                            attrs: Vec::new(),
-                            qself: None,
-                            path: path_to_rspec_lib("eq"),
-                        })),
+                        func: Box::new(expr_path![seg!("rspec_lib"), seg!("eq")]),
                         paren_token: Default::default(),
                         args: Punctuated::from_iter([
                             compile_expr(ctx, &expr_binary.left)?,
@@ -490,21 +471,8 @@ fn compile_expr(ctx: &mut Context, expr: &Expr) -> Result<Expr, Error> {
             if segments.len() == 1 {
                 let name = segments[0].ident.to_string();
 
-                if ctx.functions.contains_key(&name) {
-                    return Ok(Expr::Path(ExprPath {
-                        attrs: Vec::new(),
-                        qself: None,
-                        path: Path {
-                            leading_colon: None,
-                            segments:
-                                Punctuated::from_iter([
-                                    PathSegment {
-                                        ident: Ident::new(&ctx.functions[&name], Span::call_site()),
-                                        arguments: PathArguments::None,
-                                    },
-                                ]),
-                        },
-                    }));
+                if ctx.fns.contains_key(&name) {
+                    return Ok(expr_path![seg!(&exec_fn_name(&name))]);
                 }
             }
 
@@ -515,7 +483,7 @@ fn compile_expr(ctx: &mut Context, expr: &Expr) -> Result<Expr, Error> {
     }
 }
 
-fn compile_stmt(ctx: &mut Context, stmt: &Stmt) -> Result<Stmt, Error> {
+fn compile_stmt(ctx: &Context, stmt: &Stmt) -> Result<Stmt, Error> {
     match stmt {
         Stmt::Local(local) => {
             let Some((tok, expr)) = &local.init else {
@@ -534,24 +502,20 @@ fn compile_stmt(ctx: &mut Context, stmt: &Stmt) -> Result<Stmt, Error> {
     }
 }
 
-fn compile_block(ctx: &mut Context, block: &Block) -> Result<Block, Error> {
+fn compile_block(ctx: &Context, block: &Block) -> Result<Block, Error> {
     Ok(Block {
         stmts: block.stmts.iter().map(|stmt| compile_stmt(ctx, stmt)).collect::<Result<_, Error>>()?,
         ..block.clone()
     })
 }
 
-fn compile_signature(ctx: &mut Context, sig: &Signature) -> Result<Signature, Error> {
-    let exec_name: String = format!("exec_{}", sig.ident);
-    ctx.functions.insert(sig.ident.to_string(), exec_name.clone());
-
+fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error> {
     // Change each parameter to the reference of the exec type
     let params = sig.inputs.iter().map(|param| {
         if let FnArgKind::Typed(pat_type) = &param.kind {
-            let compiled = type_to_spec_and_exec(ctx, &pat_type.ty)?;
             Ok(FnArg {
                 kind: FnArgKind::Typed(PatType {
-                    ty: Box::new(compiled.exec),
+                    ty: Box::new(compile_type(ctx, &pat_type.ty)?),
                     ..pat_type.clone()
                 }),
                 ..param.clone()
@@ -563,33 +527,92 @@ fn compile_signature(ctx: &mut Context, sig: &Signature) -> Result<Signature, Er
 
     // Change the return type to the reference of the exec type
     let return_type = match &sig.output {
-        ReturnType::Type(tok, tracked, pat, ty) => {
-            let compiled = type_to_spec_and_exec(ctx, ty)?;
+        ReturnType::Type(tok, tracked, _, ty) => {
             ReturnType::Type(
                 tok.clone(),
                 *tracked,
-                pat.clone(),
-                Box::new(compiled.exec),
+                // Generate a variable for the return value (for the ensure clause)
+                // e.g. (_res: return_type)
+                Some(Box::new((
+                    Default::default(),
+                    Pat::Ident(PatIdent {
+                        attrs: Vec::new(),
+                        by_ref: None,
+                        mutability: None,
+                        ident: Ident::new("_res", Span::call_site()),
+                        subpat: None,
+                    }),
+                    Default::default(),
+                ))),
+                // Attach the compiled type
+                Box::new(compile_type(ctx, ty)?),
             )
         }
 
         ReturnType::Default => ReturnType::Default,
     };
 
+    // Add an ensure clause to state that the exec function returns the
+    // same value as the spec function
+    // _res@ == spec_fn(<views of inputs, with references if necessary>)
+
+    // Generate the argument list
+    let args = sig.inputs.iter().map(|param| {
+            // Check if the function arguments fits the correct form
+            // i.e. <ident>: <ty>
+            if let FnArgKind::Typed(PatType {
+                pat, ty, ..
+            }) = &param.kind {
+                if let Pat::Ident(PatIdent { ident, .. }) = pat.as_ref() {
+                    let view = expr_view!(expr_path![seg!(&ident.to_string())]);
+
+                    // If the target type has a reference, we add one too
+                    // NOTE: assuming there is at most one level of reference
+                    return Ok(if let Type::Reference(..) = ty.as_ref() {
+                        new_expr_ref(view)
+                    } else {
+                        view
+                    });
+                }
+            }
+
+            Err(Error::new_spanned(sig, "unsupported parameter type"))
+        }).collect::<Result<_, Error>>()?;
+
+    // Generate the final ensure expression
+    let ensure_expr = expr_binary!(
+        expr_view!(expr_path![seg!("_res")]),
+        Eq,
+        Expr::Call(ExprCall {
+            attrs: Vec::new(),
+            func: Box::new(expr_path![seg!(&sig.ident.to_string())]),
+            paren_token: Default::default(),
+            args,
+        })
+    );
+
     Ok(Signature {
         // Change to exec mode
         publish: Publish::Default,
         mode: FnMode::Default,
 
-        ident: Ident::new(&exec_name, Span::call_site()),
+        ident: Ident::new(&exec_fn_name(&sig.ident.to_string()), Span::call_site()),
         inputs: params,
         output: return_type,
+
+        ensures: Some(Ensures {
+            attrs: Vec::new(),
+            token: Default::default(),
+            exprs: Specification {
+                exprs: Punctuated::from_iter([ensure_expr]),
+            },
+        }),
 
         ..sig.clone()
     })
 }
 
-fn compile_spec_fn(ctx: &mut Context, item_fn: &ItemFn) -> Result<ItemFn, Error> {
+fn compile_spec_fn(ctx: &Context, item_fn: &ItemFn) -> Result<ItemFn, Error> {
     Ok(ItemFn {
         sig: compile_signature(ctx, &item_fn.sig)?,
         block: Box::new(compile_block(ctx, &item_fn.block)?),
@@ -598,63 +621,79 @@ fn compile_spec_fn(ctx: &mut Context, item_fn: &ItemFn) -> Result<ItemFn, Error>
 }
 
 fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
-    let mut new_items = Vec::new();
+    let mut output = Vec::new();
 
     let mut ctx = Context {
-        custom_types: HashMap::new(),
-        functions: HashMap::new(),
+        structs: HashMap::new(),
+        enums: HashMap::new(),
+        fns: HashMap::new(),
     };
 
-    for item in items.0.iter() {
-        let new_item = match item {
+    let mut struct_names = Vec::new();
+    let mut fn_names = Vec::new();
+
+    // Iterate through the items once, and copies them to the output as they are
+    for item in items.0 {
+        match item {
             Item::Fn(item_fn) => {
                 match &item_fn.sig.mode {
                     FnMode::Spec(..) => {}
                     _ => return Err(Error::new_spanned(item_fn, "only spec functions are supported")),
                 }
 
-                let exec_fn = compile_spec_fn(&mut ctx, item_fn)?;
+                output.push(quote! { #item_fn });
 
-                println!("{}", quote! { #item_fn });
-                println!("{}", quote! { #exec_fn });
-
-                quote! {
-                    #item_fn
-                    #exec_fn
-                }
+                fn_names.push(item_fn.sig.ident.to_string());
+                ctx.fns.insert(item_fn.sig.ident.to_string(), item_fn);
             }
 
             Item::Struct(item_struct) => {
-                let (spec_struct, exec_struct, view_impl) = compile_struct(&mut ctx, &item_struct)?;
+                output.push(quote! { #item_struct });
 
-                println!("{}", quote! { #spec_struct });
-                println!("{}", quote! { #exec_struct });
-                println!("{}", view_impl);
-
-                quote! {
-                    #spec_struct
-                    #exec_struct
-                    #view_impl
-                }
+                struct_names.push(item_struct.ident.to_string());
+                ctx.structs.insert(item_struct.ident.to_string(), item_struct);
             }
 
             _ => return Err(Error::new_spanned(item, "unsupported item")),
         };
-
-        new_items.push(new_item);
     }
 
-    Ok(quote! { ::builtin_macros::verus! { #(#new_items)* } })
+    // For each struct, generate an exec version and a (deep) View impl
+    for name in struct_names {
+        let item_struct = &ctx.structs[&name];
+        let (exec_struct, view_impl) = compile_struct(&ctx, item_struct)?;
+        output.push(quote! { #exec_struct });
+        output.push(view_impl);
+    }
+
+    // For each function, generate an exec version
+    for name in fn_names {
+        let item_fn = &ctx.fns[&name];
+        let exec_fn = compile_spec_fn(&ctx, item_fn)?;
+        output.push(quote! { #exec_fn });
+    }
+
+    println!("########################################");
+    for item in output.iter() {
+        println!("{}", item);
+    }
+
+    Ok(quote! { ::builtin_macros::verus! { #(#output)* } })
 }
 
 /// For spec struct, generate an exec version of the struct with View trait that sends to
 /// the spec version
 /// For each spec fn, also generate an exec version with a proof that generates the same
 /// output as the spec function
+///
+/// Some simplifying assumptions:
+///   1. No name clash (e.g. no local variable that shadows the exec_* functions)
+///
+/// Note that this macro does not perform all the checks required for the generated
+/// code to be type/lifetime correct
 #[proc_macro]
 pub fn rspec(input: TokenStream) -> TokenStream {
     let items = parse_macro_input!(input as Items);
-    // quote! { ::builtin_macros::verus! { #input } }.into()
 
     match compile_rspec(items) {
         Ok(token_stream) => token_stream.into(),
