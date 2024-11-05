@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatPath, PatReference, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
 use prettyplease_verus::unparse_expr;
 
 struct Items(Vec<Item>);
@@ -243,17 +243,24 @@ fn new_type_ref(ty: Type) -> Type {
     })
 }
 
+// Assuming the path contains only one segment
+fn get_simple_path_name(path: &Path) -> Result<String, Error> {
+    let segments: Vec<_> = path.segments.iter().collect();
+    if segments.len() == 1 {
+        return Ok(segments[0].ident.to_string());
+    }
+
+    Err(Error::new_spanned(path, "expect a simple path"))
+}
+
 /// Get the name of a type
 /// e.g. Option<..> => Option, i32 => i32
 fn get_simple_type_name(ty: &Type) -> Result<String, Error> {
     if let Type::Path(type_path) = ty {
-        let segments: Vec<_> = type_path.path.segments.iter().collect();
-        if segments.len() == 1 {
-            return Ok(segments[0].ident.to_string());
-        }
+        get_simple_path_name(&type_path.path)
+    } else {
+        Err(Error::new_spanned(ty, "expect a simple type"))
     }
-
-    Err(Error::new_spanned(ty, "expect a simple type"))
 }
 
 /// Get the n-th type parameter
@@ -436,23 +443,166 @@ fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct
     }
 }
 
-fn compile_pattern(ctx: &Context, pat: &Pat) -> Result<Pat, Error> {
-    // TODO: convert paths containing spec structs/enums to exec versions
-    Ok(pat.clone())
+fn compile_path(ctx: &Context, path: &Path) -> Result<Path, Error> {
+    if path.segments.len() == 1 {
+        let name = get_simple_path_name(&path)?;
+
+        if ctx.structs.contains_key(&name) {
+            Ok(path![seg!(&exec_type_name(&name))])
+        } else if ctx.enums.contains_key(&name) {
+            Ok(path![seg!(&exec_type_name(&name))])
+        } else {
+            Ok(path.clone())
+        }
+    } else if path.segments.len() == 2 {
+        let name = path.segments[1].ident.to_string();
+
+        if ctx.structs.contains_key(&name) {
+            Ok(path![seg!(&exec_type_name(&name)), path.segments[1].clone()])
+        } else if ctx.enums.contains_key(&name) {
+            Ok(path![seg!(&exec_type_name(&name)), path.segments[1].clone()])
+        } else {
+            Ok(path.clone())
+        }
+    } else {
+        Err(Error::new_spanned(path, "unsupported path"))
+    }
+}
+
+fn compile_pattern(ctx: &Context, local: &mut LocalContext, pat: &Pat) -> Result<Pat, Error> {
+    match pat {
+        Pat::Ident(pat_ident) => {
+            local.vars.insert(pat_ident.ident.to_string(), None);
+            Ok(pat.clone())
+        }
+
+        Pat::Path(pat_path) =>
+            Ok(Pat::Path(PatPath {
+                path: compile_path(ctx, &pat_path.path)?,
+                ..pat_path.clone()
+            })),
+
+        Pat::Reference(pat_reference) =>
+            Ok(Pat::Reference(PatReference {
+                pat: Box::new(compile_pattern(ctx, local, &pat_reference.pat)?),
+                ..pat_reference.clone()
+            })),
+
+        // TODO: infer more types
+        Pat::Type(pat_type) =>
+            Ok(Pat::Type(PatType {
+                pat: Box::new(compile_pattern(ctx, local, &pat_type.pat)?),
+                ty: Box::new(compile_type(ctx, &pat_type.ty)?),
+                ..pat_type.clone()
+            })),
+
+        Pat::Wild(..) => Ok(pat.clone()),
+        Pat::Rest(..) => Ok(pat.clone()),
+
+        Pat::TupleStruct(pat_tuple_struct) =>
+            Ok(Pat::TupleStruct(PatTupleStruct {
+                path: compile_path(ctx, &pat_tuple_struct.path)?,
+                pat: PatTuple {
+                    elems: pat_tuple_struct.pat.elems
+                        .iter()
+                        .map(|pat| compile_pattern(ctx, local, pat))
+                        .collect::<Result<_, Error>>()?,
+                    ..pat_tuple_struct.pat.clone()
+                },
+                ..pat_tuple_struct.clone()
+            })),
+
+        // TODO: maybe?
+        // Pat::TupleStruct(pat_tuple_struct) => todo!(),
+        // Pat::Tuple(pat_tuple) => todo!(),
+        // Pat::Struct(pat_struct) => todo!(),
+        // Pat::Or(pat_or) => todo!(),
+        // Pat::Macro(pat_macro) => todo!(),
+        // Pat::Lit(pat_lit) => todo!(),
+
+        _ => Err(Error::new_spanned(pat, "unsupported pattern")),
+    }
 }
 
 fn compile_match_arm(ctx: &Context, local: &LocalContext, arm: &Arm) -> Result<Arm, Error> {
-    // TODO: update bindings
+    let mut local = local.clone();
+    let pat = compile_pattern(ctx, &mut local, &arm.pat)?;
+
     Ok(Arm {
         attrs: Vec::new(),
-        pat: compile_pattern(ctx, &arm.pat)?,
+        pat,
         guard: if let Some((tok, expr)) = &arm.guard {
-            Some((tok.clone(), Box::new(compile_expr(ctx, local, expr)?)))
+            Some((tok.clone(), Box::new(compile_expr(ctx, &local, expr)?)))
         } else {
             None
         },
-        body: Box::new(compile_expr(ctx, local, &arm.body)?),
+        body: Box::new(compile_expr(ctx, &local, &arm.body)?),
         ..arm.clone()
+    })
+}
+
+struct GuardedQuantifier {
+    quant_var: Ident,
+    quant_type: Box<Type>,
+    lower: Box<Expr>,
+    upper: Box<Expr>,
+    body: Box<Expr>,
+}
+
+/// Parse the closure as |i| x <= i < y ==>/&& body
+/// and return (i, x, y, body)
+fn get_guarded_quantifier(closure: &ExprClosure, is_forall: bool) -> Result<GuardedQuantifier, Error>
+{
+    if closure.inputs.len() != 1 {
+        return Err(Error::new_spanned(closure, "only support single quantified variable"));
+    }
+
+    let (quant_var, Some(quant_type)) = get_simple_pat(&closure.inputs[0])? else {
+        return Err(Error::new_spanned(closure, "only supports a typed variable as quantifier"));
+    };
+
+    // |x| <guard> ==>/&& <body>
+    let (guard, body) = if is_forall {
+        let Expr::Binary(ExprBinary {
+            left: guard, op: BinOp::Imply(..), right: body, ..
+        }) = closure.body.as_ref() else {
+            return Err(Error::new_spanned(closure, "unsupported forall expression"));
+        };
+        (guard, body)
+    } else {
+        let Expr::Binary(ExprBinary {
+            left: guard, op: BinOp::And(..), right: body, ..
+        }) = closure.body.as_ref() else {
+            return Err(Error::new_spanned(closure, "unsupported forall expression"));
+        };
+        (guard, body)
+    };
+
+    // <guard> == <lower> <= x < <upper>
+    let Expr::Binary(ExprBinary {
+        left: lower_guard, op: BinOp::Lt(..), right: upper, ..
+    }) = guard.as_ref() else {
+        return Err(Error::new_spanned(guard, "unsupported forall guard upper bound"));
+    };
+
+    let Expr::Binary(ExprBinary {
+        left: lower, op: BinOp::Le(..), right: guard_var, ..
+    }) = lower_guard.as_ref() else {
+        return Err(Error::new_spanned(lower_guard, "unsupported forall guard lower bound"));
+    };
+
+    let guard_var = get_simple_var(guard_var)?;
+
+    if guard_var != quant_var {
+        return Err(Error::new_spanned(guard_var, "quantified variable does not match the guard variable"));
+    }
+
+    Ok(GuardedQuantifier {
+        quant_var: quant_var.clone(),
+        quant_type,
+        lower: lower.clone(),
+        upper: upper.clone(),
+        body: body.clone(),
     })
 }
 
@@ -501,67 +651,25 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
         Expr::Unary(expr_unary) =>
             match &expr_unary.op {
-                UnOp::Forall(..) => {
+                UnOp::Forall(..) | UnOp::Exists(..) => {
                     let Expr::Closure(closure) = expr_unary.expr.as_ref() else {
                         return Err(Error::new_spanned(expr, "ill-formed forall expression"));
                     };
 
-                    if closure.inputs.len() != 1 {
-                        return Err(Error::new_spanned(expr, "only support single quantified variable"));
-                    }
+                    let is_forall = if let UnOp::Forall(..) = &expr_unary.op { true } else { false };
 
-                    let (quant_var, Some(quant_type)) = get_simple_pat(&closure.inputs[0])? else {
-                        return Err(Error::new_spanned(expr, "only supports a typed variable as quantifier"));
-                    };
-
-                    // forall |x| <guard> ==> <body>
-                    let Expr::Binary(ExprBinary {
-                        left: guard, op: BinOp::Imply(..), right: body, ..
-                    }) = closure.body.as_ref() else {
-                        return Err(Error::new_spanned(expr, "unsupported forall expression"));
-                    };
-
-                    // <guard> == <lower> <= x < <upper>
-                    let Expr::Binary(ExprBinary {
-                        left: lower_guard, op: BinOp::Lt(..), right: upper, ..
-                    }) = guard.as_ref() else {
-                        return Err(Error::new_spanned(guard, "unsupported forall guard upper bound"));
-                    };
-
-                    let Expr::Binary(ExprBinary {
-                        left: lower, op: BinOp::Le(..), right: guard_var, ..
-                    }) = lower_guard.as_ref() else {
-                        return Err(Error::new_spanned(lower_guard, "unsupported forall guard lower bound"));
-                    };
-
-                    let guard_var = get_simple_var(guard_var)?;
-
-                    // {
-                    //   let _lower = <lower>
-                    //   let _upper = <upper>
-                    //   let mut _res = true;
-                    //   #[verifier::loop_isolation(true)]
-                    //   for <guard_var> in _lower.._upper
-                    //     invariant_except_break _res == forall |_x| _lower <= _x < <guard_var> ==> { let <guard_var> = _x; <body> }
-                    //     ensures _res == <forall expr>
-                    //   {
-                    //     _res = _res && <body>;
-                    //     if !_res { break; }
-                    //   }
-                    //   _res
-                    // }
-
-                    if guard_var != quant_var {
-                        return Err(Error::new_spanned(guard_var, "quantified variable does not match the guard variable"));
-                    }
+                    let guarded_quant = get_guarded_quantifier(closure, is_forall)?;
 
                     // Bind the quantifier
                     let mut local = local.clone();
-                    local.vars.insert(quant_var.to_string(), Some(quant_type.clone()));
+                    local.vars.insert(guarded_quant.quant_var.to_string(), Some(guarded_quant.quant_type.clone()));
 
-                    let compiled_lower = compile_expr(ctx, &local, lower)?;
-                    let compiled_upper = compile_expr(ctx, &local, upper)?;
-                    let compiled_body = compile_expr(ctx, &local, body)?;
+                    let quant_var = &guarded_quant.quant_var;
+                    let quant_type = &guarded_quant.quant_type;
+                    let body = &guarded_quant.body;
+                    let compiled_lower = compile_expr(ctx, &local, guarded_quant.lower.as_ref())?;
+                    let compiled_upper = compile_expr(ctx, &local, guarded_quant.upper.as_ref())?;
+                    let compiled_body = compile_expr(ctx, &local, guarded_quant.body.as_ref())?;
                     // println!("closure: {}", quote! { #body });
 
                     let quant_attrs = closure.inner_attrs.clone();
@@ -573,49 +681,77 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                         quote! { let #name = #name.deep_view(); }
                     }).collect();
 
-                    let compiled = quote! {
-                        {
-                            let _lower = #compiled_lower;
-                            let _upper = #compiled_upper;
-                            let mut _res = true;
-                            let mut #guard_var = _lower;
+                    let compiled = if is_forall {
+                        quote! {
+                            {
+                                let _lower = #compiled_lower;
+                                let _upper = #compiled_upper;
+                                let mut _res = true;
+                                let mut #quant_var = _lower;
 
-                            if _lower < _upper {
-                                #[verifier::loop_isolation(false)]
-                                while #guard_var < _upper
-                                    invariant
-                                        _lower <= #guard_var <= _upper,
-                                        _res == {
-                                            let _upper = #guard_var;
-                                            #(#local_view)*
-                                            forall |#guard_var: #quant_type| #(#quant_attrs)* !(_lower <= #guard_var < _upper) || (#body)
-                                        },
-                                {
-                                    if !(#compiled_body) {
-                                        // For triggering the quantifier
-                                        assert({ #(#local_view)* !(#body) });
-                                        _res = false;
-                                        break;
+                                if _lower < _upper {
+                                    #[verifier::loop_isolation(false)]
+                                    while #quant_var < _upper
+                                        invariant
+                                            _lower <= #quant_var <= _upper,
+                                            _res == {
+                                                let _upper = #quant_var;
+                                                #(#local_view)*
+                                                forall |#quant_var: #quant_type| #(#quant_attrs)* !(_lower <= #quant_var < _upper) || (#body)
+                                            },
+                                    {
+                                        if !(#compiled_body) {
+                                            // For triggering the quantifier
+                                            assert({ #(#local_view)* !(#body) });
+                                            _res = false;
+                                            break;
+                                        }
+                                        #quant_var += 1;
                                     }
-                                    #guard_var += 1;
                                 }
+                                assert(_res == { #(#local_view)* (#expr) });
+                                _res
                             }
-                            assert(_res == { #(#local_view)* (#expr) });
-                            _res
+                        }
+                    } else {
+                        // exists
+                        quote! {
+                            {
+                                let _lower = #compiled_lower;
+                                let _upper = #compiled_upper;
+                                let mut _res = false;
+                                let mut #quant_var = _lower;
+
+                                if _lower < _upper {
+                                    #[verifier::loop_isolation(false)]
+                                    while #quant_var < _upper
+                                        invariant
+                                            _lower <= #quant_var <= _upper,
+                                            _res == {
+                                                let _upper = #quant_var;
+                                                #(#local_view)*
+                                                exists |#quant_var: #quant_type| #(#quant_attrs)* (_lower <= #quant_var < _upper) && (#body)
+                                            },
+                                    {
+                                        if (#compiled_body) {
+                                            // For triggering the quantifier
+                                            assert({ #(#local_view)* (#body) });
+                                            _res = true;
+                                            break;
+                                        }
+                                        #quant_var += 1;
+                                    }
+                                }
+                                assert(_res == { #(#local_view)* (#expr) });
+                                _res
+                            }
                         }
                     };
 
                     // println!("compiled: {}", quote! { #compiled });
 
-                    let compiled: TokenStream = compiled.into();
-                    let parsed_compiled: Expr = syn_verus::parse(compiled)
-                        .map_err(|e| Error::new_spanned(expr, format!("internally generated code syntax error: {}", e)))?;
-
-                    Ok(parsed_compiled)
-                }
-
-                UnOp::Exists(..) => {
-                    todo!()
+                    syn_verus::parse2(compiled)
+                        .map_err(|e| Error::new_spanned(expr, format!("internally generated code syntax error: {}", e)))
                 }
 
                 // TODO: filter unsupported ops
@@ -780,22 +916,17 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
         Expr::Macro(..) => Ok(expr.clone()),
         Expr::Path(path) => {
             // If the path is a function, replace it with the exec version
-            let segments: Vec<_> = path.path.segments.iter().collect();
-            if segments.len() == 1 {
-                let name = segments[0].ident.to_string();
+            let name = get_simple_path_name(&path.path)?;
 
-                if ctx.fns.contains_key(&name) {
-                    Ok(expr_path![seg!(&exec_fn_name(&name))])
-                } else {
-                    // Check that the variable does not start with _, which is reserved for internal variables
-                    if name.starts_with('_') {
-                        return Err(Error::new_spanned(path, "variable names starting with _ are reserved"));
-                    }
-
-                    Ok(expr.clone())
-                }
+            if ctx.fns.contains_key(&name) {
+                Ok(expr_path![seg!(&exec_fn_name(&name))])
             } else {
-                Err(Error::new_spanned(path, "unsupported path expression"))
+                // Check that the variable does not start with _, which is reserved for internal variables
+                if name.starts_with('_') {
+                    return Err(Error::new_spanned(path, "variable names starting with _ are reserved"));
+                }
+
+                Ok(expr.clone())
             }
         }
 

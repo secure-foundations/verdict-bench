@@ -119,7 +119,7 @@ test_rspec!(mod nested_seq {
     }
 });
 
-test_rspec!(mod test2 {
+test_rspec!(mod random_test {
     pub struct Test2 {
         pub content: SpecString,
     }
@@ -179,6 +179,32 @@ test_rspec!(mod test2 {
         &&& match &t.test2 {
             Some(t2) => test2(t2, s),
             None => false,
+        }
+    }
+});
+
+test_rspec!(mod test_exists {
+    spec fn test(s: Seq<u32>, needle: u32) -> bool {
+        exists |i: usize| 0 <= i < s.len() && s[i as int] == needle
+    }
+});
+
+test_rspec!(mod test_match {
+    struct Test {
+        a: Option<Seq<u32>>,
+    }
+
+    spec fn all_zeros(v: &Seq<u32>) -> bool {
+        forall |i: usize| 0 <= i < v.len() ==> v[i as int] == 0
+    }
+
+    spec fn test(s: Option<Option<Test>>) -> bool {
+        match s {
+            Some(Some(t)) => match &t.a {
+                Some(v) => all_zeros(v),
+                None => true,
+            },
+            _ => true,
         }
     }
 });
