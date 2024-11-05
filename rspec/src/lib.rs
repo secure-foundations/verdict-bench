@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
 use prettyplease_verus::unparse_expr;
 
 struct Items(Vec<Item>);
@@ -134,6 +134,16 @@ macro_rules! expr_binary {
             left: Box::new($left),
             op: BinOp::$op(Default::default()),
             right: Box::new($right),
+        })
+    };
+}
+
+macro_rules! expr_unary {
+    ($op:ident, $expr:expr $(,)?) => {
+        Expr::Unary(ExprUnary {
+            attrs: Vec::new(),
+            op: UnOp::$op(Default::default()),
+            expr: Box::new($expr),
         })
     };
 }
@@ -266,13 +276,17 @@ fn get_simple_type_param(ty: &Type, n: usize) -> Result<Type, Error> {
     Err(Error::new_spanned(ty, "expect a simple type"))
 }
 
-/// Check if the pattern is a simple variable and return the identifier
-fn get_pat_var(pat: &Pat) -> Result<&Ident, Error> {
+/// Simple pattern is either a variable (`a`) or a typed variable (`a: T`)
+fn get_simple_pat(pat: &Pat) -> Result<(&Ident, Option<Box<Type>>), Error> {
     if let Pat::Ident(pat_ident) = pat {
-        Ok(&pat_ident.ident)
-    } else {
-        Err(Error::new_spanned(pat, "expect a variable pattern"))
+        return Ok((&pat_ident.ident, None));
+    } if let Pat::Type(PatType { pat, ty, .. }) = pat {
+        if let Pat::Ident(pat_ident) = pat.as_ref() {
+            return Ok((&pat_ident.ident, Some(ty.clone())));
+        }
     }
+
+    Err(Error::new_spanned(pat, "expect a simple pattern (variable or typed variable)"))
 }
 
 /// Check that the expr is a simple variable and return the identifier
@@ -455,8 +469,6 @@ fn compile_match_arm(ctx: &Context, local: &LocalContext, arm: &Arm) -> Result<A
  * - If stmt
  */
 fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr, Error> {
-    println!("locals: {}", local);
-
     match expr {
         // Some of the operations (e.g. == for strings)
         // lack built-in exec support in Verus, so we replace
@@ -465,13 +477,19 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
         // TODO: filter unsupported ops
         Expr::Binary(expr_binary) =>
             match &expr_binary.op {
-                // Replace `a == b` with `::rspec::eq_other(a, b)`
                 BinOp::Eq(..) =>
                     Ok(expr_call!(
                         expr_path![seg!("rspec_lib"), seg!("RSpec"), seg!("eq")],
                         compile_expr(ctx, local, &expr_binary.left)?,
                         compile_expr(ctx, local, &expr_binary.right)?,
                     )),
+
+                BinOp::Ne(..) =>
+                    Ok(expr_unary!(Not, expr_call!(
+                        expr_path![seg!("rspec_lib"), seg!("RSpec"), seg!("eq")],
+                        compile_expr(ctx, local, &expr_binary.left)?,
+                        compile_expr(ctx, local, &expr_binary.right)?,
+                    ))),
 
                 // By default, we just clone the same binary operation
                 _ => Ok(Expr::Binary(ExprBinary {
@@ -492,13 +510,9 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                         return Err(Error::new_spanned(expr, "only support single quantified variable"));
                     }
 
-                    let Pat::Type(PatType { pat, ty: quant_type, .. }) = &closure.inputs[0] else {
+                    let (quant_var, Some(quant_type)) = get_simple_pat(&closure.inputs[0])? else {
                         return Err(Error::new_spanned(expr, "only supports a typed variable as quantifier"));
                     };
-
-                    // TODO: only support fixed-width integers?
-                    let quant_type = compile_type(ctx, quant_type)?;
-                    let quant_var = get_pat_var(&pat)?;
 
                     // forall |x| <guard> ==> <body>
                     let Expr::Binary(ExprBinary {
@@ -543,7 +557,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
                     // Bind the quantifier
                     let mut local = local.clone();
-                    local.vars.insert(quant_var.to_string(), Some(Box::new(quant_type.clone())));
+                    local.vars.insert(quant_var.to_string(), Some(quant_type.clone()));
 
                     let compiled_lower = compile_expr(ctx, &local, lower)?;
                     let compiled_upper = compile_expr(ctx, &local, upper)?;
@@ -578,19 +592,20 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                                         },
                                 {
                                     if !(#compiled_body) {
+                                        // For triggering the quantifier
+                                        assert({ #(#local_view)* !(#body) });
                                         _res = false;
-                                        #guard_var += 1;
                                         break;
                                     }
                                     #guard_var += 1;
                                 }
                             }
-                            // assert(_res == { #(#local_view)* (#expr) });
+                            assert(_res == { #(#local_view)* (#expr) });
                             _res
                         }
                     };
 
-                    println!("compiled: {}", quote! { #compiled });
+                    // println!("compiled: {}", quote! { #compiled });
 
                     let compiled: TokenStream = compiled.into();
                     let parsed_compiled: Expr = syn_verus::parse(compiled)
@@ -654,7 +669,11 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
             })),
 
         // For field expressions, wrap the result in a reference
-        Expr::Field(..) => Ok(expr.clone()),
+        Expr::Field(expr_field) =>
+            Ok(Expr::Field(ExprField {
+                base: Box::new(compile_expr(ctx, local, &expr_field.base)?),
+                ..expr_field.clone()
+            })),
 
         // Rewrite `<string literal>@` to `<string literal>`
         // but throws an error on anything else
@@ -692,6 +711,18 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                     Ok(expr_method_call!(
                         compile_expr(ctx, local, &expr_method_call.receiver)?,
                         "rspec_len",
+                    ))
+                }
+
+                "char_at" => {
+                    if expr_method_call.args.len() != 1 {
+                        return Err(Error::new_spanned(expr, "char_at method call should have a single argument"));
+                    }
+
+                    Ok(expr_method_call!(
+                        compile_expr(ctx, local, &expr_method_call.receiver)?,
+                        "rspec_char_at",
+                        compile_expr(ctx, local, &expr_method_call.args[0])?,
                     ))
                 }
 
@@ -798,7 +829,7 @@ fn compile_block(ctx: &Context, local: &LocalContext, block: &Block) -> Result<B
     for stmt in &block.stmts {
         match stmt {
             Stmt::Local(binding) => {
-                let var = get_pat_var(&binding.pat)?;
+                let (var, _) = get_simple_pat(&binding.pat)?;
 
                 let Some((tok, expr)) = &binding.init else {
                     return Err(Error::new_spanned(stmt, "unsupported let statement without initializer"));
@@ -879,7 +910,7 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
             if let FnArgKind::Typed(PatType {
                 pat, ty, ..
             }) = &param.kind {
-                let ident = get_pat_var(pat)?;
+                let (ident, _) = get_simple_pat(pat)?;
                 let view = expr_view!(expr_path![seg!(&ident.to_string())]);
 
                 // If the target type has a reference, we add one too
@@ -929,7 +960,7 @@ fn compile_spec_fn(ctx: &Context, item_fn: &ItemFn) -> Result<ItemFn, Error> {
             .iter()
             .map(|param| {
                 if let FnArgKind::Typed(PatType { pat, ty, .. }) = &param.kind {
-                    Ok((get_pat_var(pat)?.to_string(), Some(ty.clone())))
+                    Ok((get_simple_pat(pat)?.0.to_string(), Some(ty.clone())))
                 } else {
                     Err(Error::new_spanned(&item_fn.sig, "unsupported parameter type"))
                 }
@@ -1024,4 +1055,21 @@ pub fn rspec(input: TokenStream) -> TokenStream {
         Ok(token_stream) => token_stream.into(),
         Err(err) => err.to_compile_error().into(),
     }
+}
+
+/// A helper macro for tests
+#[proc_macro]
+pub fn test_rspec(input: TokenStream) -> TokenStream {
+    let module = parse_macro_input!(input as ItemMod);
+    let name = module.ident;
+    let items = module.content.unwrap().1;
+
+    quote! {
+        mod #name {
+            use vstd::prelude::*;
+            use rspec::rspec;
+            use rspec_lib::*;
+            verus! { rspec! { #(#items)* } }
+        }
+    }.into()
 }

@@ -67,35 +67,41 @@ impl<'b, T: Copy + PartialEq + DeepView> Eq<T, &'b T> for RSpec {
 /// ExecT and SpecT are separated to support both returning a reference
 /// and returning a Copy value (e.g. String => char)
 pub trait Index<E: DeepView>: DeepView<V = Seq<E::V>> {
-    fn rspec_index(&self, i: usize) -> (res: E)
+    fn rspec_index(&self, i: usize) -> (res: &E)
         requires i < self.deep_view().len()
         ensures res.deep_view() == self.deep_view()[i as int];
 }
 
-/// NODE/TODO: this behaves differently than the native index
-/// The reason is that String indexing behaves differently
-/// than in Rust: we directly index into the Unicode char
-/// instead of bytes
-impl<'a: 'b, 'b, E: DeepView> Index<&'b E> for &'a Vec<E> {
-    fn rspec_index(&self, i: usize) -> (res: &'b E) {
+impl<E: DeepView> Index<E> for Vec<E> {
+    fn rspec_index(&self, i: usize) -> (res: &E) {
         &self[i]
     }
 }
 
-impl<E: Copy + DeepView> Index<E> for Vec<E> {
-    fn rspec_index(&self, i: usize) -> (res: E) {
+pub trait SpecCharAt {
+    spec fn char_at(&self, i: int) -> char;
+}
+
+impl SpecCharAt for SpecString {
+    open spec fn char_at(&self, i: int) -> char {
         self[i]
     }
 }
 
-impl Index<char> for String {
-    fn rspec_index(&self, i: usize) -> (res: char) {
+pub trait CharAt: DeepView<V = Seq<char>> {
+    fn rspec_char_at(&self, i: usize) -> (res: char)
+        requires i < self.deep_view().len()
+        ensures res == self.deep_view()[i as int];
+}
+
+impl CharAt for String {
+    fn rspec_char_at(&self, i: usize) -> (res: char) {
         self.as_str().get_char(i)
     }
 }
 
-impl Index<char> for str {
-    fn rspec_index(&self, i: usize) -> (res: char) {
+impl CharAt for str {
+    fn rspec_char_at(&self, i: usize) -> (res: char) {
         self.get_char(i)
     }
 }
