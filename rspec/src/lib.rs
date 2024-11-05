@@ -1,12 +1,12 @@
-use std::collections::HashMap;
 use std::fmt;
+use indexmap::IndexMap;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatPath, PatReference, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatPath, PatReference, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, Variant, View};
 use prettyplease_verus::unparse_expr;
 
 struct Items(Vec<Item>);
@@ -22,14 +22,14 @@ impl Parse for Items {
 }
 
 struct Context {
-    structs: HashMap<String, ItemStruct>,
-    enums: HashMap<String, ItemEnum>,
-    fns: HashMap<String, ItemFn>,
+    structs: IndexMap<String, ItemStruct>,
+    enums: IndexMap<String, ItemEnum>,
+    fns: IndexMap<String, ItemFn>,
 }
 
 #[derive(Clone)]
 struct LocalContext {
-    vars: HashMap<String, Option<Box<Type>>>,
+    vars: IndexMap<String, Option<Box<Type>>>,
 }
 
 impl fmt::Display for LocalContext {
@@ -360,87 +360,170 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
     }
 }
 
-/// Generate a view expression for a field (from the original rspec definition)
-fn generate_field_view(field: &Field, field_expr: TokenStream2) -> TokenStream2 {
-    // // Use a deep view for Option and Seq
-    // if let Ok(name) = get_simple_type_name(&field.ty) {
-    //     match name.as_str() {
-    //         "Option" => {
-    //             return quote! {
-    //                 match #field_expr {
-    //                     Some(v) => Some(v.view()),
-    //                     None => None,
-    //                 }
-    //             };
-    //         }
-
-    //         "Seq" => {
-    //             return quote! {
-    //                 Seq::new(#field_expr.view().len(), |i| #field_expr.view()[i].view())
-    //             };
-    //         }
-
-    //         _ => {}
-    //     }
-    // }
-
-    // By default, just calls the view method
-    quote! { #field_expr.deep_view() }
-}
-
 /// Generate exec version of the given struct as well as a deep View impl
 fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct, TokenStream2), Error> {
     if !item_struct.generics.params.is_empty() {
         return Err(Error::new_spanned(&item_struct.generics, "generics not supported"));
     }
 
-    match &item_struct.fields {
+    let spec_name = &item_struct.ident;
+    let exec_name: Ident = Ident::new(&exec_type_name(&item_struct.ident.to_string()), Span::call_site());
+
+    let exec_fields = match &item_struct.fields {
         Fields::Named(fields_named) => {
-            // Convert each field type to the exec version
-            let exec_fields =
-                fields_named.named
-                    .iter()
-                    .map(|field| Ok(Field { ty: compile_type(ctx, &field.ty)?, ..field.clone() }))
-                    .collect::<Result<_, Error>>()?;
+            Fields::Named(FieldsNamed {
+                named: fields_named.named.iter().map(|field| {
+                    Ok(Field { ty: compile_type(ctx, &field.ty)?, ..field.clone() })
+                }).collect::<Result<_, Error>>()?,
+                ..fields_named.clone()
+            })
+        }
+        Fields::Unnamed(fields_unnamed) => {
+            Fields::Unnamed(FieldsUnnamed {
+                unnamed: fields_unnamed.unnamed.iter().map(|field| {
+                    Ok(Field { ty: compile_type(ctx, &field.ty)?, ..field.clone() })
+                }).collect::<Result<_, Error>>()?,
+                ..fields_unnamed.clone()
+            })
+        }
+        Fields::Unit => Fields::Unit,
+    };
 
-            let spec_name = &item_struct.ident;
-            let exec_name = Ident::new(&exec_type_name(&item_struct.ident.to_string()), Span::call_site());
-
+    let view_body = match &item_struct.fields {
+        Fields::Named(fields_named) => {
             let field_views = fields_named.named.iter().map(|field| {
                 let field_name = &field.ident;
-                let view = generate_field_view(field, quote! { self.#field_name });
-                quote! { #field_name: #view }
+                quote! { #field_name: self.#field_name.deep_view() }
             });
 
-            // Generate a (deep) View from exec to spec
-            let view_impl = quote! {
-                impl DeepView for #exec_name {
-                    type V = #spec_name;
-
-                    closed spec fn deep_view(&self) -> #spec_name {
-                        #spec_name {
-                            #(#field_views,)*
-                        }
-                    }
-                }
-            };
-
-            // Construct two new structs with the fields replaced
-            Ok((
-                ItemStruct {
-                    ident: exec_name,
-                    fields: Fields::Named(FieldsNamed {
-                        named: exec_fields,
-                        ..fields_named.clone()
-                    }),
-                    ..item_struct.clone()
-                },
-                view_impl
-            ))
+            quote! { #spec_name { #(#field_views,)* } }
         }
+        Fields::Unnamed(fields_unnamed) => {
+            let field_views = fields_unnamed.unnamed.iter()
+                .enumerate()
+                .map(|(i, _)| {
+                    let i = Index::from(i);
+                    quote! { self.#i.deep_view() }
+                });
 
-        _ => return Err(Error::new_spanned(item_struct, "unsupported form of struct")),
+            quote! { #spec_name(#(#field_views,)*) }
+        }
+        Fields::Unit => quote! { #spec_name },
+    };
+
+    let view_impl = quote! {
+        impl DeepView for #exec_name {
+            type V = #spec_name;
+
+            closed spec fn deep_view(&self) -> #spec_name {
+                #view_body
+            }
+        }
+    };
+
+    Ok((
+        ItemStruct {
+            ident: exec_name,
+            fields: exec_fields,
+            ..item_struct.clone()
+        },
+        view_impl
+    ))
+}
+
+fn compile_enum(ctx: &Context, item_enum: &ItemEnum) -> Result<(ItemEnum, TokenStream2), Error> {
+    if !item_enum.generics.params.is_empty() {
+        return Err(Error::new_spanned(&item_enum.generics, "generics not supported"));
     }
+
+    let spec_name = &item_enum.ident;
+    let exec_name: Ident = Ident::new(&exec_type_name(&item_enum.ident.to_string()), Span::call_site());
+
+    // Compile each variant
+    let exec_variants = item_enum.variants.iter().map(|variant| {
+        // // Compile all field types
+        let exec_fields = match &variant.fields {
+            Fields::Unit => Fields::Unit,
+            Fields::Named(fields_named) => {
+                Fields::Named(FieldsNamed {
+                    named: fields_named.named.iter().map(|field| {
+                        Ok(Field { ty: compile_type(ctx, &field.ty)?, ..field.clone() })
+                    }).collect::<Result<_, Error>>()?,
+
+                    ..fields_named.clone()
+                })
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                Fields::Unnamed(FieldsUnnamed {
+                    unnamed: fields_unnamed.unnamed.iter().map(|field| {
+                        Ok(Field { ty: compile_type(ctx, &field.ty)?, ..field.clone() })
+                    }).collect::<Result<_, Error>>()?,
+
+                    ..fields_unnamed.clone()
+                })
+            }
+        };
+
+        Ok(Variant {
+            ident: variant.ident.clone(),
+            fields: exec_fields,
+            ..variant.clone()
+        })
+    }).collect::<Result<_, Error>>()?;
+
+    let variant_arms = item_enum.variants.iter().map(|variant| {
+        let variant_name = &variant.ident;
+
+        // Generate match arms for each variant
+        match &variant.fields {
+            Fields::Unit => quote! {
+                #exec_name::#variant_name => #spec_name::#variant_name
+            },
+            Fields::Named(fields_named) => {
+                let field_names = fields_named.named.iter().map(|field| &field.ident);
+                let field_views = fields_named.named.iter().map(|field| {
+                    let field_name = &field.ident;
+                    quote! { #field_name: #field_name.deep_view() }
+                });
+
+                quote! { #exec_name::#variant_name { #(#field_names,)* } => #spec_name::#variant_name { #(#field_views,)* } }
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let field_names = fields_unnamed.unnamed.iter()
+                    .enumerate()
+                    .map(|(i, _)| Ident::new(&format!("f{}", i), Span::call_site()))
+                    .collect::<Vec<_>>();
+
+                let field_views = fields_unnamed.unnamed.iter().enumerate().map(|(i, field)| {
+                    let field_name = &field_names[i];
+                    quote! { #field_name.deep_view() }
+                });
+
+                quote! { #exec_name::#variant_name(#(#field_names,)*) => #spec_name::#variant_name(#(#field_views,)*) }
+            }
+        }
+    });
+
+    let view_impl = quote! {
+        impl DeepView for #exec_name {
+            type V = #spec_name;
+
+            closed spec fn deep_view(&self) -> #spec_name {
+                match self {
+                    #(#variant_arms,)*
+                }
+            }
+        }
+    };
+
+    Ok((
+        ItemEnum {
+            ident: exec_name,
+            variants: exec_variants,
+            ..item_enum.clone()
+        },
+        view_impl
+    ))
 }
 
 fn compile_path(ctx: &Context, path: &Path) -> Result<Path, Error> {
@@ -934,25 +1017,6 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
     }
 }
 
-// // fn compile_stmt(ctx: &Context, local: &LocalContext, stmt: &Stmt) -> Result<Stmt, Error> {
-//     match stmt {
-//         Stmt::Local(local) => {
-//             let Some((tok, expr)) = &local.init else {
-//                 return Err(Error::new_spanned(stmt, "unsupported let statement without initializer"));
-//             };
-
-//             Ok(Stmt::Local(Local {
-//                 init: Some((tok.clone(), Box::new(compile_expr(ctx, local, expr)?))),
-//                 ..local.clone()
-//             }))
-//         }
-
-//         Stmt::Expr(expr) => Ok(Stmt::Expr(compile_expr(ctx, local, expr)?)),
-
-//         _ => return Err(Error::new_spanned(stmt, "unsupported statement")),
-//     }
-// // }
-
 fn compile_block(ctx: &Context, local: &LocalContext, block: &Block) -> Result<Block, Error> {
     let mut local = local.clone();
     let mut stmts = Vec::new();
@@ -1110,13 +1174,10 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
     let mut output = Vec::new();
 
     let mut ctx = Context {
-        structs: HashMap::new(),
-        enums: HashMap::new(),
-        fns: HashMap::new(),
+        structs: IndexMap::new(),
+        enums: IndexMap::new(),
+        fns: IndexMap::new(),
     };
-
-    let mut struct_names = Vec::new();
-    let mut fn_names = Vec::new();
 
     // Iterate through the items once, and copies them to the output as they are
     for item in items.0 {
@@ -1128,33 +1189,38 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
                 }
 
                 output.push(quote! { #item_fn });
-
-                fn_names.push(item_fn.sig.ident.to_string());
                 ctx.fns.insert(item_fn.sig.ident.to_string(), item_fn);
             }
 
             Item::Struct(item_struct) => {
                 output.push(quote! { #item_struct });
-
-                struct_names.push(item_struct.ident.to_string());
                 ctx.structs.insert(item_struct.ident.to_string(), item_struct);
+            }
+
+            Item::Enum(item_enum) => {
+                output.push(quote! { #item_enum });
+                ctx.enums.insert(item_enum.ident.to_string(), item_enum);
             }
 
             _ => return Err(Error::new_spanned(item, "unsupported item")),
         };
     }
 
-    // For each struct, generate an exec version and a (deep) View impl
-    for name in struct_names {
-        let item_struct = &ctx.structs[&name];
+    // For each struct and enum, generate an exec version and a (deep) View impl
+    for item_struct in ctx.structs.values() {
         let (exec_struct, view_impl) = compile_struct(&ctx, item_struct)?;
         output.push(quote! { #exec_struct });
         output.push(view_impl);
     }
 
+    for item_enum in ctx.enums.values() {
+        let (exec_enum, view_impl) = compile_enum(&ctx, item_enum)?;
+        output.push(quote! { #exec_enum });
+        output.push(view_impl);
+    }
+
     // For each function, generate an exec version
-    for name in fn_names {
-        let item_fn = &ctx.fns[&name];
+    for item_fn in ctx.fns.values() {
         let exec_fn = compile_spec_fn(&ctx, item_fn)?;
         output.push(quote! { #exec_fn });
     }

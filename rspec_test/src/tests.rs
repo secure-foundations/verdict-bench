@@ -208,3 +208,23 @@ test_rspec!(mod test_match {
         }
     }
 });
+
+test_rspec!(mod test_enum {
+    enum A {
+        B(u32),
+        C,
+        D { a: Seq<u32>, b: Option<SpecString> },
+    }
+});
+
+test_rspec!(mod test_struct_unnamed {
+    struct Test(u32, SpecString);
+    struct UnitStruct;
+    struct UnitStruct2();
+});
+
+// use vstd::prelude::*;
+// use rspec_lib::*;
+
+// verus! {
+// }
