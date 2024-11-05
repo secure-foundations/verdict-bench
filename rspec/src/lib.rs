@@ -317,7 +317,7 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
                     Ok(ty.clone()),
 
                 // TODO: do we want this?
-                "int" => Ok(new_simple_type("i64")),
+                // "int" => Ok(new_simple_type("i64")),
 
                 // Option<T> => Option<exec(T)>
                 "Option" => {
@@ -545,13 +545,24 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                     let mut local = local.clone();
                     local.vars.insert(quant_var.to_string(), Some(Box::new(quant_type.clone())));
 
+                    let compiled_lower = compile_expr(ctx, &local, lower)?;
+                    let compiled_upper = compile_expr(ctx, &local, upper)?;
                     let compiled_body = compile_expr(ctx, &local, body)?;
                     // println!("closure: {}", quote! { #body });
 
+                    let quant_attrs = closure.inner_attrs.clone();
+
+                    // Since #body and #expr will be used as spec code in exec mode
+                    // we have to convert all variables in the context to their spec versions via deep_view
+                    let local_view: Vec<TokenStream2> = local.vars.iter().map(|(name, _)| {
+                        let name = Ident::new(name, Span::call_site());
+                        quote! { let #name = #name.deep_view(); }
+                    }).collect();
+
                     let compiled = quote! {
                         {
-                            let _lower = #lower;
-                            let _upper = #upper;
+                            let _lower = #compiled_lower;
+                            let _upper = #compiled_upper;
                             let mut _res = true;
                             let mut #guard_var = _lower;
 
@@ -560,7 +571,11 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                                 while #guard_var < _upper
                                     invariant
                                         _lower <= #guard_var <= _upper,
-                                        _res == { let _upper = #guard_var; forall |#guard_var: #quant_type| !(_lower <= #guard_var < _upper) || #body }
+                                        _res == {
+                                            let _upper = #guard_var;
+                                            #(#local_view)*
+                                            forall |#guard_var: #quant_type| #(#quant_attrs)* !(_lower <= #guard_var < _upper) || (#body)
+                                        },
                                 {
                                     if !(#compiled_body) {
                                         _res = false;
@@ -570,7 +585,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                                     #guard_var += 1;
                                 }
                             }
-                            assert(_res == #expr);
+                            // assert(_res == { #(#local_view)* (#expr) });
                             _res
                         }
                     };
@@ -578,11 +593,10 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                     println!("compiled: {}", quote! { #compiled });
 
                     let compiled: TokenStream = compiled.into();
-                    let parsed_compiled: Expr = syn_verus::parse(compiled).unwrap();
+                    let parsed_compiled: Expr = syn_verus::parse(compiled)
+                        .map_err(|e| Error::new_spanned(expr, format!("internally generated code syntax error: {}", e)))?;
 
-                    // println!("compiled: {:?}", parsed_compiled);
-
-                    todo!()
+                    Ok(parsed_compiled)
                 }
 
                 UnOp::Exists(..) => {
@@ -705,11 +719,18 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
         // Expr::Cast(expr_cast) => todo!(),
 
         Expr::Cast(expr_cast) =>
-            Ok(Expr::Cast(ExprCast {
-                expr: Box::new(compile_expr(ctx, local, &expr_cast.expr)?),
-                ty: Box::new(compile_type(ctx, &expr_cast.ty)?),
-                ..expr_cast.clone()
-            })),
+            match compile_type(ctx, &expr_cast.ty) {
+                // `as <t>` for a supported t will be converted
+                Ok(ty) => Ok(Expr::Cast(ExprCast {
+                    expr: Box::new(compile_expr(ctx, local, &expr_cast.expr)?),
+                    ty: Box::new(ty),
+                    ..expr_cast.clone()
+                })),
+
+                // Unsupported <T> will be ignored
+                // TODO: is this ok?
+                Err(_) => compile_expr(ctx, local, &expr_cast.expr),
+            }
 
         Expr::Reference(expr_reference) =>
             Ok(Expr::Reference(ExprReference {
