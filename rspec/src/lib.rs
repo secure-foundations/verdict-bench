@@ -1,12 +1,13 @@
 use std::collections::HashMap;
-use std::path;
+use std::fmt;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Item, ItemEnum, ItemFn, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, View};
+use prettyplease_verus::unparse_expr;
 
 struct Items(Vec<Item>);
 
@@ -26,11 +27,48 @@ struct Context {
     fns: HashMap<String, ItemFn>,
 }
 
-struct CompiledType {
-    /// When used in spec mode
-    spec: Type,
-    /// When used in exec mode
-    exec: Type,
+#[derive(Clone)]
+struct LocalContext {
+    vars: HashMap<String, Option<Box<Type>>>,
+}
+
+impl fmt::Display for LocalContext {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{{")?;
+
+        for (i, (name, ty)) in self.vars.iter().enumerate() {
+            if i != 0 {
+                write!(f, ", ")?;
+            }
+
+            if let Some(ty) = ty {
+                write!(f, "{}: {}", name, quote! { #ty })?;
+            } else {
+                write!(f, "{}: <unknown>", name)?;
+            }
+        }
+
+        write!(f, "}}")
+    }
+}
+
+fn unparse_item(item: Item) -> String {
+    let file = syn_verus::File {
+        attrs: vec![],
+        items: vec![item],
+        shebang: None,
+    };
+    prettyplease_verus::unparse(&file)
+}
+
+fn unparse_item_token_stream(item: &TokenStream2) -> String {
+    let item = syn_verus::parse2(item.clone()).unwrap();
+    unparse_item(item)
+}
+
+fn unparse_expr_token_stream(expr: &TokenStream2) -> String {
+    let expr = syn_verus::parse2(expr.clone()).unwrap();
+    unparse_expr(&expr)
 }
 
 macro_rules! path {
@@ -75,28 +113,66 @@ macro_rules! expr_path {
             qself: None,
             path: path!($($tt)*),
         })
-    }
+    };
 }
 
 macro_rules! expr_view {
     ($expr:expr) => {
-        Expr::View(View {
-            attrs: Vec::new(),
-            expr: Box::new($expr),
-            at_token: Default::default(),
-        })
-    }
+        // Expr::View(View {
+        //     attrs: Vec::new(),
+        //     expr: Box::new($expr),
+        //     at_token: Default::default(),
+        // })
+        expr_method_call!($expr, "deep_view")
+    };
 }
 
 macro_rules! expr_binary {
-    ($left:expr, $op:ident, $right:expr) => {
+    ($left:expr, $op:ident, $right:expr $(,)?) => {
         Expr::Binary(ExprBinary {
             attrs: Vec::new(),
             left: Box::new($left),
             op: BinOp::$op(Default::default()),
             right: Box::new($right),
         })
-    }
+    };
+}
+
+macro_rules! expr_call {
+    ($func:expr, $($arg:expr),* $(,)?) => {
+        Expr::Call(ExprCall {
+            attrs: Vec::new(),
+            func: Box::new($func),
+            paren_token: Default::default(),
+            args: Punctuated::from_iter([ $($arg),* ]),
+        })
+    };
+
+    // All args provided as an argument
+    ($func:expr; $args:expr) => {
+        Expr::Call(ExprCall {
+            attrs: Vec::new(),
+            func: Box::new($func),
+            paren_token: Default::default(),
+            args: $args,
+        })
+    };
+}
+
+macro_rules! expr_method_call {
+    // $method expected to be a &str
+    ($receiver:expr, $method:expr $(, $arg:expr)* $(,)?) => {{
+        let args: Vec<Expr> = vec![ $( $arg ),* ];
+        Expr::MethodCall(ExprMethodCall {
+            attrs: Vec::new(),
+            receiver: Box::new($receiver),
+            dot_token: Default::default(),
+            method: Ident::new($method, Span::call_site()),
+            turbofish: None,
+            paren_token: Default::default(),
+            args: Punctuated::from_iter(args),
+        })
+    }};
 }
 
 fn exec_type_name(name: &str) -> String {
@@ -190,6 +266,27 @@ fn get_simple_type_param(ty: &Type, n: usize) -> Result<Type, Error> {
     Err(Error::new_spanned(ty, "expect a simple type"))
 }
 
+/// Check if the pattern is a simple variable and return the identifier
+fn get_pat_var(pat: &Pat) -> Result<&Ident, Error> {
+    if let Pat::Ident(pat_ident) = pat {
+        Ok(&pat_ident.ident)
+    } else {
+        Err(Error::new_spanned(pat, "expect a variable pattern"))
+    }
+}
+
+/// Check that the expr is a simple variable and return the identifier
+fn get_simple_var(expr: &Expr) -> Result<&Ident, Error> {
+    if let Expr::Path(ExprPath { path, .. }) = expr {
+        let segments: Vec<_> = path.segments.iter().collect();
+        if segments.len() == 1 {
+            return Ok(&segments[0].ident);
+        }
+    }
+
+    Err(Error::new_spanned(expr, "expect a simple variable"))
+}
+
 /// Convert a spec type to an exec type
 /// TODO: &SpecString => &str?
 fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
@@ -215,7 +312,7 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
                 "SpecString" => Ok(new_simple_type("String")),
 
                 // Integer/float types can stay the same
-                "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128" |
+                "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128" | "usize" | "isize" |
                 "f32" | "f64" | "bool" | "char" =>
                     Ok(ty.clone()),
 
@@ -244,30 +341,30 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
 
 /// Generate a view expression for a field (from the original rspec definition)
 fn generate_field_view(field: &Field, field_expr: TokenStream2) -> TokenStream2 {
-    // Use a deep view for Option and Seq
-    if let Ok(name) = get_simple_type_name(&field.ty) {
-        match name.as_str() {
-            "Option" => {
-                return quote! {
-                    match #field_expr {
-                        Some(v) => Some(v.view()),
-                        None => None,
-                    }
-                };
-            }
+    // // Use a deep view for Option and Seq
+    // if let Ok(name) = get_simple_type_name(&field.ty) {
+    //     match name.as_str() {
+    //         "Option" => {
+    //             return quote! {
+    //                 match #field_expr {
+    //                     Some(v) => Some(v.view()),
+    //                     None => None,
+    //                 }
+    //             };
+    //         }
 
-            "Seq" => {
-                return quote! {
-                    Seq::new(#field_expr.view().len(), |i| #field_expr.view()[i].view())
-                };
-            }
+    //         "Seq" => {
+    //             return quote! {
+    //                 Seq::new(#field_expr.view().len(), |i| #field_expr.view()[i].view())
+    //             };
+    //         }
 
-            _ => {}
-        }
-    }
+    //         _ => {}
+    //     }
+    // }
 
     // By default, just calls the view method
-    quote! { #field_expr.view() }
+    quote! { #field_expr.deep_view() }
 }
 
 /// Generate exec version of the given struct as well as a deep View impl
@@ -296,10 +393,10 @@ fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct
 
             // Generate a (deep) View from exec to spec
             let view_impl = quote! {
-                impl View for #exec_name {
+                impl DeepView for #exec_name {
                     type V = #spec_name;
 
-                    closed spec fn view(&self) -> #spec_name {
+                    closed spec fn deep_view(&self) -> #spec_name {
                         #spec_name {
                             #(#field_views,)*
                         }
@@ -325,6 +422,26 @@ fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct
     }
 }
 
+fn compile_pattern(ctx: &Context, pat: &Pat) -> Result<Pat, Error> {
+    // TODO: convert paths containing spec structs/enums to exec versions
+    Ok(pat.clone())
+}
+
+fn compile_match_arm(ctx: &Context, local: &LocalContext, arm: &Arm) -> Result<Arm, Error> {
+    // TODO: update bindings
+    Ok(Arm {
+        attrs: Vec::new(),
+        pat: compile_pattern(ctx, &arm.pat)?,
+        guard: if let Some((tok, expr)) = &arm.guard {
+            Some((tok.clone(), Box::new(compile_expr(ctx, local, expr)?)))
+        } else {
+            None
+        },
+        body: Box::new(compile_expr(ctx, local, &arm.body)?),
+        ..arm.clone()
+    })
+}
+
 /**
  * Expressions to support
  * - Equality, comparisons, and binary exprs are compiled as they are (and hopefully the type matches; if not use built-in functions and traits)
@@ -337,48 +454,160 @@ fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct
  * - Block expr
  * - If stmt
  */
-fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
+fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr, Error> {
+    println!("locals: {}", local);
+
     match expr {
         // Some of the operations (e.g. == for strings)
         // lack built-in exec support in Verus, so we replace
         // them with custom operations implemented in rspec_lib::*
+        //
+        // TODO: filter unsupported ops
         Expr::Binary(expr_binary) =>
             match &expr_binary.op {
                 // Replace `a == b` with `::rspec::eq_other(a, b)`
                 BinOp::Eq(..) =>
-                    Ok(Expr::Call(ExprCall {
-                        attrs: Vec::new(),
-                        func: Box::new(expr_path![seg!("rspec_lib"), seg!("eq")]),
-                        paren_token: Default::default(),
-                        args: Punctuated::from_iter([
-                            compile_expr(ctx, &expr_binary.left)?,
-                            compile_expr(ctx, &expr_binary.right)?,
-                        ]),
-                    })),
+                    Ok(expr_call!(
+                        expr_path![seg!("rspec_lib"), seg!("RSpec"), seg!("eq")],
+                        compile_expr(ctx, local, &expr_binary.left)?,
+                        compile_expr(ctx, local, &expr_binary.right)?,
+                    )),
 
                 // By default, we just clone the same binary operation
                 _ => Ok(Expr::Binary(ExprBinary {
-                    left: Box::new(compile_expr(ctx, &expr_binary.left)?),
-                    right: Box::new(compile_expr(ctx, &expr_binary.right)?),
+                    left: Box::new(compile_expr(ctx, local, &expr_binary.left)?),
+                    right: Box::new(compile_expr(ctx, local, &expr_binary.right)?),
                     ..expr_binary.clone()
                 }))
             }
 
         Expr::Unary(expr_unary) =>
-            Ok(Expr::Unary(ExprUnary {
-                expr: Box::new(compile_expr(ctx, &expr_unary.expr)?),
-                ..expr_unary.clone()
-            })),
+            match &expr_unary.op {
+                UnOp::Forall(..) => {
+                    let Expr::Closure(closure) = expr_unary.expr.as_ref() else {
+                        return Err(Error::new_spanned(expr, "ill-formed forall expression"));
+                    };
+
+                    if closure.inputs.len() != 1 {
+                        return Err(Error::new_spanned(expr, "only support single quantified variable"));
+                    }
+
+                    let Pat::Type(PatType { pat, ty: quant_type, .. }) = &closure.inputs[0] else {
+                        return Err(Error::new_spanned(expr, "only supports a typed variable as quantifier"));
+                    };
+
+                    // TODO: only support fixed-width integers?
+                    let quant_type = compile_type(ctx, quant_type)?;
+                    let quant_var = get_pat_var(&pat)?;
+
+                    // forall |x| <guard> ==> <body>
+                    let Expr::Binary(ExprBinary {
+                        left: guard, op: BinOp::Imply(..), right: body, ..
+                    }) = closure.body.as_ref() else {
+                        return Err(Error::new_spanned(expr, "unsupported forall expression"));
+                    };
+
+                    // <guard> == <lower> <= x < <upper>
+                    let Expr::Binary(ExprBinary {
+                        left: lower_guard, op: BinOp::Lt(..), right: upper, ..
+                    }) = guard.as_ref() else {
+                        return Err(Error::new_spanned(guard, "unsupported forall guard upper bound"));
+                    };
+
+                    let Expr::Binary(ExprBinary {
+                        left: lower, op: BinOp::Le(..), right: guard_var, ..
+                    }) = lower_guard.as_ref() else {
+                        return Err(Error::new_spanned(lower_guard, "unsupported forall guard lower bound"));
+                    };
+
+                    let guard_var = get_simple_var(guard_var)?;
+
+                    // {
+                    //   let _lower = <lower>
+                    //   let _upper = <upper>
+                    //   let mut _res = true;
+                    //   #[verifier::loop_isolation(true)]
+                    //   for <guard_var> in _lower.._upper
+                    //     invariant_except_break _res == forall |_x| _lower <= _x < <guard_var> ==> { let <guard_var> = _x; <body> }
+                    //     ensures _res == <forall expr>
+                    //   {
+                    //     _res = _res && <body>;
+                    //     if !_res { break; }
+                    //   }
+                    //   _res
+                    // }
+
+                    if guard_var != quant_var {
+                        return Err(Error::new_spanned(guard_var, "quantified variable does not match the guard variable"));
+                    }
+
+                    // Bind the quantifier
+                    let mut local = local.clone();
+                    local.vars.insert(quant_var.to_string(), Some(Box::new(quant_type.clone())));
+
+                    let compiled_body = compile_expr(ctx, &local, body)?;
+                    // println!("closure: {}", quote! { #body });
+
+                    let compiled = quote! {
+                        {
+                            let _lower = #lower;
+                            let _upper = #upper;
+                            let mut _res = true;
+                            let mut #guard_var = _lower;
+
+                            if _lower < _upper {
+                                #[verifier::loop_isolation(false)]
+                                while #guard_var < _upper
+                                    invariant
+                                        _lower <= #guard_var <= _upper,
+                                        _res == { let _upper = #guard_var; forall |#guard_var: #quant_type| !(_lower <= #guard_var < _upper) || #body }
+                                {
+                                    if !(#compiled_body) {
+                                        _res = false;
+                                        #guard_var += 1;
+                                        break;
+                                    }
+                                    #guard_var += 1;
+                                }
+                            }
+                            assert(_res == #expr);
+                            _res
+                        }
+                    };
+
+                    println!("compiled: {}", quote! { #compiled });
+
+                    let compiled: TokenStream = compiled.into();
+                    let parsed_compiled: Expr = syn_verus::parse(compiled).unwrap();
+
+                    // println!("compiled: {:?}", parsed_compiled);
+
+                    todo!()
+                }
+
+                UnOp::Exists(..) => {
+                    todo!()
+                }
+
+                // TODO: filter unsupported ops
+                UnOp::Deref(..) | UnOp::Neg(..) | UnOp::Not(..) =>
+                    Ok(Expr::Unary(ExprUnary {
+                        expr: Box::new(compile_expr(ctx, local, &expr_unary.expr)?),
+                        ..expr_unary.clone()
+                    })),
+
+                _ => Err(Error::new_spanned(expr, "unsupported unary operator")),
+            }
 
         Expr::Paren(expr_paren) =>
             Ok(Expr::Paren(ExprParen {
-                expr: Box::new(compile_expr(ctx, &expr_paren.expr)?),
+                expr: Box::new(compile_expr(ctx, local, &expr_paren.expr)?),
                 ..expr_paren.clone()
             })),
 
         Expr::Block(expr_block) =>
             Ok(Expr::Block(ExprBlock {
-                block: compile_block(ctx, &expr_block.block)?,
+                block: compile_block(ctx, local, &expr_block.block)?,
                 ..expr_block.clone()
             })),
 
@@ -386,7 +615,7 @@ fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
             Ok(Expr::BigAnd(BigAnd {
                 exprs: big_and.exprs
                     .iter()
-                    .map(|(tok, expr)| Ok((tok.clone(), Box::new(compile_expr(ctx, expr)?))))
+                    .map(|(tok, expr)| Ok((tok.clone(), Box::new(compile_expr(ctx, local, expr)?))))
                     .collect::<Result<_, Error>>()?,
             })),
 
@@ -394,16 +623,16 @@ fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
             Ok(Expr::BigOr(BigOr {
                 exprs: big_or.exprs
                     .iter()
-                    .map(|(tok, expr)| Ok((tok.clone(), Box::new(compile_expr(ctx, expr)?))))
+                    .map(|(tok, expr)| Ok((tok.clone(), Box::new(compile_expr(ctx, local, expr)?))))
                     .collect::<Result<_, Error>>()?,
             })),
 
         Expr::If(expr_if) =>
             Ok(Expr::If(ExprIf {
-                cond: Box::new(compile_expr(ctx, &expr_if.cond)?),
-                then_branch: compile_block(ctx, &expr_if.then_branch)?,
+                cond: Box::new(compile_expr(ctx, local, &expr_if.cond)?),
+                then_branch: compile_block(ctx, local, &expr_if.then_branch)?,
                 else_branch: if let Some((tok, expr)) = &expr_if.else_branch {
-                    Some((tok.clone(), Box::new(compile_expr(ctx, expr)?)))
+                    Some((tok.clone(), Box::new(compile_expr(ctx, local, expr)?)))
                 } else {
                     return Err(Error::new_spanned(expr, "unsupported if statement without else branch"));
                 },
@@ -421,23 +650,50 @@ fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
                 _ => Err(Error::new_spanned(view, "only string literals are supported for view expression (@)")),
             }
 
+        // TODO: filter unsupported calls
         Expr::Call(expr_call) =>
             Ok(Expr::Call(ExprCall {
-                func: Box::new(compile_expr(ctx, &expr_call.func)?),
-                args: expr_call.args.iter().map(|arg| compile_expr(ctx, arg)).collect::<Result<_, Error>>()?,
+                func: Box::new(compile_expr(ctx, local, &expr_call.func)?),
+                args: expr_call.args.iter().map(|arg| compile_expr(ctx, local, arg)).collect::<Result<_, Error>>()?,
                 ..expr_call.clone()
             })),
 
-        Expr::Index(expr_index) => todo!(),
-        Expr::Match(expr_match) => todo!(),
-        Expr::MethodCall(expr_method_call) => todo!(),
-        Expr::Matches(expr_matches) => todo!(),
+        Expr::Index(expr_index) =>
+            Ok(expr_method_call!(
+                compile_expr(ctx, local, &expr_index.expr)?,
+                "rspec_index",
+                compile_expr(ctx, local, &expr_index.index)?,
+            )),
 
-        // NOTE: forall |i| ...
-        // is represented as a unary operator ("forall")
-        // applied to a closure
+        // TODO: more methods
+        Expr::MethodCall(expr_method_call) => {
+            let name = expr_method_call.method.to_string();
 
-        // Maybe?
+            match name.as_str() {
+                "len" => {
+                    if expr_method_call.args.len() != 0 {
+                        return Err(Error::new_spanned(expr, "len method call should not have arguments"));
+                    }
+
+                    Ok(expr_method_call!(
+                        compile_expr(ctx, local, &expr_method_call.receiver)?,
+                        "rspec_len",
+                    ))
+                }
+
+                _ => Err(Error::new_spanned(expr, "unsupported method call")),
+            }
+        }
+
+        Expr::Match(expr_match) =>
+            Ok(Expr::Match(ExprMatch {
+                expr: Box::new(compile_expr(ctx, local, &expr_match.expr)?),
+                arms: expr_match.arms.iter().map(|arm| compile_match_arm(ctx, local, arm)).collect::<Result<_, Error>>()?,
+                ..expr_match.clone()
+            })),
+
+        // TODO: maybe?
+        // Expr::Matches(expr_matches) => todo!(),
         // Expr::Let(expr_let) => todo!(),
         // Expr::Struct(expr_struct) => todo!(),
         // Expr::Tuple(expr_tuple) => todo!(),
@@ -448,17 +704,22 @@ fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
         // Expr::GetField(expr_get_field) => todo!(),
         // Expr::Cast(expr_cast) => todo!(),
 
+        Expr::Cast(expr_cast) =>
+            Ok(Expr::Cast(ExprCast {
+                expr: Box::new(compile_expr(ctx, local, &expr_cast.expr)?),
+                ty: Box::new(compile_type(ctx, &expr_cast.ty)?),
+                ..expr_cast.clone()
+            })),
+
         Expr::Reference(expr_reference) =>
             Ok(Expr::Reference(ExprReference {
-                expr: Box::new(compile_expr(ctx, &expr_reference.expr)?),
+                expr: Box::new(compile_expr(ctx, local, &expr_reference.expr)?),
                 ..expr_reference.clone()
             })),
 
         Expr::Lit(lit) =>
             match &lit.lit {
-                Lit::Str(..) => Ok(expr.clone()),
-                Lit::Byte(..) | Lit::Char(..) | Lit::Int(..) | Lit::Float(..) | Lit::Bool(..) =>
-                    // Ok(expr_reference(expr.clone())),
+                Lit::Str(..) | Lit::Byte(..) | Lit::Char(..) | Lit::Int(..) | Lit::Float(..) | Lit::Bool(..) =>
                     Ok(expr.clone()),
 
                 _ => Err(Error::new_spanned(lit, "unsupported literal")),
@@ -472,39 +733,73 @@ fn compile_expr(ctx: &Context, expr: &Expr) -> Result<Expr, Error> {
                 let name = segments[0].ident.to_string();
 
                 if ctx.fns.contains_key(&name) {
-                    return Ok(expr_path![seg!(&exec_fn_name(&name))]);
-                }
-            }
+                    Ok(expr_path![seg!(&exec_fn_name(&name))])
+                } else {
+                    // Check that the variable does not start with _, which is reserved for internal variables
+                    if name.starts_with('_') {
+                        return Err(Error::new_spanned(path, "variable names starting with _ are reserved"));
+                    }
 
-            Ok(expr.clone())
+                    Ok(expr.clone())
+                }
+            } else {
+                Err(Error::new_spanned(path, "unsupported path expression"))
+            }
         }
 
         _ => Err(Error::new_spanned(expr, "unsupported expression")),
     }
 }
 
-fn compile_stmt(ctx: &Context, stmt: &Stmt) -> Result<Stmt, Error> {
-    match stmt {
-        Stmt::Local(local) => {
-            let Some((tok, expr)) = &local.init else {
-                return Err(Error::new_spanned(stmt, "unsupported let statement without initializer"));
-            };
+// // fn compile_stmt(ctx: &Context, local: &LocalContext, stmt: &Stmt) -> Result<Stmt, Error> {
+//     match stmt {
+//         Stmt::Local(local) => {
+//             let Some((tok, expr)) = &local.init else {
+//                 return Err(Error::new_spanned(stmt, "unsupported let statement without initializer"));
+//             };
 
-            Ok(Stmt::Local(Local {
-                init: Some((tok.clone(), Box::new(compile_expr(ctx, expr)?))),
-                ..local.clone()
-            }))
+//             Ok(Stmt::Local(Local {
+//                 init: Some((tok.clone(), Box::new(compile_expr(ctx, local, expr)?))),
+//                 ..local.clone()
+//             }))
+//         }
+
+//         Stmt::Expr(expr) => Ok(Stmt::Expr(compile_expr(ctx, local, expr)?)),
+
+//         _ => return Err(Error::new_spanned(stmt, "unsupported statement")),
+//     }
+// // }
+
+fn compile_block(ctx: &Context, local: &LocalContext, block: &Block) -> Result<Block, Error> {
+    let mut local = local.clone();
+    let mut stmts = Vec::new();
+
+    for stmt in &block.stmts {
+        match stmt {
+            Stmt::Local(binding) => {
+                let var = get_pat_var(&binding.pat)?;
+
+                let Some((tok, expr)) = &binding.init else {
+                    return Err(Error::new_spanned(stmt, "unsupported let statement without initializer"));
+                };
+
+                stmts.push(Stmt::Local(Local {
+                    init: Some((tok.clone(), Box::new(compile_expr(ctx, &local, expr)?))),
+                    ..binding.clone()
+                }));
+
+                // Add the variable to the local context
+                local.vars.insert(var.to_string(), None);
+            }
+
+            Stmt::Expr(expr) => stmts.push(Stmt::Expr(compile_expr(ctx, &local, expr)?)),
+
+            _ => return Err(Error::new_spanned(stmt, "unsupported statement")),
         }
-
-        Stmt::Expr(expr) => Ok(Stmt::Expr(compile_expr(ctx, expr)?)),
-
-        _ => return Err(Error::new_spanned(stmt, "unsupported statement")),
     }
-}
 
-fn compile_block(ctx: &Context, block: &Block) -> Result<Block, Error> {
     Ok(Block {
-        stmts: block.stmts.iter().map(|stmt| compile_stmt(ctx, stmt)).collect::<Result<_, Error>>()?,
+        stmts,
         ..block.clone()
     })
 }
@@ -563,17 +858,16 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
             if let FnArgKind::Typed(PatType {
                 pat, ty, ..
             }) = &param.kind {
-                if let Pat::Ident(PatIdent { ident, .. }) = pat.as_ref() {
-                    let view = expr_view!(expr_path![seg!(&ident.to_string())]);
+                let ident = get_pat_var(pat)?;
+                let view = expr_view!(expr_path![seg!(&ident.to_string())]);
 
-                    // If the target type has a reference, we add one too
-                    // NOTE: assuming there is at most one level of reference
-                    return Ok(if let Type::Reference(..) = ty.as_ref() {
-                        new_expr_ref(view)
-                    } else {
-                        view
-                    });
-                }
+                // If the target type has a reference, we add one too
+                // NOTE: assuming there is at most one level of reference
+                return Ok(if let Type::Reference(..) = ty.as_ref() {
+                    new_expr_ref(view)
+                } else {
+                    view
+                });
             }
 
             Err(Error::new_spanned(sig, "unsupported parameter type"))
@@ -583,12 +877,7 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
     let ensure_expr = expr_binary!(
         expr_view!(expr_path![seg!("_res")]),
         Eq,
-        Expr::Call(ExprCall {
-            attrs: Vec::new(),
-            func: Box::new(expr_path![seg!(&sig.ident.to_string())]),
-            paren_token: Default::default(),
-            args,
-        })
+        expr_call!(expr_path![seg!(&sig.ident.to_string())]; args)
     );
 
     Ok(Signature {
@@ -613,9 +902,23 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
 }
 
 fn compile_spec_fn(ctx: &Context, item_fn: &ItemFn) -> Result<ItemFn, Error> {
+    // Initialize the local context with the function arguments
+    let local = LocalContext {
+        vars: item_fn.sig.inputs
+            .iter()
+            .map(|param| {
+                if let FnArgKind::Typed(PatType { pat, ty, .. }) = &param.kind {
+                    Ok((get_pat_var(pat)?.to_string(), Some(ty.clone())))
+                } else {
+                    Err(Error::new_spanned(&item_fn.sig, "unsupported parameter type"))
+                }
+            })
+            .collect::<Result<_, Error>>()?,
+    };
+
     Ok(ItemFn {
         sig: compile_signature(ctx, &item_fn.sig)?,
-        block: Box::new(compile_block(ctx, &item_fn.block)?),
+        block: Box::new(compile_block(ctx, &local, &item_fn.block)?),
         ..item_fn.clone()
     })
 }
@@ -675,6 +978,7 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
 
     println!("########################################");
     for item in output.iter() {
+        // println!("{}", unparse_item_token_stream(item));
         println!("{}", item);
     }
 

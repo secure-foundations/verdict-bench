@@ -3,25 +3,12 @@
 version = 3
 
 [[package]]
-name = "builtin_macros"
-version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#97112354a9453bfb983ad7431a0776990ba1df85"
-dependencies = [
- "prettyplease_verus",
- "proc-macro2",
- "quote",
- "syn",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
- "synstructure",
-]
-
-[[package]]
 name = "prettyplease_verus"
 version = "0.1.15"
-source = "git+https://github.com/verus-lang/verus?branch=main#97112354a9453bfb983ad7431a0776990ba1df85"
+source = "git+https://github.com/verus-lang/verus#97112354a9453bfb983ad7431a0776990ba1df85"
 dependencies = [
  "proc-macro2",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
+ "syn_verus",
 ]
 
 [[package]]
@@ -46,31 +33,10 @@ dependencies = [
 name = "rspec"
 version = "0.1.0"
 dependencies = [
- "builtin_macros",
+ "prettyplease_verus",
  "proc-macro2",
  "quote",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus)",
-]
-
-[[package]]
-name = "syn"
-version = "1.0.109"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "syn_verus"
-version = "1.0.95"
-source = "git+https://github.com/verus-lang/verus?branch=main#97112354a9453bfb983ad7431a0776990ba1df85"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
+ "syn_verus",
 ]
 
 [[package]]
@@ -84,25 +50,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "synstructure"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "unicode-xid",
-]
-
-[[package]]
 name = "unicode-ident"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e91b56cd4cadaeb79bbf1a5645f6b4f8dc5bde8834ad5894a8db35fda9efa1fe"
-
-[[package]]
-name = "unicode-xid"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
