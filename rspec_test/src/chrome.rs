@@ -271,9 +271,9 @@ pub open spec fn cert_verified_leaf(env: Environment, cert: Certificate, domain:
     // Domain matches one of the SANs
     &&& cert.ext_subject_alt_name matches Some(subject_alt_name)
     &&& subject_alt_name.names.len() > 0
-    &&& forall |i| #![auto] 0 < i <= subject_alt_name.names.len() ==>
+    &&& forall |i| #![auto] 0 <= i < subject_alt_name.names.len() ==>
             valid_name(env, subject_alt_name.names[i])
-    &&& exists |i| #![auto] 0 < i <= subject_alt_name.names.len() &&
+    &&& exists |i| #![auto] 0 <= i < subject_alt_name.names.len() &&
             name_match(clean_name(subject_alt_name.names[i]), domain)
 
     &&& leaf_duration_valid(cert)
