@@ -50,19 +50,6 @@ impl<'b, T: Copy + PartialEq + DeepView> Eq<T, &'b T> for RSpec {
     }
 }
 
-// /// At the spec level, we allow more conversions such as &T -> T
-// pub trait SpecFrom<T>: Sized {
-//     spec fn from(t: T) -> (res: Self);
-// }
-
-// impl<'a, T> SpecFrom<&'a T> for T {
-//     open spec fn from(t: &'a T) -> T { *t }
-// }
-
-// impl<T> SpecFrom<T> for T {
-//     open spec fn from(t: T) -> T { t }
-// }
-
 /// An index trait for both Vec and String
 /// ExecT and SpecT are separated to support both returning a reference
 /// and returning a Copy value (e.g. String => char)

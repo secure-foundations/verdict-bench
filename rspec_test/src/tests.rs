@@ -223,6 +223,166 @@ test_rspec!(mod test_struct_unnamed {
     struct UnitStruct2();
 });
 
+test_rspec!(mod chrome {
+    pub enum DirectoryName {
+        CommonName(SpecString),
+        Country(SpecString),
+        OrganizationName(SpecString),
+        OrganizationalUnit(SpecString),
+        Locality(SpecString),
+        State(SpecString),
+        PostalCode(SpecString),
+        Surname(SpecString),
+    }
+
+    pub enum GeneralName {
+        DNSName(SpecString),
+        DirectoryName(DirectoryName),
+    }
+
+    pub enum SubjectKey {
+        RSA {
+            mod_length: usize,
+        },
+        DSA {
+            p_len: u64,
+            q_len: u64,
+            g_len: u64,
+        },
+        Other,
+    }
+
+    pub enum ExtendedKeyUsageTypes {
+        ServerAuth,
+        ClientAuth,
+        CodeSigning,
+        EmailProtection,
+        TimeStamping,
+        OCSPSigning,
+        Any,
+    }
+
+    pub struct ExtendedKeyUsage {
+        pub critical: bool,
+        pub usages: Seq<ExtendedKeyUsageTypes>,
+    }
+
+    pub struct BasicConstraints {
+        pub critical: bool,
+        pub is_ca: bool,
+        pub path_len: Option<usize>,
+    }
+
+    pub struct KeyUsage {
+        pub critical: bool,
+        pub digital_signature: bool,
+        pub content_commitment: bool,
+        pub key_encipherment: bool,
+        pub data_encipherment: bool,
+        pub key_agreement: bool,
+        pub key_cert_sign: bool,
+        pub crl_sign: bool,
+        pub encipher_only: bool,
+        pub decipher_only: bool,
+    }
+
+    pub struct SubjectAltName {
+        pub critical: bool,
+        pub names: Seq<SpecString>,
+    }
+
+    pub struct NameConstraints {
+        pub critical: bool,
+        pub permitted: Seq<GeneralName>,
+        pub excluded: Seq<GeneralName>,
+    }
+
+    pub struct CertificatePolicies {
+        pub critical: bool,
+        pub policies: Seq<SpecString>,
+    }
+
+    pub struct Certificate {
+        pub fingerprint: SpecString,
+        pub version: u32,
+        pub sig_alg: SpecString,
+        pub not_after: u64,
+        pub not_before: u64,
+
+        pub subject_name: Seq<DirectoryName>,
+        pub subject_key: SubjectKey,
+
+        pub ext_extended_key_usage: Option<ExtendedKeyUsage>,
+        pub ext_basic_constraints: Option<BasicConstraints>,
+        pub ext_key_usage: Option<KeyUsage>,
+        pub ext_subject_alt_name: Option<SubjectAltName>,
+        pub ext_name_constraints: Option<NameConstraints>,
+        pub ext_certificate_policies: Option<CertificatePolicies>,
+    }
+
+    pub struct Environment {
+        pub time: u64,
+    }
+
+    pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
+        match cert.subject_key {
+            SubjectKey::RSA { mod_length } => mod_length >= 1024,
+            SubjectKey::DSA { p_len, q_len, g_len } => p_len >= 1024,
+            SubjectKey::Other => true,
+        }
+    }
+
+    pub open spec fn strong_signature(alg: &SpecString) -> bool {
+        // ECDSA + SHA512
+        ||| alg == "1.2.840.10045.4.3.2"@
+        // ECDSA + SHA384
+        ||| alg == "1.2.840.10045.4.3.3"@
+        // ECDSA + SHA512
+        ||| alg == "1.2.840.10045.4.3.4"@
+        // RSA + SHA256
+        ||| alg == "1.2.840.113549.1.1.11"@
+        // RSA + SHA384
+        ||| alg == "1.2.840.113549.1.1.12"@
+        // RSA + SHA512
+        ||| alg == "1.2.840.113549.1.1.13"@
+        // RSA-PSS + SHA256
+        ||| alg == "1.2.840.113549.1.1.10"@
+    }
+
+    pub open spec fn key_usage_valid(cert: &Certificate) -> bool {
+        match &cert.ext_basic_constraints {
+            Some(bc) =>
+                match &cert.ext_key_usage {
+                    Some(key_usage) =>
+                        if bc.is_ca {
+                            key_usage.key_cert_sign
+                        } else {
+                            !key_usage.key_cert_sign && {
+                                ||| key_usage.digital_signature
+                                ||| key_usage.key_encipherment
+                                ||| key_usage.key_agreement
+                            }
+                        }
+                    _ => true,
+                }
+            _ => true,
+        }
+    }
+
+    pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
+        match &cert.ext_extended_key_usage {
+            Some(key_usage) =>
+                exists |i: usize| 0 <= i < key_usage.usages.len() &&
+                    match #[trigger] key_usage.usages[i as int] {
+                        ExtendedKeyUsageTypes::ServerAuth => true,
+                        ExtendedKeyUsageTypes::Any => true,
+                        _ => false,
+                    },
+            None => true,
+        }
+    }
+});
+
 // use vstd::prelude::*;
 // use rspec_lib::*;
 

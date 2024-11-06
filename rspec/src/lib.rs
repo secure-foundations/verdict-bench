@@ -6,20 +6,8 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatPath, PatReference, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, Variant, View};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, Variant, View};
 use prettyplease_verus::unparse_expr;
-
-struct Items(Vec<Item>);
-
-impl Parse for Items {
-    fn parse(input: ParseStream) -> syn_verus::parse::Result<Items> {
-        let mut items = Vec::new();
-        while !input.is_empty() {
-            items.push(input.parse()?);
-        }
-        Ok(Items(items))
-    }
-}
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
@@ -325,7 +313,7 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
 
             // If this is a type defined in the context of rspec
             // we directly use the name of the exec version of the type
-            if ctx.structs.contains_key(&name) {
+            if ctx.structs.contains_key(&name) || ctx.enums.contains_key(&name) {
                 return Ok(new_simple_type(&exec_type_name(&name)));
             }
 
@@ -534,11 +522,13 @@ fn compile_path(ctx: &Context, path: &Path) -> Result<Path, Error> {
             Ok(path![seg!(&exec_type_name(&name))])
         } else if ctx.enums.contains_key(&name) {
             Ok(path![seg!(&exec_type_name(&name))])
+        } else if ctx.fns.contains_key(&name) {
+            Ok(path![seg!(&exec_fn_name(&name))])
         } else {
             Ok(path.clone())
         }
     } else if path.segments.len() == 2 {
-        let name = path.segments[1].ident.to_string();
+        let name = path.segments[0].ident.to_string();
 
         if ctx.structs.contains_key(&name) {
             Ok(path![seg!(&exec_type_name(&name)), path.segments[1].clone()])
@@ -593,6 +583,21 @@ fn compile_pattern(ctx: &Context, local: &mut LocalContext, pat: &Pat) -> Result
                     ..pat_tuple_struct.pat.clone()
                 },
                 ..pat_tuple_struct.clone()
+            })),
+
+        Pat::Struct(pat_struct) =>
+            Ok(Pat::Struct(PatStruct {
+                path: compile_path(ctx, &pat_struct.path)?,
+                fields: pat_struct.fields
+                    .iter()
+                    .map(|field| {
+                        Ok(FieldPat {
+                            pat: Box::new(compile_pattern(ctx, local, &field.pat)?),
+                            ..field.clone()
+                        })
+                    })
+                    .collect::<Result<_, Error>>()?,
+                ..pat_struct.clone()
             })),
 
         // TODO: maybe?
@@ -997,21 +1002,11 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
             }
 
         Expr::Macro(..) => Ok(expr.clone()),
-        Expr::Path(path) => {
-            // If the path is a function, replace it with the exec version
-            let name = get_simple_path_name(&path.path)?;
-
-            if ctx.fns.contains_key(&name) {
-                Ok(expr_path![seg!(&exec_fn_name(&name))])
-            } else {
-                // Check that the variable does not start with _, which is reserved for internal variables
-                if name.starts_with('_') {
-                    return Err(Error::new_spanned(path, "variable names starting with _ are reserved"));
-                }
-
-                Ok(expr.clone())
-            }
-        }
+        Expr::Path(path) =>
+            Ok(Expr::Path(ExprPath {
+                path: compile_path(ctx, &path.path)?,
+                ..path.clone()
+            })),
 
         _ => Err(Error::new_spanned(expr, "unsupported expression")),
     }
@@ -1232,6 +1227,18 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
     }
 
     Ok(quote! { ::builtin_macros::verus! { #(#output)* } })
+}
+
+struct Items(Vec<Item>);
+
+impl Parse for Items {
+    fn parse(input: ParseStream) -> syn_verus::parse::Result<Items> {
+        let mut items = Vec::new();
+        while !input.is_empty() {
+            items.push(input.parse()?);
+        }
+        Ok(Items(items))
+    }
 }
 
 /// For spec struct, generate an exec version of the struct with View trait that sends to
