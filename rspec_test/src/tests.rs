@@ -227,6 +227,8 @@ test_rspec!(mod test_struct_unnamed {
 
 verus! {
     rspec! {
+        use exec_str_lower as str_lower;
+
         pub struct PairDirName(DirectoryName, DirectoryName);
 
         pub enum DirectoryName {
@@ -358,8 +360,20 @@ verus! {
             }
         }
 
-        // TODO name_match
-        use exec_name_match as name_match;
+        pub open spec fn name_match(pattern: &SpecString, name: &SpecString) -> bool {
+            if pattern.len() > 2 && pattern.char_at(0) == '*' && pattern.char_at(1) == '.' {
+                let suffix = pattern.skip(2);
+
+                ||| &suffix == name
+                ||| suffix.len() + 1 < name.len() && // `name` should be longer than ".{suffix}"
+                    &suffix == &name.skip(name.len() - suffix.len()) &&
+                    name.char_at(name.len() - suffix.len() - 1) == '.' &&
+                    // the prefix of `name` that matches '*' should not contain '.'
+                    !name.take(name.len() - suffix.len() - 1).has_char('.')
+            } else {
+                pattern == name
+            }
+        }
 
         /// NOTE: leafDurationValid in Hammurabi
         pub open spec fn leaf_duration_valid(cert: &Certificate) -> bool {
@@ -440,18 +454,14 @@ verus! {
             }
         }
 
-        use exec_str_lower as str_lower;
-
-        /// TODO: URI encoding, drop last '.'
+        /// TODO: URI encoding
         pub open spec fn clean_name(name: &SpecString) -> SpecString {
-            // let lower = str_lower(name);
-            // if lower.len() > 0 && lower.last() == '.' {
-            //     lower.drop_last()
-            // } else {
-            //     lower
-            // }
-
-            str_lower(name)
+            let lower = str_lower(name);
+            if lower.len() > 0 && lower.char_at(lower.len() - 1) == '.' {
+                lower.take(lower.len() - 1)
+            } else {
+                lower
+            }
         }
 
         pub open spec fn valid_name(env: &Environment, name: &SpecString) -> bool {
@@ -534,8 +544,21 @@ verus! {
             &&& !name.has_char('*')
         }
 
-        // TODO
-        use exec_permit_name as permit_name;
+        pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) -> bool {
+            ||| name_constraint.len() == 0 // empty string matches everything
+            ||| if name_constraint.char_at(0) == '.' {
+                // name_constraint starts with '.': name_constraint should be a suffix of name
+                &&& name_constraint.len() <= name.len()
+                &&& &name.skip(name.len() - name_constraint.len()) == name_constraint
+            } else {
+                // name_constraint starts with a label: name must be the same
+                // or have a suffix of '.<name_constraint>'
+                ||| name == name_constraint
+                ||| name.len() > name_constraint.len() &&
+                    name.char_at(name.len() - name_constraint.len() - 1) == '.' &&
+                    &name.skip(name.len() - name_constraint.len()) == name_constraint
+            }
+        }
 
         /// NOTE: nameNotExcluded in Hammurabi
         pub open spec fn not_exclude_name(name_constraint: &SpecString, name: &SpecString) -> bool {
@@ -749,29 +772,6 @@ verus! {
         }
     }
 
-    pub open spec fn name_match(pattern: &SpecString, name: &SpecString) -> bool {
-        if pattern.len() > 2 && pattern[0] == '*' && pattern[1] == '.' {
-            let suffix = pattern.skip(2);
-
-            ||| suffix == name
-            ||| suffix.len() + 1 < name.len() && // `name` should be longer than ".{suffix}"
-                suffix == name.skip(name.len() - suffix.len()) &&
-                name[name.len() - suffix.len() - 1] == '.' &&
-                // the prefix of `name` that matches '*' should not contain '.'
-                !name.take(name.len() - suffix.len() - 1).contains('.')
-        } else {
-            pattern == name
-        }
-    }
-
-    #[verifier::external_body]
-    pub fn exec_name_match(pattern: &String, name: &String) -> (res: bool)
-        ensures res.deep_view() == name_match(&pattern.deep_view(), &name.deep_view())
-    {
-        // TODO
-        true
-    }
-
     pub closed spec fn str_lower(s: &SpecString) -> SpecString;
 
     #[verifier::external_body]
@@ -779,29 +779,6 @@ verus! {
         ensures res.deep_view() == str_lower(&s.deep_view())
     {
         s.to_lowercase()
-    }
-
-    pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) -> bool {
-        ||| name_constraint.len() == 0 // empty string matches everything
-        ||| if name_constraint[0] == '.' {
-            // name_constraint starts with '.': name_constraint should be a suffix of name
-            &&& name_constraint.len() <= name.len()
-            &&& name.skip(name.len() - name_constraint.len()) == name_constraint
-        } else {
-            // name_constraint starts with a label: name must be the same
-            // or have a suffix of '.<name_constraint>'
-            ||| name == name_constraint
-            ||| name.len() > name_constraint.len() &&
-                name[name.len() - name_constraint.len() - 1] == '.' &&
-                name.skip(name.len() - name_constraint.len()) == name_constraint
-        }
-    }
-
-    #[verifier::external_body]
-    pub fn exec_permit_name(name_constraint: &String, name: &String) -> (res: bool)
-        ensures res.deep_view() == permit_name(&name_constraint.deep_view(), &name.deep_view())
-    {
-        true
     }
 }
 

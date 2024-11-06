@@ -978,6 +978,30 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                     ))
                 }
 
+                "skip" => {
+                    if expr_method_call.args.len() != 1 {
+                        return Err(Error::new_spanned(expr, "skip method call should have a single argument"));
+                    }
+
+                    Ok(expr_method_call!(
+                        compile_expr(ctx, local, &expr_method_call.receiver)?,
+                        "rspec_skip",
+                        compile_expr(ctx, local, &expr_method_call.args[0])?,
+                    ))
+                }
+
+                "take" => {
+                    if expr_method_call.args.len() != 1 {
+                        return Err(Error::new_spanned(expr, "take method call should have a single argument"));
+                    }
+
+                    Ok(expr_method_call!(
+                        compile_expr(ctx, local, &expr_method_call.receiver)?,
+                        "rspec_take",
+                        compile_expr(ctx, local, &expr_method_call.args[0])?,
+                    ))
+                }
+
                 _ => Err(Error::new_spanned(expr, "unsupported method call")),
             }
         }

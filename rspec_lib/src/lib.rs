@@ -144,4 +144,48 @@ impl Len<char> for String {
     }
 }
 
+/// Skip method for strings
+/// TODO: performance: this method will actually copy the entire string
+/// due to interface/compiler limitations
+pub trait Skip<E, R: DeepView<V = Seq<E>>>: DeepView<V = Seq<E>> {
+    fn rspec_skip(&self, n: usize) -> (res: R)
+        requires n <= self.deep_view().len()
+        ensures res.deep_view() == self.deep_view().skip(n as int);
+}
+
+impl Skip<char, String> for String {
+    #[verifier::external_body]
+    fn rspec_skip(&self, n: usize) -> (res: String) {
+        self.as_str().chars().skip(n).collect()
+    }
+}
+
+impl Skip<char, String> for str {
+    #[verifier::external_body]
+    fn rspec_skip(&self, n: usize) -> (res: String) {
+        self.chars().skip(n).collect()
+    }
+}
+
+/// Take, similar to Skip
+pub trait Take<E, R: DeepView<V = Seq<E>>>: DeepView<V = Seq<E>> {
+    fn rspec_take(&self, n: usize) -> (res: R)
+        requires n <= self.deep_view().len()
+        ensures res.deep_view() == self.deep_view().take(n as int);
+}
+
+impl Take<char, String> for String {
+    #[verifier::external_body]
+    fn rspec_take(&self, n: usize) -> (res: String) {
+        self.as_str().chars().take(n).collect()
+    }
+}
+
+impl Take<char, String> for str {
+    #[verifier::external_body]
+    fn rspec_take(&self, n: usize) -> (res: String) {
+        self.chars().take(n).collect()
+    }
+}
+
 }
