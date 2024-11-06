@@ -7,7 +7,7 @@ use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
 use syn_verus::spanned::Spanned;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant};
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
@@ -608,9 +608,17 @@ fn compile_pattern(ctx: &Context, local: &mut LocalContext, pat: &Pat) -> Result
                 ..pat_struct.clone()
             })),
 
+        Pat::Tuple(pat_tuple) =>
+            Ok(Pat::Tuple(PatTuple {
+                elems: pat_tuple.elems
+                    .iter()
+                    .map(|pat| compile_pattern(ctx, local, pat))
+                    .collect::<Result<_, Error>>()?,
+                ..pat_tuple.clone()
+            })),
+
         // TODO: maybe?
         // Pat::TupleStruct(pat_tuple_struct) => todo!(),
-        // Pat::Tuple(pat_tuple) => todo!(),
         // Pat::Struct(pat_struct) => todo!(),
         // Pat::Or(pat_or) => todo!(),
         // Pat::Macro(pat_macro) => todo!(),
@@ -958,6 +966,18 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                     ))
                 }
 
+                "has_char" => {
+                    if expr_method_call.args.len() != 1 {
+                        return Err(Error::new_spanned(expr, "has_char method call should have a single argument"));
+                    }
+
+                    Ok(expr_method_call!(
+                        compile_expr(ctx, local, &expr_method_call.receiver)?,
+                        "rspec_has_char",
+                        compile_expr(ctx, local, &expr_method_call.args[0])?,
+                    ))
+                }
+
                 _ => Err(Error::new_spanned(expr, "unsupported method call")),
             }
         }
@@ -969,11 +989,16 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                 ..expr_match.clone()
             })),
 
+        Expr::Tuple(expr_tuple) =>
+            Ok(Expr::Tuple(ExprTuple {
+                elems: expr_tuple.elems.iter().map(|expr| compile_expr(ctx, local, expr)).collect::<Result<_, Error>>()?,
+                ..expr_tuple.clone()
+            })),
+
         // TODO: maybe?
         // Expr::Matches(expr_matches) => todo!(),
         // Expr::Let(expr_let) => todo!(),
         // Expr::Struct(expr_struct) => todo!(),
-        // Expr::Tuple(expr_tuple) => todo!(),
         // Expr::Verbatim(token_stream) => todo!(),
         // Expr::View(view) => todo!(),
         // Expr::Is(expr_is) => todo!(),

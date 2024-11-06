@@ -227,6 +227,8 @@ test_rspec!(mod test_struct_unnamed {
 
 verus! {
     rspec! {
+        pub struct PairDirName(DirectoryName, DirectoryName);
+
         pub enum DirectoryName {
             CommonName(SpecString),
             Country(SpecString),
@@ -452,19 +454,38 @@ verus! {
             str_lower(name)
         }
 
-        // TODO
-        use exec_valid_name as valid_name;
+        pub open spec fn valid_name(env: &Environment, name: &SpecString) -> bool {
+            if name.has_char('*') {
+                &&& name.len() > 2
+                &&& name.char_at(0) == '*'
+                &&& name.char_at(1) == '.'
+                &&& name.char_at(name.len() - 1) != '.'
+                &&& forall |i: usize| 0 <= i < env.public_suffix.len() ==>
+                    !name_match(&name, #[trigger] &env.public_suffix[i as int])
+            } else {
+                &&& name.len() > 0
+                &&& name.char_at(0) != '.'
+                &&& name.char_at(name.len() - 1) != '.'
+            }
+        }
+
+        pub open spec fn valid_san(env: &Environment, san: &SubjectAltName) -> bool {
+            &&& san.names.len() > 0
+            &&& forall |i: usize| 0 <= i < san.names.len() ==>
+                valid_name(&env, #[trigger] &san.names[i as int])
+        }
+
+        pub open spec fn name_match_san(env: &Environment, san: &SubjectAltName, name: &SpecString) -> bool {
+            exists |i: usize| 0 <= i < san.names.len() &&
+                name_match(&clean_name(#[trigger] &san.names[i as int]), &name)
+        }
 
         /// Domain matches one of the SANs
         pub open spec fn domain_matches_san(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
             match &cert.ext_subject_alt_name {
-                Some(subject_alt_name) => {
-                    &&& subject_alt_name.names.len() > 0
-                    // TODO: &env and &domain are required here due to a quirk in rspec
-                    &&& forall |i: usize| #![auto] 0 <= i < subject_alt_name.names.len() ==>
-                            valid_name(&env, &subject_alt_name.names[i as int])
-                    &&& exists |i: usize| #![auto] 0 <= i < subject_alt_name.names.len() &&
-                            name_match(&clean_name(&subject_alt_name.names[i as int]), &domain)
+                Some(san) => {
+                    &&& valid_san(env, san)
+                    &&& name_match_san(env, san, domain)
                 }
                 None => false,
             }
@@ -506,8 +527,14 @@ verus! {
             }
         }
 
+        pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
+            let name = clean_name(name);
+            &&& name.len() > 0
+            &&& name.char_at(name.len() - 1) != '.'
+            &&& !name.has_char('*')
+        }
+
         // TODO
-        use exec_valid_name_constraint as valid_name_constraint;
         use exec_permit_name as permit_name;
 
         /// NOTE: nameNotExcluded in Hammurabi
@@ -516,8 +543,33 @@ verus! {
             !permit_name(name_constraint, name)
         }
 
-        use exec_same_directory_name_type as same_directory_name_type;
-        use exec_same_directory_name as same_directory_name;
+        pub open spec fn same_directory_name_type(name1: &DirectoryName, name2: &DirectoryName) -> bool {
+            match (name1, name2) {
+                (DirectoryName::CommonName(_), DirectoryName::CommonName(_)) => true,
+                (DirectoryName::Country(_), DirectoryName::Country(_)) => true,
+                (DirectoryName::OrganizationName(_), DirectoryName::OrganizationName(_)) => true,
+                (DirectoryName::OrganizationalUnit(_), DirectoryName::OrganizationalUnit(_)) => true,
+                (DirectoryName::Locality(_), DirectoryName::Locality(_)) => true,
+                (DirectoryName::State(_), DirectoryName::State(_)) => true,
+                (DirectoryName::PostalCode(_), DirectoryName::PostalCode(_)) => true,
+                (DirectoryName::Surname(_), DirectoryName::Surname(_)) => true,
+                _ => false,
+            }
+        }
+
+        pub open spec fn same_directory_name(name1: &DirectoryName, name2: &DirectoryName) -> bool {
+            match (name1, name2) {
+                (DirectoryName::CommonName(name1), DirectoryName::CommonName(name2)) => name1 == name2,
+                (DirectoryName::Country(name1), DirectoryName::Country(name2)) => name1 == name2,
+                (DirectoryName::OrganizationName(name1), DirectoryName::OrganizationName(name2)) => name1 == name2,
+                (DirectoryName::OrganizationalUnit(name1), DirectoryName::OrganizationalUnit(name2)) => name1 == name2,
+                (DirectoryName::Locality(name1), DirectoryName::Locality(name2)) => name1 == name2,
+                (DirectoryName::State(name1), DirectoryName::State(name2)) => name1 == name2,
+                (DirectoryName::PostalCode(name1), DirectoryName::PostalCode(name2)) => name1 == name2,
+                (DirectoryName::Surname(name1), DirectoryName::Surname(name2)) => name1 == name2,
+                _ => false,
+            }
+        }
 
         pub open spec fn has_permitted_dns_name(constraints: &NameConstraints) -> bool {
             exists |j: usize|
@@ -729,42 +781,6 @@ verus! {
         s.to_lowercase()
     }
 
-    pub open spec fn valid_name(env: &Environment, name: &SpecString) -> bool {
-        if name.contains('*') {
-            &&& name.len() > 2
-            &&& name[0] == '*'
-            &&& name[1] == '.'
-            &&& name.last() != '.'
-            &&& forall |i| 0 <= i < env.public_suffix.len() ==>
-                !name_match(name, #[trigger] &env.public_suffix[i])
-        } else {
-            &&& name.len() > 0
-            &&& name[0] != '.'
-            &&& name.last() != '.'
-        }
-    }
-
-    #[verifier::external_body]
-    pub fn exec_valid_name(env: &ExecEnvironment, name: &String) -> (res: bool)
-        ensures res.deep_view() == valid_name(&env.deep_view(), &name.deep_view())
-    {
-        true
-    }
-
-    pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
-        let name = clean_name(name);
-        &&& name.len() > 0
-        &&& name.last() != '.'
-        &&& !name.contains('*')
-    }
-
-    #[verifier::external_body]
-    pub fn exec_valid_name_constraint(name: &String) -> (res: bool)
-        ensures res.deep_view() == valid_name_constraint(&name.deep_view())
-    {
-        true
-    }
-
     pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) -> bool {
         ||| name_constraint.len() == 0 // empty string matches everything
         ||| if name_constraint[0] == '.' {
@@ -784,48 +800,6 @@ verus! {
     #[verifier::external_body]
     pub fn exec_permit_name(name_constraint: &String, name: &String) -> (res: bool)
         ensures res.deep_view() == permit_name(&name_constraint.deep_view(), &name.deep_view())
-    {
-        true
-    }
-
-    pub open spec fn same_directory_name_type(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-        match (name1, name2) {
-            (DirectoryName::CommonName(_), DirectoryName::CommonName(_)) => true,
-            (DirectoryName::Country(_), DirectoryName::Country(_)) => true,
-            (DirectoryName::OrganizationName(_), DirectoryName::OrganizationName(_)) => true,
-            (DirectoryName::OrganizationalUnit(_), DirectoryName::OrganizationalUnit(_)) => true,
-            (DirectoryName::Locality(_), DirectoryName::Locality(_)) => true,
-            (DirectoryName::State(_), DirectoryName::State(_)) => true,
-            (DirectoryName::PostalCode(_), DirectoryName::PostalCode(_)) => true,
-            (DirectoryName::Surname(_), DirectoryName::Surname(_)) => true,
-            _ => false,
-        }
-    }
-
-    #[verifier::external_body]
-    pub fn exec_same_directory_name_type(name1: &ExecDirectoryName, name2: &ExecDirectoryName) -> (res: bool)
-        ensures res.deep_view() == same_directory_name_type(&name1.deep_view(), &name2.deep_view())
-    {
-        true
-    }
-
-    pub open spec fn same_directory_name(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-        match (name1, name2) {
-            (DirectoryName::CommonName(name1), DirectoryName::CommonName(name2)) => name1 == name2,
-            (DirectoryName::Country(name1), DirectoryName::Country(name2)) => name1 == name2,
-            (DirectoryName::OrganizationName(name1), DirectoryName::OrganizationName(name2)) => name1 == name2,
-            (DirectoryName::OrganizationalUnit(name1), DirectoryName::OrganizationalUnit(name2)) => name1 == name2,
-            (DirectoryName::Locality(name1), DirectoryName::Locality(name2)) => name1 == name2,
-            (DirectoryName::State(name1), DirectoryName::State(name2)) => name1 == name2,
-            (DirectoryName::PostalCode(name1), DirectoryName::PostalCode(name2)) => name1 == name2,
-            (DirectoryName::Surname(name1), DirectoryName::Surname(name2)) => name1 == name2,
-            _ => false,
-        }
-    }
-
-    #[verifier::external_body]
-    pub fn exec_same_directory_name(name1: &ExecDirectoryName, name2: &ExecDirectoryName) -> (res: bool)
-        ensures res.deep_view() == same_directory_name(&name1.deep_view(), &name2.deep_view())
     {
         true
     }

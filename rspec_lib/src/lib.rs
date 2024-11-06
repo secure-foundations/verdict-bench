@@ -95,6 +95,37 @@ impl CharAt for str {
     }
 }
 
+/// SpecString::has_char
+pub trait SpecHasChar {
+    spec fn has_char(&self, c: char) -> bool;
+}
+
+impl SpecHasChar for SpecString {
+    open spec fn has_char(&self, c: char) -> bool {
+        self.contains(c)
+    }
+}
+
+/// Exec version of SpecString::char_at
+pub trait HasChar: DeepView<V = Seq<char>> {
+    fn rspec_has_char(&self, c: char) -> (res: bool)
+        ensures res == self.deep_view().contains(c);
+}
+
+impl HasChar for String {
+    #[verifier::external_body]
+    fn rspec_has_char(&self, c: char) -> (res: bool) {
+        self.chars().any(|x| x == c)
+    }
+}
+
+impl HasChar for str {
+    #[verifier::external_body]
+    fn rspec_has_char(&self, c: char) -> (res: bool) {
+        self.chars().any(|x| x == c)
+    }
+}
+
 /// Length method for both Vec and String
 pub trait Len<E: DeepView>: DeepView<V = Seq<E::V>> {
     fn rspec_len(&self) -> (res: usize)
