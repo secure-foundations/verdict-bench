@@ -65,6 +65,7 @@ impl<E: DeepView> Index<E> for Vec<E> {
     }
 }
 
+/// SpecString::char_at
 pub trait SpecCharAt {
     spec fn char_at(&self, i: int) -> char;
 }
@@ -75,6 +76,7 @@ impl SpecCharAt for SpecString {
     }
 }
 
+/// Exec version of SpecString::char_at
 pub trait CharAt: DeepView<V = Seq<char>> {
     fn rspec_char_at(&self, i: usize) -> (res: char)
         requires i < self.deep_view().len()

@@ -6,13 +6,14 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprIndex, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, ModeExec, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, Variant, View};
-use prettyplease_verus::unparse_expr;
+use syn_verus::spanned::Spanned;
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant};
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
     enums: IndexMap<String, ItemEnum>,
     fns: IndexMap<String, ItemFn>,
+    externs: IndexMap<String, String>, // Map from spec names to exec names
 }
 
 #[derive(Clone)]
@@ -40,24 +41,24 @@ impl fmt::Display for LocalContext {
     }
 }
 
-fn unparse_item(item: Item) -> String {
-    let file = syn_verus::File {
-        attrs: vec![],
-        items: vec![item],
-        shebang: None,
-    };
-    prettyplease_verus::unparse(&file)
-}
+// fn unparse_item(item: Item) -> String {
+//     let file = syn_verus::File {
+//         attrs: vec![],
+//         items: vec![item],
+//         shebang: None,
+//     };
+//     prettyplease_verus::unparse(&file)
+// }
 
-fn unparse_item_token_stream(item: &TokenStream2) -> String {
-    let item = syn_verus::parse2(item.clone()).unwrap();
-    unparse_item(item)
-}
+// fn unparse_item_token_stream(item: &TokenStream2) -> String {
+//     let item = syn_verus::parse2(item.clone()).unwrap();
+//     unparse_item(item)
+// }
 
-fn unparse_expr_token_stream(expr: &TokenStream2) -> String {
-    let expr = syn_verus::parse2(expr.clone()).unwrap();
-    unparse_expr(&expr)
-}
+// fn unparse_expr_token_stream(expr: &TokenStream2) -> String {
+//     let expr = syn_verus::parse2(expr.clone()).unwrap();
+//     unparse_expr(&expr)
+// }
 
 macro_rules! path {
     ($($segment:expr),*) => {
@@ -355,7 +356,7 @@ fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct
     }
 
     let spec_name = &item_struct.ident;
-    let exec_name: Ident = Ident::new(&exec_type_name(&item_struct.ident.to_string()), Span::call_site());
+    let exec_name: Ident = Ident::new(&exec_type_name(&item_struct.ident.to_string()), item_struct.span());
 
     let exec_fields = match &item_struct.fields {
         Fields::Named(fields_named) => {
@@ -425,7 +426,7 @@ fn compile_enum(ctx: &Context, item_enum: &ItemEnum) -> Result<(ItemEnum, TokenS
     }
 
     let spec_name = &item_enum.ident;
-    let exec_name: Ident = Ident::new(&exec_type_name(&item_enum.ident.to_string()), Span::call_site());
+    let exec_name: Ident = Ident::new(&exec_type_name(&item_enum.ident.to_string()), item_enum.span());
 
     // Compile each variant
     let exec_variants = item_enum.variants.iter().map(|variant| {
@@ -479,10 +480,10 @@ fn compile_enum(ctx: &Context, item_enum: &ItemEnum) -> Result<(ItemEnum, TokenS
             Fields::Unnamed(fields_unnamed) => {
                 let field_names = fields_unnamed.unnamed.iter()
                     .enumerate()
-                    .map(|(i, _)| Ident::new(&format!("f{}", i), Span::call_site()))
+                    .map(|(i, field)| Ident::new(&format!("f{}", i), field.span()))
                     .collect::<Vec<_>>();
 
-                let field_views = fields_unnamed.unnamed.iter().enumerate().map(|(i, field)| {
+                let field_views = fields_unnamed.unnamed.iter().enumerate().map(|(i, _)| {
                     let field_name = &field_names[i];
                     quote! { #field_name.deep_view() }
                 });
@@ -514,9 +515,14 @@ fn compile_enum(ctx: &Context, item_enum: &ItemEnum) -> Result<(ItemEnum, TokenS
     ))
 }
 
+/// Translate a spec path to exec path
 fn compile_path(ctx: &Context, path: &Path) -> Result<Path, Error> {
     if path.segments.len() == 1 {
         let name = get_simple_path_name(&path)?;
+
+        if name.starts_with("_") {
+            return Err(Error::new_spanned(path, "identifiers starting with _ are unsupported"));
+        }
 
         if ctx.structs.contains_key(&name) {
             Ok(path![seg!(&exec_type_name(&name))])
@@ -524,6 +530,8 @@ fn compile_path(ctx: &Context, path: &Path) -> Result<Path, Error> {
             Ok(path![seg!(&exec_type_name(&name))])
         } else if ctx.fns.contains_key(&name) {
             Ok(path![seg!(&exec_fn_name(&name))])
+        } else if ctx.externs.contains_key(&name) {
+            Ok(path![seg!(&ctx.externs[&name])])
         } else {
             Ok(path.clone())
         }
@@ -765,7 +773,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                     // Since #body and #expr will be used as spec code in exec mode
                     // we have to convert all variables in the context to their spec versions via deep_view
                     let local_view: Vec<TokenStream2> = local.vars.iter().map(|(name, _)| {
-                        let name = Ident::new(name, Span::call_site());
+                        let name = Ident::new(name, expr.span());
                         quote! { let #name = #name.deep_view(); }
                     }).collect();
 
@@ -1076,7 +1084,7 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
                         attrs: Vec::new(),
                         by_ref: None,
                         mutability: None,
-                        ident: Ident::new("_res", Span::call_site()),
+                        ident: Ident::new("_res", ty.span()),
                         subpat: None,
                     }),
                     Default::default(),
@@ -1127,7 +1135,7 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
         publish: Publish::Default,
         mode: FnMode::Default,
 
-        ident: Ident::new(&exec_fn_name(&sig.ident.to_string()), Span::call_site()),
+        ident: Ident::new(&exec_fn_name(&sig.ident.to_string()), sig.ident.span()),
         inputs: params,
         output: return_type,
 
@@ -1172,6 +1180,7 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
         structs: IndexMap::new(),
         enums: IndexMap::new(),
         fns: IndexMap::new(),
+        externs: IndexMap::new(),
     };
 
     // Iterate through the items once, and copies them to the output as they are
@@ -1197,6 +1206,15 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
                 ctx.enums.insert(item_enum.ident.to_string(), item_enum);
             }
 
+            // Hijacked for declaring external functions
+            Item::Use(item_use) => {
+                if let UseTree::Rename(UseRename { ident, rename, .. }) = item_use.tree {
+                    ctx.externs.insert(rename.to_string(), ident.to_string());
+                } else {
+                    return Err(Error::new_spanned(item_use, "unsupported use item; use `use <spec name> as <exec name>;` to declare external functions"));
+                }
+            }
+
             _ => return Err(Error::new_spanned(item, "unsupported item")),
         };
     }
@@ -1220,11 +1238,11 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
         output.push(quote! { #exec_fn });
     }
 
-    println!("########################################");
-    for item in output.iter() {
-        // println!("{}", unparse_item_token_stream(item));
-        println!("{}", item);
-    }
+    // println!("########################################");
+    // for item in output.iter() {
+    //     // println!("{}", unparse_item_token_stream(item));
+    //     println!("{}", item);
+    // }
 
     Ok(quote! { ::builtin_macros::verus! { #(#output)* } })
 }
@@ -1273,6 +1291,7 @@ pub fn test_rspec(input: TokenStream) -> TokenStream {
             use vstd::prelude::*;
             use rspec::rspec;
             use rspec_lib::*;
+            use super::*;
             verus! { rspec! { #(#items)* } }
         }
     }.into()

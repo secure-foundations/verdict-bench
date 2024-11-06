@@ -1,4 +1,6 @@
+use vstd::prelude::*;
 use rspec::test_rspec;
+use rspec_lib::*;
 
 test_rspec!(mod simple_struct1 {
     pub struct Test {
@@ -111,9 +113,9 @@ test_rspec!(mod nested_seq {
 
     spec fn eq(s: Seq<Seq<Elem>>, t: Seq<Seq<Elem>>) -> bool {
         &&& s.len() == t.len()
-        &&& forall |i: usize| 0 <= i < s.len() ==> {
+        &&& forall |i: usize| #![auto] 0 <= i < s.len() ==> {
             &&& s[i as int].len() == t[i as int].len()
-            &&& forall |j: usize| 0 <= j < s[i as int].len() ==>
+            &&& forall |j: usize| #![auto] 0 <= j < s[i as int].len() ==>
                 elem_eq(&s[i as int][j as int], &t[i as int][j as int])
         }
     }
@@ -383,8 +385,24 @@ test_rspec!(mod chrome {
     }
 });
 
-// use vstd::prelude::*;
-// use rspec_lib::*;
+mod extern_functions {
+    use super::*;
 
-// verus! {
-// }
+    test_rspec!(mod test {
+        use exec_f as f;
+
+        closed spec fn test() -> bool {
+            &f() == "hi"@
+        }
+    });
+
+    verus! {
+        closed spec fn f() -> SpecString { "hi"@ }
+
+        fn exec_f() -> (res: String)
+            ensures res@ == "hi"@
+        {
+            "hi".to_string()
+        }
+    }
+}
