@@ -102,6 +102,10 @@ pub struct Certificate {
 
 pub struct Environment {
     pub time: u64,
+
+    /// This should include all of `publicSuffix` in Hammurabi
+    /// and all of their suffixes
+    pub public_suffix: Seq<SpecString>,
 }
 
 pub open spec fn is_valid_pki(cert: Certificate) -> bool {
@@ -186,14 +190,39 @@ pub open spec fn extended_key_usage_valid(cert: Certificate) -> bool {
     }
 }
 
-/// TODO: lower case, URI encoding, and removing trailing '.'
-pub open spec fn clean_subject_alt_name(name: SpecString) -> SpecString {
-    name
+pub closed spec fn str_lower(s: Seq<char>) -> Seq<char>;
+
+#[verifier::external_body]
+fn exec_str_lower(s: &str) -> (res: String)
+    ensures res@ == str_lower(s@)
+{
+    s.to_lowercase()
 }
 
-/// TODO: nameValid in Hammurabi
-pub open spec fn valid_name(name: SpecString) -> bool {
-    true
+/// TODO: URI encoding
+pub open spec fn clean_name(name: SpecString) -> SpecString {
+    let lower = str_lower(name);
+
+    if lower.len() > 0 && lower.last() == '.' {
+        lower.drop_last()
+    } else {
+        lower
+    }
+}
+
+pub open spec fn valid_name(env: Environment, name: SpecString) -> bool {
+    if name.contains('*') {
+        &&& name.len() > 2
+        &&& name[0] == '*'
+        &&& name[1] == '.'
+        &&& name.last() != '.'
+        &&& forall |i| 0 <= i < env.public_suffix.len() ==>
+            !name_match(name, #[trigger] env.public_suffix[i])
+    } else {
+        &&& name.len() > 0
+        &&& name[0] != '.'
+        &&& name.last() != '.'
+    }
 }
 
 pub open spec fn cert_verified_leaf(env: Environment, cert: Certificate, domain: SpecString) -> bool {
@@ -207,9 +236,9 @@ pub open spec fn cert_verified_leaf(env: Environment, cert: Certificate, domain:
     &&& cert.ext_subject_alt_name matches Some(subject_alt_name)
     &&& subject_alt_name.names.len() > 0
     &&& forall |i| #![auto] 0 < i <= subject_alt_name.names.len() ==>
-            valid_name(subject_alt_name.names[i])
+            valid_name(env, subject_alt_name.names[i])
     &&& exists |i| #![auto] 0 < i <= subject_alt_name.names.len() &&
-            name_match(clean_subject_alt_name(subject_alt_name.names[i]), domain)
+            name_match(clean_name(subject_alt_name.names[i]), domain)
 
     &&& leaf_duration_valid(cert)
 
@@ -231,33 +260,111 @@ pub open spec fn cert_verified_non_leaf(env: Environment, cert: Certificate, dep
     &&& bc.is_ca
 }
 
-/// TODO
+pub open spec fn valid_name_constraint(name: SpecString) -> bool {
+    let name = clean_name(name);
+    &&& name.len() > 0
+    &&& name.last() != '.'
+    &&& !name.contains('*')
+}
+
+/// TODO: namePermitted in Hammurabi
+pub open spec fn permit_name(name_constraint: SpecString, name: SpecString) -> bool {
+    true
+}
+
+/// TODO: nameNotExcluded in Hammurabi
+pub open spec fn not_exclude_name(name_constraint: SpecString, name: SpecString) -> bool {
+    true
+}
+
+pub open spec fn same_directory_name_type(name1: DirectoryName, name2: DirectoryName) -> bool {
+    match (name1, name2) {
+        (DirectoryName::CommonName(_), DirectoryName::CommonName(_)) => true,
+        (DirectoryName::Country(_), DirectoryName::Country(_)) => true,
+        (DirectoryName::OrganizationName(_), DirectoryName::OrganizationName(_)) => true,
+        (DirectoryName::OrganizationalUnit(_), DirectoryName::OrganizationalUnit(_)) => true,
+        (DirectoryName::Locality(_), DirectoryName::Locality(_)) => true,
+        (DirectoryName::State(_), DirectoryName::State(_)) => true,
+        (DirectoryName::PostalCode(_), DirectoryName::PostalCode(_)) => true,
+        (DirectoryName::Surname(_), DirectoryName::Surname(_)) => true,
+        _ => false,
+    }
+}
+
+pub open spec fn same_directory_name(name1: DirectoryName, name2: DirectoryName) -> bool {
+    match (name1, name2) {
+        (DirectoryName::CommonName(name1), DirectoryName::CommonName(name2)) => name1 == name2,
+        (DirectoryName::Country(name1), DirectoryName::Country(name2)) => name1 == name2,
+        (DirectoryName::OrganizationName(name1), DirectoryName::OrganizationName(name2)) => name1 == name2,
+        (DirectoryName::OrganizationalUnit(name1), DirectoryName::OrganizationalUnit(name2)) => name1 == name2,
+        (DirectoryName::Locality(name1), DirectoryName::Locality(name2)) => name1 == name2,
+        (DirectoryName::State(name1), DirectoryName::State(name2)) => name1 == name2,
+        (DirectoryName::PostalCode(name1), DirectoryName::PostalCode(name2)) => name1 == name2,
+        (DirectoryName::Surname(name1), DirectoryName::Surname(name2)) => name1 == name2,
+        _ => false,
+    }
+}
+
 pub open spec fn check_name_constraints(cert: Certificate, leaf: Certificate) -> bool {
     cert.ext_name_constraints matches Some(constraints) ==> {
+        // Permitted check if enabled only if there is at least one DNS name
+        // in the permitted list
+        let has_permitted_dns_name = exists |j|
+            0 <= j < constraints.permitted.len() &&
+            (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(permitted_name);
+
         &&& constraints.permitted.len() != 0 || constraints.excluded.len() != 0
 
         // Leaf SANs should be in permitted (if permitted.len() != 0)
         // and not in any of the excluded
+        // NOTE: see dnsNameConstrained in Hammurabi
         &&& leaf.ext_subject_alt_name matches Some(leaf_san)
         &&& forall |i| 0 <= i < leaf_san.names.len() ==> {
-            let leaf_name = clean_subject_alt_name(#[trigger] leaf_san.names[i]);
+            let leaf_name = clean_name(#[trigger] leaf_san.names[i]);
 
-            // Permitted check if enabled only if there is at least one DNS name
-            // in the permitted list
-            let has_permitted_dns_name = exists |j|
-                0 <= j < constraints.permitted.len() &&
-                (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(allowed_name);
-
-            &&& has_permitted_dns_name ==> {
-                &&& true // TODO: check that `leaf_name` is in some `constraints.permitted`
+            // All DNS name constraint should be valid
+            &&& forall |j| 0 <= j < constraints.permitted.len() ==> {
+                (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(permitted_name) ==>
+                    valid_name_constraint(permitted_name)
             }
-            // &&& forall |j: int| 0 <= j < constraints.excluded.len() ==> {
-            //     &&& true // TODO: check that `leaf_name` is not in `constraints.excluded[j]`
-            // }
+
+            // Check that `leaf_name` is permitted by some name constraint in `permitted`
+            &&& has_permitted_dns_name ==> exists |j| 0 <= j < constraints.permitted.len() && {
+                &&& (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(permitted_name)
+                &&& valid_name_constraint(permitted_name)
+                &&& permit_name(permitted_name, leaf_name)
+            }
+
+            // Check that `leaf_name` is not covered by any name constraint in `excluded`
+            &&& forall |j| 0 <= j < constraints.excluded.len() ==> {
+                (#[trigger] constraints.excluded[j]) matches GeneralName::DNSName(excluded_name) ==> {
+                    &&& valid_name_constraint(excluded_name)
+                    &&& not_exclude_name(excluded_name, leaf_name)
+                }
+            }
         }
 
-        // TODO: for each directory name in leaf's subject_name
-        // check if corresponding name constraints
+        // NOTE: see the long "Directory/xxx" checks in Hammurabi
+        // TODO: performance?
+        &&& forall |i| 0 <= i < leaf.subject_name.len() ==> {
+            let leaf_name = #[trigger] leaf.subject_name[i];
+            let permitted_enabled = exists |j| 0 <= j < constraints.permitted.len() && {
+                (#[trigger] constraints.permitted[j]) matches GeneralName::DirectoryName(permitted_name) &&
+                    same_directory_name_type(leaf_name, permitted_name)
+            };
+
+            // Not explicitly excluded
+            &&& forall |j| 0 <= j < constraints.excluded.len() ==> {
+                (#[trigger] constraints.excluded[j]) matches GeneralName::DirectoryName(excluded_name) ==>
+                    !same_directory_name(leaf_name, excluded_name)
+            }
+
+            // If enabled, check if `leaf_name` is at least permitted by one of them
+            &&& permitted_enabled ==> exists |j| 0 <= j < constraints.permitted.len() && {
+                (#[trigger] constraints.permitted[j]) matches GeneralName::DirectoryName(permitted_name) &&
+                    same_directory_name(leaf_name, permitted_name)
+            }
+        }
     }
 }
 
