@@ -106,6 +106,23 @@ pub struct Environment {
     /// This should include all of `publicSuffix` in Hammurabi
     /// and all of their suffixes
     pub public_suffix: Seq<SpecString>,
+
+    /// NOTE: crlSet in Hammurabi
+    pub crl: Seq<SpecString>,
+
+    /// All trusted root stores
+    pub trusted: Seq<SpecString>,
+
+    pub symantec_roots: Seq<SpecString>,
+    pub symantec_exceptions: Seq<SpecString>,
+
+    // indiaFingerprint/Domain
+    pub india_trusted: Seq<SpecString>,
+    pub india_domains: Seq<SpecString>,
+
+    // anssiFingerprint/Domain
+    pub anssi_trusted: Seq<SpecString>,
+    pub anssi_domains: Seq<SpecString>,
 }
 
 pub open spec fn is_valid_pki(cert: Certificate) -> bool {
@@ -136,14 +153,33 @@ pub open spec fn name_match(pattern: SpecString, name: SpecString) -> bool {
     }
 }
 
-/// TODO
+/// NOTE: leafDurationValid in Hammurabi
 pub open spec fn leaf_duration_valid(cert: Certificate) -> bool {
-    true
+    &&& cert.not_before <= cert.not_after
+    &&& {
+        let duration = cert.not_after - cert.not_before;
+
+        let july_2012 = 1341100800u64;
+        let april_2015 = 1427846400u64;
+        let march_2018 = 1519862400u64;
+        let july_2019 = 1561939200u64;
+        let sep_2020 = 1598918400u64;
+        let ten_years = 315532800u64;
+        let sixty_months = 157852800u64;
+        let thirty_nine_months = 102643200u64;
+        let eight_twenty_five_days = 71280000u64;
+        let three_ninety_eight_days = 34387200u64;
+
+        ||| cert.not_before < july_2012 && cert.not_after < july_2019 && duration <= ten_years
+        ||| cert.not_before >= july_2012 && cert.not_before < april_2015 && duration <= sixty_months
+        ||| cert.not_before >= april_2015 && cert.not_before < march_2018 && duration <= thirty_nine_months
+        ||| cert.not_before >= march_2018 && cert.not_before < sep_2020 && duration <= eight_twenty_five_days
+        ||| cert.not_before >= sep_2020 && duration <= three_ninety_eight_days
+    }
 }
 
-/// TODO
-pub open spec fn not_in_crl(cert: Certificate) -> bool {
-    true
+pub open spec fn not_in_crl(env: Environment, cert: Certificate) -> bool {
+    forall |i| 0 <= i < env.crl.len() ==> cert.fingerprint != env.crl[i]
 }
 
 pub open spec fn strong_signature(alg: SpecString) -> bool {
@@ -242,7 +278,7 @@ pub open spec fn cert_verified_leaf(env: Environment, cert: Certificate, domain:
 
     &&& leaf_duration_valid(cert)
 
-    &&& not_in_crl(cert)
+    &&& not_in_crl(env, cert)
     &&& strong_signature(cert.sig_alg)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
@@ -267,14 +303,27 @@ pub open spec fn valid_name_constraint(name: SpecString) -> bool {
     &&& !name.contains('*')
 }
 
-/// TODO: namePermitted in Hammurabi
+/// NOTE: namePermitted in Hammurabi
 pub open spec fn permit_name(name_constraint: SpecString, name: SpecString) -> bool {
-    true
+    ||| name_constraint.len() == 0 // empty string matches everything
+    ||| if name_constraint[0] == '.' {
+        // name_constraint starts with '.': name_constraint should be a suffix of name
+        &&& name_constraint.len() <= name.len()
+        &&& name.skip(name.len() - name_constraint.len()) == name_constraint
+    } else {
+        // name_constraint starts with a label: name must be the same
+        // or have a suffix of '.<name_constraint>'
+        ||| name == name_constraint
+        ||| name.len() > name_constraint.len() &&
+            name[name.len() - name_constraint.len() - 1] == '.' &&
+            name.skip(name.len() - name_constraint.len()) == name_constraint
+    }
 }
 
-/// TODO: nameNotExcluded in Hammurabi
+/// NOTE: nameNotExcluded in Hammurabi
 pub open spec fn not_exclude_name(name_constraint: SpecString, name: SpecString) -> bool {
-    true
+    // TODO: Check if this is correct
+    !permit_name(name_constraint, name)
 }
 
 pub open spec fn same_directory_name_type(name1: DirectoryName, name2: DirectoryName) -> bool {
@@ -370,33 +419,44 @@ pub open spec fn check_name_constraints(cert: Certificate, leaf: Certificate) ->
 
 pub open spec fn cert_verified_intermediate(env: Environment, cert: Certificate, leaf: Certificate, depth: int) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
-    &&& not_in_crl(cert)
+    &&& not_in_crl(env, cert)
     &&& strong_signature(cert.sig_alg)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
     &&& check_name_constraints(cert, leaf)
 }
 
-/// TODO
-pub open spec fn is_bad_symantec_root(cert: Certificate) -> bool {
-    // symantecRoot
-    // not symantecException
-    // symantecUntrusted
-    false
+/// NOTE: badSymantec in Hammurabi
+pub open spec fn is_bad_symantec_root(env: Environment, cert: Certificate) -> bool {
+    &&& exists |i| 0 <= i < env.symantec_roots.len() && cert.fingerprint == env.symantec_roots[i]
+    &&& forall |i| 0 <= i < env.symantec_exceptions.len() ==> cert.fingerprint != env.symantec_exceptions[i]
+    &&& {
+        ||| cert.not_before < 1464739200 // June 2016
+        ||| cert.not_before > 1512086400 // Dec 2017
+    }
 }
 
-/// TODO
-pub open spec fn is_chrome_root(cert: Certificate) -> bool {
-    true
+/// NOTE: isChromeRoot in Hammurabi
+pub open spec fn is_chrome_root(env: Environment, cert: Certificate, domain: SpecString) -> bool {
+    &&& exists |i| 0 <= i < env.trusted.len() && cert.fingerprint == env.trusted[i]
+
+    // See fingerprintValid in Hammurabi
+    &&& {
+        let is_india_fingerprint = exists |i| 0 <= i < env.india_trusted.len() && cert.fingerprint == env.india_trusted[i];
+        let is_anssi_fingerprint = exists |i| 0 <= i < env.anssi_trusted.len() && cert.fingerprint == env.anssi_trusted[i];
+
+        &&& is_india_fingerprint ==> exists |i| #![auto] 0 <= i < env.india_domains.len() && name_match(env.india_domains[i], domain)
+        &&& is_anssi_fingerprint ==> exists |i| #![auto] 0 <= i < env.anssi_domains.len() && name_match(env.anssi_domains[i], domain)
+    }
 }
 
-pub open spec fn cert_verified_root(env: Environment, cert: Certificate, leaf: Certificate, depth: int) -> bool {
+pub open spec fn cert_verified_root(env: Environment, cert: Certificate, leaf: Certificate, depth: int, domain: SpecString) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
 
     &&& cert.ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign
 
-    &&& is_chrome_root(cert)
-    &&& !is_bad_symantec_root(cert)
+    &&& is_chrome_root(env, cert, domain)
+    &&& !is_bad_symantec_root(env, cert)
     &&& extended_key_usage_valid(cert)
 }
 
@@ -407,7 +467,7 @@ pub open spec fn cert_verified_chain(env: Environment, chain: Seq<Certificate>, 
     &&& chain.len() > 1
     &&& cert_verified_leaf(env, chain[0], domain)
     &&& forall |i| 0 < i < chain.len() - 1 ==> cert_verified_intermediate(env, #[trigger] chain[i], chain[0], i - 1)
-    &&& cert_verified_root(env, chain.last(), chain[0], chain.len() - 2)
+    &&& cert_verified_root(env, chain.last(), chain[0], chain.len() - 2, domain)
 }
 
 }
