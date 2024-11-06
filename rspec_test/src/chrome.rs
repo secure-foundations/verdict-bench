@@ -1,8 +1,13 @@
 use vstd::prelude::*;
+use rspec::rspec;
+use rspec_lib::*;
 
 verus! {
+rspec! {
 
-pub type SpecString = Seq<char>;
+use exec_str_lower as str_lower;
+
+pub struct PairDirName(DirectoryName, DirectoryName);
 
 pub enum DirectoryName {
     CommonName(SpecString),
@@ -125,7 +130,7 @@ pub struct Environment {
     pub anssi_domains: Seq<SpecString>,
 }
 
-pub open spec fn is_valid_pki(cert: Certificate) -> bool {
+pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     match cert.subject_key {
         SubjectKey::RSA { mod_length } => mod_length >= 1024,
         SubjectKey::DSA { p_len, q_len, g_len } => p_len >= 1024,
@@ -133,28 +138,23 @@ pub open spec fn is_valid_pki(cert: Certificate) -> bool {
     }
 }
 
-/// See std:stringMatch in Hammurabi
-/// Matching name against pattern
-/// pattern can be a string without '*'
-/// or with '*.' occurring at the beginning
-/// and '*' matches any string without '.'
-pub open spec fn name_match(pattern: SpecString, name: SpecString) -> bool {
-    if pattern.len() > 2 && pattern[0] == '*' && pattern[1] == '.' {
+pub open spec fn name_match(pattern: &SpecString, name: &SpecString) -> bool {
+    if pattern.len() > 2 && pattern.char_at(0) == '*' && pattern.char_at(1) == '.' {
         let suffix = pattern.skip(2);
 
-        ||| suffix == name
+        ||| &suffix == name
         ||| suffix.len() + 1 < name.len() && // `name` should be longer than ".{suffix}"
-            suffix == name.skip(name.len() - suffix.len()) &&
-            name[name.len() - suffix.len() - 1] == '.' &&
+            &suffix == &name.skip(name.len() - suffix.len()) &&
+            name.char_at(name.len() - suffix.len() - 1) == '.' &&
             // the prefix of `name` that matches '*' should not contain '.'
-            !name.take(name.len() - suffix.len() - 1).contains('.')
+            !name.take(name.len() - suffix.len() - 1).has_char('.')
     } else {
         pattern == name
     }
 }
 
 /// NOTE: leafDurationValid in Hammurabi
-pub open spec fn leaf_duration_valid(cert: Certificate) -> bool {
+pub open spec fn leaf_duration_valid(cert: &Certificate) -> bool {
     &&& cert.not_before <= cert.not_after
     &&& {
         let duration = cert.not_after - cert.not_before;
@@ -178,155 +178,173 @@ pub open spec fn leaf_duration_valid(cert: Certificate) -> bool {
     }
 }
 
-pub open spec fn not_in_crl(env: Environment, cert: Certificate) -> bool {
-    forall |i| 0 <= i < env.crl.len() ==> cert.fingerprint != env.crl[i]
+pub open spec fn not_in_crl(env: &Environment, cert: &Certificate) -> bool {
+    forall |i: usize| 0 <= i < env.crl.len() ==> &cert.fingerprint != env.crl[i as int]
 }
 
-pub open spec fn strong_signature(alg: SpecString) -> bool {
+pub open spec fn strong_signature(alg: &SpecString) -> bool {
     // ECDSA + SHA512
-    ||| alg == "1.2.840.10045.4.3.2".view()
+    ||| alg == "1.2.840.10045.4.3.2"@
     // ECDSA + SHA384
-    ||| alg == "1.2.840.10045.4.3.3".view()
+    ||| alg == "1.2.840.10045.4.3.3"@
     // ECDSA + SHA512
-    ||| alg == "1.2.840.10045.4.3.4".view()
+    ||| alg == "1.2.840.10045.4.3.4"@
     // RSA + SHA256
-    ||| alg == "1.2.840.113549.1.1.11".view()
+    ||| alg == "1.2.840.113549.1.1.11"@
     // RSA + SHA384
-    ||| alg == "1.2.840.113549.1.1.12".view()
+    ||| alg == "1.2.840.113549.1.1.12"@
     // RSA + SHA512
-    ||| alg == "1.2.840.113549.1.1.13".view()
+    ||| alg == "1.2.840.113549.1.1.13"@
     // RSA-PSS + SHA256
-    ||| alg == "1.2.840.113549.1.1.10".view()
+    ||| alg == "1.2.840.113549.1.1.10"@
 }
 
-pub open spec fn key_usage_valid(cert: Certificate) -> bool {
-    match (cert.ext_basic_constraints, cert.ext_key_usage) {
-        (Some(bc), Some(key_usage)) => {
-            if bc.is_ca {
-                key_usage.key_cert_sign
-            } else {
-                !key_usage.key_cert_sign && {
-                    ||| key_usage.digital_signature
-                    ||| key_usage.key_encipherment
-                    ||| key_usage.key_agreement
-                }
+pub open spec fn key_usage_valid(cert: &Certificate) -> bool {
+    match &cert.ext_basic_constraints {
+        Some(bc) =>
+            match &cert.ext_key_usage {
+                Some(key_usage) =>
+                    if bc.is_ca {
+                        key_usage.key_cert_sign
+                    } else {
+                        !key_usage.key_cert_sign && {
+                            ||| key_usage.digital_signature
+                            ||| key_usage.key_encipherment
+                            ||| key_usage.key_agreement
+                        }
+                    }
+                _ => true,
             }
-        }
         _ => true,
     }
 }
 
-pub open spec fn extended_key_usage_valid(cert: Certificate) -> bool {
-    match cert.ext_extended_key_usage {
-        Some(key_usage) => {
-            ||| key_usage.usages.contains(ExtendedKeyUsageTypes::ServerAuth)
-            ||| key_usage.usages.contains(ExtendedKeyUsageTypes::Any)
-        }
+pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
+    match &cert.ext_extended_key_usage {
+        Some(key_usage) =>
+            exists |i: usize| 0 <= i < key_usage.usages.len() &&
+                match #[trigger] key_usage.usages[i as int] {
+                    ExtendedKeyUsageTypes::ServerAuth => true,
+                    ExtendedKeyUsageTypes::Any => true,
+                    _ => false,
+                },
         None => true,
     }
 }
 
-pub closed spec fn str_lower(s: Seq<char>) -> Seq<char>;
-
-#[verifier::external_body]
-fn exec_str_lower(s: &str) -> (res: String)
-    ensures res@ == str_lower(s@)
-{
-    s.to_lowercase()
-}
-
 /// TODO: URI encoding
-pub open spec fn clean_name(name: SpecString) -> SpecString {
+pub open spec fn clean_name(name: &SpecString) -> SpecString {
     let lower = str_lower(name);
-
-    if lower.len() > 0 && lower.last() == '.' {
-        lower.drop_last()
+    if lower.len() > 0 && lower.char_at(lower.len() - 1) == '.' {
+        lower.take(lower.len() - 1)
     } else {
         lower
     }
 }
 
-pub open spec fn valid_name(env: Environment, name: SpecString) -> bool {
-    if name.contains('*') {
+pub open spec fn valid_name(env: &Environment, name: &SpecString) -> bool {
+    if name.has_char('*') {
         &&& name.len() > 2
-        &&& name[0] == '*'
-        &&& name[1] == '.'
-        &&& name.last() != '.'
-        &&& forall |i| 0 <= i < env.public_suffix.len() ==>
-            !name_match(name, #[trigger] env.public_suffix[i])
+        &&& name.char_at(0) == '*'
+        &&& name.char_at(1) == '.'
+        &&& name.char_at(name.len() - 1) != '.'
+        &&& forall |i: usize| 0 <= i < env.public_suffix.len() ==>
+            !name_match(&name, #[trigger] &env.public_suffix[i as int])
     } else {
         &&& name.len() > 0
-        &&& name[0] != '.'
-        &&& name.last() != '.'
+        &&& name.char_at(0) != '.'
+        &&& name.char_at(name.len() - 1) != '.'
     }
 }
 
-pub open spec fn cert_verified_leaf(env: Environment, cert: Certificate, domain: SpecString) -> bool {
+pub open spec fn valid_san(env: &Environment, san: &SubjectAltName) -> bool {
+    &&& san.names.len() > 0
+    &&& forall |i: usize| 0 <= i < san.names.len() ==>
+        valid_name(&env, #[trigger] &san.names[i as int])
+}
+
+pub open spec fn name_match_san(env: &Environment, san: &SubjectAltName, name: &SpecString) -> bool {
+    exists |i: usize| 0 <= i < san.names.len() &&
+        name_match(&clean_name(#[trigger] &san.names[i as int]), &name)
+}
+
+/// Domain matches one of the SANs
+pub open spec fn domain_matches_san(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
+    match &cert.ext_subject_alt_name {
+        Some(san) => {
+            &&& valid_san(env, san)
+            &&& name_match_san(env, san, domain)
+        }
+        None => false,
+    }
+}
+
+pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
-    // Domain matches one of the SANs
-    &&& cert.ext_subject_alt_name matches Some(subject_alt_name)
-    &&& subject_alt_name.names.len() > 0
-    &&& forall |i| #![auto] 0 <= i < subject_alt_name.names.len() ==>
-            valid_name(env, subject_alt_name.names[i])
-    &&& exists |i| #![auto] 0 <= i < subject_alt_name.names.len() &&
-            name_match(clean_name(subject_alt_name.names[i]), domain)
+    &&& domain_matches_san(env, cert, domain)
 
     &&& leaf_duration_valid(cert)
 
     &&& not_in_crl(env, cert)
-    &&& strong_signature(cert.sig_alg)
+    &&& strong_signature(&cert.sig_alg)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
 }
 
-pub open spec fn cert_verified_non_leaf(env: Environment, cert: Certificate, depth: int) -> bool {
+pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, depth: usize) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
-    &&& cert.ext_basic_constraints matches Some(bc)
-    &&& bc.path_len matches Some(limit) ==> depth <= limit
-    &&& bc.is_ca
+    &&& match &cert.ext_basic_constraints {
+        Some(bc) => {
+            &&& bc.is_ca
+            &&& match bc.path_len {
+                Some(limit) => depth <= limit,
+                None => true,
+            }
+        }
+        None => false,
+    }
 }
 
-pub open spec fn valid_name_constraint(name: SpecString) -> bool {
+pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
     let name = clean_name(name);
     &&& name.len() > 0
-    &&& name.last() != '.'
-    &&& !name.contains('*')
+    &&& name.char_at(name.len() - 1) != '.'
+    &&& !name.has_char('*')
 }
 
-/// NOTE: namePermitted in Hammurabi
-pub open spec fn permit_name(name_constraint: SpecString, name: SpecString) -> bool {
+pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) -> bool {
     ||| name_constraint.len() == 0 // empty string matches everything
-    ||| if name_constraint[0] == '.' {
+    ||| if name_constraint.char_at(0) == '.' {
         // name_constraint starts with '.': name_constraint should be a suffix of name
         &&& name_constraint.len() <= name.len()
-        &&& name.skip(name.len() - name_constraint.len()) == name_constraint
+        &&& &name.skip(name.len() - name_constraint.len()) == name_constraint
     } else {
         // name_constraint starts with a label: name must be the same
         // or have a suffix of '.<name_constraint>'
         ||| name == name_constraint
         ||| name.len() > name_constraint.len() &&
-            name[name.len() - name_constraint.len() - 1] == '.' &&
-            name.skip(name.len() - name_constraint.len()) == name_constraint
+            name.char_at(name.len() - name_constraint.len() - 1) == '.' &&
+            &name.skip(name.len() - name_constraint.len()) == name_constraint
     }
 }
 
 /// NOTE: nameNotExcluded in Hammurabi
-pub open spec fn not_exclude_name(name_constraint: SpecString, name: SpecString) -> bool {
-    // TODO: Check if this is correct
+pub open spec fn not_exclude_name(name_constraint: &SpecString, name: &SpecString) -> bool {
+    // TODO: Check if this is equivalent to Hammmurabi
     !permit_name(name_constraint, name)
 }
 
-pub open spec fn same_directory_name_type(name1: DirectoryName, name2: DirectoryName) -> bool {
+pub open spec fn same_directory_name_type(name1: &DirectoryName, name2: &DirectoryName) -> bool {
     match (name1, name2) {
         (DirectoryName::CommonName(_), DirectoryName::CommonName(_)) => true,
         (DirectoryName::Country(_), DirectoryName::Country(_)) => true,
@@ -340,7 +358,7 @@ pub open spec fn same_directory_name_type(name1: DirectoryName, name2: Directory
     }
 }
 
-pub open spec fn same_directory_name(name1: DirectoryName, name2: DirectoryName) -> bool {
+pub open spec fn same_directory_name(name1: &DirectoryName, name2: &DirectoryName) -> bool {
     match (name1, name2) {
         (DirectoryName::CommonName(name1), DirectoryName::CommonName(name2)) => name1 == name2,
         (DirectoryName::Country(name1), DirectoryName::Country(name2)) => name1 == name2,
@@ -354,82 +372,136 @@ pub open spec fn same_directory_name(name1: DirectoryName, name2: DirectoryName)
     }
 }
 
-pub open spec fn check_name_constraints(cert: Certificate, leaf: Certificate) -> bool {
-    cert.ext_name_constraints matches Some(constraints) ==> {
-        // Permitted check if enabled only if there is at least one DNS name
-        // in the permitted list
-        let has_permitted_dns_name = exists |j|
-            0 <= j < constraints.permitted.len() &&
-            (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(permitted_name);
-
-        &&& constraints.permitted.len() != 0 || constraints.excluded.len() != 0
-
-        // Leaf SANs should be in permitted (if permitted.len() != 0)
-        // and not in any of the excluded
-        // NOTE: see dnsNameConstrained in Hammurabi
-        &&& leaf.ext_subject_alt_name matches Some(leaf_san)
-        &&& forall |i| 0 <= i < leaf_san.names.len() ==> {
-            let leaf_name = clean_name(#[trigger] leaf_san.names[i]);
-
-            // All DNS name constraint should be valid
-            &&& forall |j| 0 <= j < constraints.permitted.len() ==> {
-                (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(permitted_name) ==>
-                    valid_name_constraint(permitted_name)
-            }
-
-            // Check that `leaf_name` is permitted by some name constraint in `permitted`
-            &&& has_permitted_dns_name ==> exists |j| 0 <= j < constraints.permitted.len() && {
-                &&& (#[trigger] constraints.permitted[j]) matches GeneralName::DNSName(permitted_name)
-                &&& valid_name_constraint(permitted_name)
-                &&& permit_name(permitted_name, leaf_name)
-            }
-
-            // Check that `leaf_name` is not covered by any name constraint in `excluded`
-            &&& forall |j| 0 <= j < constraints.excluded.len() ==> {
-                (#[trigger] constraints.excluded[j]) matches GeneralName::DNSName(excluded_name) ==> {
-                    &&& valid_name_constraint(excluded_name)
-                    &&& not_exclude_name(excluded_name, leaf_name)
-                }
-            }
+pub open spec fn has_permitted_dns_name(constraints: &NameConstraints) -> bool {
+    exists |j: usize|
+        0 <= j < constraints.permitted.len() &&
+        match #[trigger] constraints.permitted[j as int] {
+            GeneralName::DNSName(_) => true,
+            _ => false,
         }
+}
 
-        // NOTE: see the long "Directory/xxx" checks in Hammurabi
-        // TODO: performance?
-        &&& forall |i| 0 <= i < leaf.subject_name.len() ==> {
-            let leaf_name = #[trigger] leaf.subject_name[i];
-            let permitted_enabled = exists |j| 0 <= j < constraints.permitted.len() && {
-                (#[trigger] constraints.permitted[j]) matches GeneralName::DirectoryName(permitted_name) &&
-                    same_directory_name_type(leaf_name, permitted_name)
-            };
+/// All (permitted/excluded) DNS name constraints are valid
+pub open spec fn valid_dns_name_constraints(constraints: &NameConstraints) -> bool {
+    &&& forall |i: usize| 0 <= i < constraints.permitted.len() ==> {
+        match #[trigger] &constraints.permitted[i as int] {
+            GeneralName::DNSName(permitted_name) => valid_name_constraint(&permitted_name),
+            _ => true,
+        }
+    }
 
-            // Not explicitly excluded
-            &&& forall |j| 0 <= j < constraints.excluded.len() ==> {
-                (#[trigger] constraints.excluded[j]) matches GeneralName::DirectoryName(excluded_name) ==>
-                    !same_directory_name(leaf_name, excluded_name)
-            }
-
-            // If enabled, check if `leaf_name` is at least permitted by one of them
-            &&& permitted_enabled ==> exists |j| 0 <= j < constraints.permitted.len() && {
-                (#[trigger] constraints.permitted[j]) matches GeneralName::DirectoryName(permitted_name) &&
-                    same_directory_name(leaf_name, permitted_name)
-            }
+    &&& forall |i: usize| 0 <= i < constraints.excluded.len() ==> {
+        match #[trigger] &constraints.excluded[i as int] {
+            GeneralName::DNSName(excluded_name) => valid_name_constraint(&excluded_name),
+            _ => true,
         }
     }
 }
 
-pub open spec fn cert_verified_intermediate(env: Environment, cert: Certificate, leaf: Certificate, depth: int) -> bool {
+/// Check a (cleaned) DNS name against name constraints
+pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &NameConstraints) -> bool {
+    let name = clean_name(name);
+
+    // Check that `name` is permitted by some name constraint in `permitted`
+    &&& !has_permitted_dns_name(constraints) ||
+        exists |i: usize| 0 <= i < constraints.permitted.len() && {
+            match #[trigger] &constraints.permitted[i as int] {
+                GeneralName::DNSName(permitted_name) =>
+                    permit_name(&permitted_name, &clean_name(&name)),
+                _ => false,
+            }
+        }
+
+    // Check that `name` is not covered by any name constraint in `excluded`
+    &&& forall |i: usize| 0 <= i < constraints.excluded.len() ==>
+        match #[trigger] &constraints.excluded[i as int] {
+            GeneralName::DNSName(excluded_name) =>
+                not_exclude_name(&excluded_name, &name),
+            _ => true,
+        }
+}
+
+/// Check the entire SAN section against name constraints
+/// NOTE: factored out due to a proof issue related to nested matches
+pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &NameConstraints) -> bool {
+    forall |i: usize| #![auto] 0 <= i < san.names.len() ==>
+        check_dns_name_constraints(
+            &clean_name(&san.names[i as int]),
+            &constraints,
+        )
+}
+
+/// Check if there is any permitted name with the same type as the given name
+/// (if so, the permitted list is enabled)
+pub open spec fn has_permitted_dir_name_with_the_same_type(constraints: &NameConstraints, name: &DirectoryName) -> bool {
+    exists |i: usize| #![trigger constraints.permitted[i as int]]
+        0 <= i < constraints.permitted.len() &&
+        match &constraints.permitted[i as int] {
+            GeneralName::DirectoryName(permitted_name) =>
+                same_directory_name_type(&name, &permitted_name),
+            _ => false,
+        }
+}
+
+/// Check subject names in the leaf cert against name constraints
+pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
+    forall |i: usize| 0 <= i < leaf.subject_name.len() ==> {
+        let leaf_name = #[trigger] &leaf.subject_name[i as int];
+        let permitted_enabled = has_permitted_dir_name_with_the_same_type(&constraints, leaf_name);
+
+        // If permitted list is enabled, check if `leaf_name`
+        // is at least permitted by one of them
+        &&& !permitted_enabled ||
+            exists |j: usize| 0 <= j < constraints.permitted.len() && {
+                match #[trigger] &constraints.permitted[j as int] {
+                    GeneralName::DirectoryName(permitted_name) =>
+                        same_directory_name(&leaf_name, &permitted_name),
+                    _ => false,
+                }
+            }
+
+        // Not explicitly excluded
+        &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+            match #[trigger] &constraints.excluded[j as int] {
+                GeneralName::DirectoryName(excluded_name) =>
+                    !same_directory_name(&leaf_name, &excluded_name),
+                _ => true,
+            }
+    }
+}
+
+/// Check a leaf certificate against the name constraints in a parent certificate
+pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) -> bool {
+    match &cert.ext_name_constraints {
+        Some(constraints) => {
+            &&& valid_dns_name_constraints(&constraints)
+            &&& constraints.permitted.len() != 0 || constraints.excluded.len() != 0
+
+            // Check SAN section against name constraints
+            &&& match &leaf.ext_subject_alt_name {
+                Some(leaf_san) => check_san_name_constraints(leaf_san, constraints),
+                None => false,
+            }
+
+            &&& check_subject_name_constraints(leaf, constraints)
+        }
+        None => true,
+    }
+}
+
+pub open spec fn cert_verified_intermediate(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
     &&& not_in_crl(env, cert)
-    &&& strong_signature(cert.sig_alg)
+    &&& strong_signature(&cert.sig_alg)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
     &&& check_name_constraints(cert, leaf)
 }
 
 /// NOTE: badSymantec in Hammurabi
-pub open spec fn is_bad_symantec_root(env: Environment, cert: Certificate) -> bool {
-    &&& exists |i| 0 <= i < env.symantec_roots.len() && cert.fingerprint == env.symantec_roots[i]
-    &&& forall |i| 0 <= i < env.symantec_exceptions.len() ==> cert.fingerprint != env.symantec_exceptions[i]
+pub open spec fn is_bad_symantec_root(env: &Environment, cert: &Certificate) -> bool {
+    &&& exists |i: usize| 0 <= i < env.symantec_roots.len() && &cert.fingerprint == &env.symantec_roots[i as int]
+    &&& forall |i: usize| 0 <= i < env.symantec_exceptions.len() ==> &cert.fingerprint != &env.symantec_exceptions[i as int]
     &&& {
         ||| cert.not_before < 1464739200 // June 2016
         ||| cert.not_before > 1512086400 // Dec 2017
@@ -437,23 +509,26 @@ pub open spec fn is_bad_symantec_root(env: Environment, cert: Certificate) -> bo
 }
 
 /// NOTE: isChromeRoot in Hammurabi
-pub open spec fn is_chrome_root(env: Environment, cert: Certificate, domain: SpecString) -> bool {
-    &&& exists |i| 0 <= i < env.trusted.len() && cert.fingerprint == env.trusted[i]
+pub open spec fn is_chrome_root(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
+    &&& exists |i: usize| 0 <= i < env.trusted.len() && &cert.fingerprint == &env.trusted[i as int]
 
     // See fingerprintValid in Hammurabi
     &&& {
-        let is_india_fingerprint = exists |i| 0 <= i < env.india_trusted.len() && cert.fingerprint == env.india_trusted[i];
-        let is_anssi_fingerprint = exists |i| 0 <= i < env.anssi_trusted.len() && cert.fingerprint == env.anssi_trusted[i];
+        let is_india_fingerprint = exists |i: usize| 0 <= i < env.india_trusted.len() && &cert.fingerprint == &env.india_trusted[i as int];
+        let is_anssi_fingerprint = exists |i: usize| 0 <= i < env.anssi_trusted.len() && &cert.fingerprint == &env.anssi_trusted[i as int];
 
-        &&& is_india_fingerprint ==> exists |i| #![auto] 0 <= i < env.india_domains.len() && name_match(env.india_domains[i], domain)
-        &&& is_anssi_fingerprint ==> exists |i| #![auto] 0 <= i < env.anssi_domains.len() && name_match(env.anssi_domains[i], domain)
+        &&& !is_india_fingerprint || exists |i: usize| #![auto] 0 <= i < env.india_domains.len() && name_match(&env.india_domains[i as int], &domain)
+        &&& !is_anssi_fingerprint || exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && name_match(&env.anssi_domains[i as int], &domain)
     }
 }
 
-pub open spec fn cert_verified_root(env: Environment, cert: Certificate, leaf: Certificate, depth: int, domain: SpecString) -> bool {
+pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize, domain: &SpecString) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
 
-    &&& cert.ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign
+    &&& match &cert.ext_key_usage {
+        Some(key_usage) => key_usage.key_cert_sign,
+        None => true,
+    }
 
     &&& is_chrome_root(env, cert, domain)
     &&& !is_bad_symantec_root(env, cert)
@@ -462,12 +537,27 @@ pub open spec fn cert_verified_root(env: Environment, cert: Certificate, leaf: C
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn cert_verified_chain(env: Environment, chain: Seq<Certificate>, domain: SpecString) -> bool
+pub open spec fn cert_verified_chain(env: &Environment, chain: &Seq<Certificate>, domain: &SpecString) -> bool
 {
-    &&& chain.len() > 1
-    &&& cert_verified_leaf(env, chain[0], domain)
-    &&& forall |i| 0 < i < chain.len() - 1 ==> cert_verified_intermediate(env, #[trigger] chain[i], chain[0], i - 1)
-    &&& cert_verified_root(env, chain.last(), chain[0], chain.len() - 2, domain)
+    chain.len() >= 2 && {
+        let leaf = &chain[0];
+        let root = &chain[chain.len() - 1];
+
+        &&& cert_verified_leaf(env, leaf, domain)
+        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
+        &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, domain)
+    }
 }
 
+} // rspec!
+
+pub closed spec fn str_lower(s: &SpecString) -> SpecString;
+
+#[verifier::external_body]
+pub fn exec_str_lower(s: &String) -> (res: String)
+    ensures res.deep_view() == str_lower(&s.deep_view())
+{
+    s.to_lowercase()
 }
+
+} // verus!
