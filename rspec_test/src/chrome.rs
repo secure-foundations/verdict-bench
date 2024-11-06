@@ -7,8 +7,6 @@ rspec! {
 
 use exec_str_lower as str_lower;
 
-pub struct PairDirName(DirectoryName, DirectoryName);
-
 pub enum DirectoryName {
     CommonName(SpecString),
     Country(SpecString),
