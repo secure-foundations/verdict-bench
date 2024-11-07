@@ -101,10 +101,10 @@ pub fn valid_domain<'a, 'b>(
 
                     candidate.push(policy::Certificate::from(roots.get(i))?);
 
-                    // assert(candidate.deep_view() =~= {
-                    //     let candidate = chain@.take(j + 1) + seq![roots@[i as int]];
-                    //     Seq::new(candidate.len(), |i| policy::Certificate::spec_from(candidate[i]).unwrap())
-                    // });
+                    assert(candidate.deep_view() =~= {
+                        let candidate = chain@.take(j + 1) + seq![roots@[i as int]];
+                        Seq::new(candidate.len(), |i| policy::Certificate::spec_from(candidate[i]).unwrap())
+                    });
 
                     if policy::exec_valid_chain(policy, &candidate, &domain.to_string()) {
                         return Ok(true);
