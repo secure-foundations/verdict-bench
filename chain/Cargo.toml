@@ -11,7 +11,6 @@ vest = { path = "../vest" }
 polyfill = { path = "../polyfill" }
 macros = { path = "../macros" }
 parser = { path = "../parser" }
-vpl = { path = "../vpl" }
 base64 = "0.22.1"
 clap = { version = "4.5.4", features = ["derive"] }
 thiserror = "1.0.63"
@@ -19,3 +18,5 @@ libcrux = { git = "https://github.com/zhengyao-lin/libcrux.git" }
 libcrux-hacl = { git = "https://github.com/zhengyao-lin/libcrux.git" }
 chrono = "0.4.38"
 aws-lc-rs = "1.10.0"
+rspec = { path = "../rspec" }
+rspec-lib = { path = "../rspec_lib" }

@@ -228,7 +228,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "syn_verus",
+ "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
  "synstructure",
 ]
 
@@ -297,9 +297,10 @@ dependencies = [
  "macros",
  "parser",
  "polyfill",
+ "rspec",
+ "rspec-lib",
  "thiserror",
  "vest",
- "vpl",
  "vstd",
 ]
 
@@ -1271,7 +1272,7 @@ version = "0.1.15"
 source = "git+https://github.com/verus-lang/verus?branch=main#e4c33bfc0943c5875c47a8d04ee2c030b9bf242b"
 dependencies = [
  "proc-macro2",
- "syn_verus",
+ "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
 ]
 
 [[package]]
@@ -1300,9 +1301,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.88"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c3a7fc5db1e57d5a779a352c8cdb57b29aa4c40cc69c3a68a7fedc815fbf2f9"
+checksum = "f139b0662de085916d1fb67d2b4169d1addddda1919e696f3252b740b629986e"
 dependencies = [
  "unicode-ident",
 ]
@@ -1462,6 +1463,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rspec"
+version = "0.1.0"
+dependencies = [
+ "indexmap 2.6.0",
+ "proc-macro2",
+ "quote",
+ "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus)",
+]
+
+[[package]]
+name = "rspec-lib"
+version = "0.1.0"
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1576,7 +1591,7 @@ dependencies = [
  "indexmap 1.9.3",
  "proc-macro2",
  "quote",
- "syn_verus",
+ "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
 ]
 
 [[package]]
@@ -1640,6 +1655,16 @@ dependencies = [
 name = "syn_verus"
 version = "1.0.95"
 source = "git+https://github.com/verus-lang/verus?branch=main#e4c33bfc0943c5875c47a8d04ee2c030b9bf242b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
+name = "syn_verus"
+version = "1.0.95"
+source = "git+https://github.com/verus-lang/verus#4ab656f7a1354d901293202003678343c50026c7"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -30,7 +30,7 @@ release: target/release/$(FIRST_TARGET)
 
 # Build each dependency in CARGO_DEPS
 .PHONY: rust-deps-%
-rust-deps-%: force $(foreach dep,$(CARGO_DEPS),force-target/%/lib$(dep).rlib)
+rust-deps-%: $(foreach dep,$(CARGO_DEPS),force-target/%/lib$(dep).rlib)
 	@mkdir -p target/$*
 
 # Bulid each dependency in VERUS_DEPS

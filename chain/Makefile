@@ -1,8 +1,8 @@
 NAME = chain
 TARGETS = chain libchain.rlib
 
-CARGO_DEPS = macros base64 clap thiserror libcrux libcrux-hacl chrono aws-lc-rs
-VERUS_DEPS = parser polyfill vest vpl
+CARGO_DEPS = macros base64 clap thiserror libcrux libcrux-hacl chrono aws-lc-rs rspec
+VERUS_DEPS = parser polyfill vest rspec_lib
 TEST_TARGETS = test-policy-chrome test-policy-firefox
 TEST_TIME = 1725029869
 

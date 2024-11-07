@@ -3,7 +3,6 @@ use vstd::prelude::*;
 use thiserror::Error;
 
 use parser::ParseError as X509ParseError;
-use vpl::{ProofError as VPLProofError, ParseError as VPLParseError};
 
 verus! {
 
@@ -29,12 +28,6 @@ pub enum Error {
     #[error("validation error: {0:?}")]
     ValidationError(ValidationError),
 
-    #[error("vpl parse error: {0}")]
-    VPLParseError(VPLParseError),
-
-    #[error("vpl proof error: {0}")]
-    VPLProofError(VPLProofError),
-
     #[error("found BEGIN CERTIFICATE without matching END CERTIFICATE")]
     NoMatchingEndCertificate,
 
@@ -57,17 +50,5 @@ impl From<X509ParseError> for Error {
 impl From<ValidationError> for Error {
     fn from(err: ValidationError) -> Self {
         Error::ValidationError(err)
-    }
-}
-
-impl From<VPLParseError> for Error {
-    fn from(err: VPLParseError) -> Self {
-        Error::VPLParseError(err)
-    }
-}
-
-impl From<VPLProofError> for Error {
-    fn from(err: VPLProofError) -> Self {
-        Error::VPLProofError(err)
     }
 }

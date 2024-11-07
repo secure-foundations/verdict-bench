@@ -10,5 +10,4 @@ proc-macro = true
 proc-macro2 = "1.0.89"
 quote = "1.0.37"
 syn_verus = { git = "https://github.com/verus-lang/verus", features = [ "full", "extra-traits" ] }
-prettyplease_verus = { git = "https://github.com/verus-lang/verus" }
 indexmap = "2.6.0"

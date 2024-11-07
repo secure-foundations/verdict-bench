@@ -25,15 +25,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prettyplease_verus"
-version = "0.1.15"
-source = "git+https://github.com/verus-lang/verus#97112354a9453bfb983ad7431a0776990ba1df85"
-dependencies = [
- "proc-macro2",
- "syn_verus",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -56,7 +47,6 @@ name = "rspec"
 version = "0.1.0"
 dependencies = [
  "indexmap",
- "prettyplease_verus",
  "proc-macro2",
  "quote",
  "syn_verus",

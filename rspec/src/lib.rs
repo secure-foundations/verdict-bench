@@ -7,7 +7,7 @@ use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
 use syn_verus::spanned::Spanned;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant, Visibility};
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
@@ -318,6 +318,10 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
                 return Ok(new_simple_type(&exec_type_name(&name)));
             }
 
+            if let Some(extern_name) = ctx.externs.get(&name) {
+                return Ok(new_simple_type(extern_name));
+            }
+
             match name.as_str() {
                 "SpecString" => Ok(new_simple_type("String")),
 
@@ -400,11 +404,28 @@ fn compile_struct(ctx: &Context, item_struct: &ItemStruct) -> Result<(ItemStruct
         Fields::Unit => quote! { #spec_name },
     };
 
+    // Only open the view if the struct and all fields are public
+    let open_or_close = if let Visibility::Public(..) = item_struct.vis {
+        if item_struct.fields.iter().all(|field| {
+            if let Visibility::Public(..) = field.vis {
+                true
+            } else {
+                false
+            }
+        }) {
+            quote! { open }
+        } else {
+            quote! { closed }
+        }
+    } else {
+        quote! { closed }
+    };
+
     let view_impl = quote! {
         impl DeepView for #exec_name {
             type V = #spec_name;
 
-            closed spec fn deep_view(&self) -> #spec_name {
+            #open_or_close spec fn deep_view(&self) -> #spec_name {
                 #view_body
             }
         }
@@ -493,11 +514,17 @@ fn compile_enum(ctx: &Context, item_enum: &ItemEnum) -> Result<(ItemEnum, TokenS
         }
     });
 
+    let open_or_close = if let Visibility::Public(..) = item_enum.vis {
+        quote! { open }
+    } else {
+        quote! { closed }
+    };
+
     let view_impl = quote! {
         impl DeepView for #exec_name {
             type V = #spec_name;
 
-            closed spec fn deep_view(&self) -> #spec_name {
+            #open_or_close spec fn deep_view(&self) -> #spec_name {
                 match self {
                     #(#variant_arms,)*
                 }
@@ -542,6 +569,8 @@ fn compile_path(ctx: &Context, path: &Path) -> Result<Path, Error> {
             Ok(path![seg!(&exec_type_name(&name)), path.segments[1].clone()])
         } else if ctx.enums.contains_key(&name) {
             Ok(path![seg!(&exec_type_name(&name)), path.segments[1].clone()])
+        } else if let Some(extern_name) = ctx.externs.get(&name) {
+            Ok(path![seg!(extern_name), path.segments[1].clone()])
         } else {
             Ok(path.clone())
         }
@@ -1271,13 +1300,13 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
     // For each struct and enum, generate an exec version and a (deep) View impl
     for item_struct in ctx.structs.values() {
         let (exec_struct, view_impl) = compile_struct(&ctx, item_struct)?;
-        output.push(quote! { #exec_struct });
+        output.push(quote! { #[derive(Debug)] #exec_struct });
         output.push(view_impl);
     }
 
     for item_enum in ctx.enums.values() {
         let (exec_enum, view_impl) = compile_enum(&ctx, item_enum)?;
-        output.push(quote! { #exec_enum });
+        output.push(quote! { #[derive(Debug)] #exec_enum });
         output.push(view_impl);
     }
 
