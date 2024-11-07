@@ -115,4 +115,76 @@ pub fn exec_str_lower(s: &String) -> (res: String)
     s.to_lowercase()
 }
 
+impl Clone for ExecDirectoryName {
+    fn clone(&self) -> (res: Self)
+        ensures res.deep_view() == self.deep_view()
+    {
+        match self {
+            ExecDirectoryName::CommonName(x) => ExecDirectoryName::CommonName(x.clone()),
+            ExecDirectoryName::Country(x) => ExecDirectoryName::Country(x.clone()),
+            ExecDirectoryName::OrganizationName(x) => ExecDirectoryName::OrganizationName(x.clone()),
+            ExecDirectoryName::OrganizationalUnit(x) => ExecDirectoryName::OrganizationalUnit(x.clone()),
+            ExecDirectoryName::Locality(x) => ExecDirectoryName::Locality(x.clone()),
+            ExecDirectoryName::State(x) => ExecDirectoryName::State(x.clone()),
+            ExecDirectoryName::PostalCode(x) => ExecDirectoryName::PostalCode(x.clone()),
+            ExecDirectoryName::Surname(x) => ExecDirectoryName::Surname(x.clone()),
+            ExecDirectoryName::Other(x, y) => ExecDirectoryName::Other(x.clone(), y.clone()),
+        }
+    }
+}
+
+impl DirectoryName {
+    pub open spec fn to_string(&self) -> &SpecString
+    {
+        match self {
+            DirectoryName::CommonName(x) => x,
+            DirectoryName::Country(x) => x,
+            DirectoryName::OrganizationName(x) => x,
+            DirectoryName::OrganizationalUnit(x) => x,
+            DirectoryName::Locality(x) => x,
+            DirectoryName::State(x) => x,
+            DirectoryName::PostalCode(x) => x,
+            DirectoryName::Surname(x) => x,
+            DirectoryName::Other(x, y) => y,
+        }
+    }
+}
+
+impl ExecDirectoryName {
+    pub fn to_string(&self) -> &String
+    {
+        match self {
+            ExecDirectoryName::CommonName(x) => x,
+            ExecDirectoryName::Country(x) => x,
+            ExecDirectoryName::OrganizationName(x) => x,
+            ExecDirectoryName::OrganizationalUnit(x) => x,
+            ExecDirectoryName::Locality(x) => x,
+            ExecDirectoryName::State(x) => x,
+            ExecDirectoryName::PostalCode(x) => x,
+            ExecDirectoryName::Surname(x) => x,
+            ExecDirectoryName::Other(x, y) => y,
+        }
+    }
+}
+
+impl GeneralName {
+    pub open spec fn to_string(&self) -> &SpecString
+    {
+        match self {
+            GeneralName::DNSName(x) => x,
+            GeneralName::DirectoryName(x) => x.to_string(),
+        }
+    }
+}
+
+impl ExecGeneralName {
+    pub fn to_string(&self) -> &String
+    {
+        match self {
+            ExecGeneralName::DNSName(x) => x,
+            ExecGeneralName::DirectoryName(x) => x.to_string(),
+        }
+    }
+}
+
 } // verus!

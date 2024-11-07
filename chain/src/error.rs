@@ -13,6 +13,7 @@ pub enum ValidationError {
     ProofFailure,
     TimeParseError,
     RSAPubKeyParseError,
+    UnexpectedExtParam,
 }
 
 }
