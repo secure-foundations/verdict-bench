@@ -12,13 +12,15 @@ use std::time::{Duration, Instant};
 use csv::{ReaderBuilder, WriterBuilder};
 use serde::{Deserialize, Serialize};
 
-use clap::{command, Parser, Subcommand};
+use clap::{command, Parser, Subcommand, ValueEnum};
 
 use regex::Regex;
 
 use chain::utils::*;
+use chain::policy;
+use chain::validate;
+
 use parser::{x509, VecDeep};
-use vpl::Backend;
 use error::*;
 
 #[derive(Parser, Debug)]
@@ -59,10 +61,14 @@ struct ParseCTLogArgs {
     ignore_parse_errors: bool,
 }
 
+#[derive(Debug, Clone, ValueEnum)]
+enum Policy {
+    ChromeHammurabi,
+}
+
 #[derive(Parser, Debug)]
 struct ValidateCTLogArgs {
-    /// A Prolog source file containing the policy program
-    policy: String,
+    policy: Policy,
 
     /// Path to the root certificates
     roots: String,
@@ -237,16 +243,14 @@ struct ValidationResult {
 
 type Timer = Arc<Mutex<Duration>>;
 
-fn validate_ct_logs_job<C: vpl::Compiled>(
+fn validate_ct_logs_job(
     args: &ValidateCTLogArgs,
-    policy: &vpl::Program,
+    policy: &policy::ExecPolicy,
     roots: &VecDeep<x509::CertificateValue>,
-    compiled: &C,
-    timestamp: i64,
+    timestamp: u64,
     entry: &CTLogEntry,
     timer: &Timer,
-) -> Result<bool, Error> where
-    Error: From<<C as vpl::Compiled>::Error>
+) -> Result<bool, Error>
 {
     let mut chain_bytes = vec![BASE64_STANDARD.decode(&entry.cert_base64)?];
 
@@ -256,63 +260,20 @@ fn validate_ct_logs_job<C: vpl::Compiled>(
         chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
     }
 
+    let begin = Instant::now();
+
     let mut chain =
         chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
 
-    let chain = parser::VecDeep::from_vec(chain);
+    // if args.debug {
+    //     query.print_debug_info();
+    // }
 
-    let query = chain::facts::Query {
-        roots: roots,
-        chain: &chain,
-        domain: &entry.domain.to_lowercase(),
-        now: timestamp,
-    };
-
-    if args.debug {
-        query.print_debug_info();
-    }
-
-    // use polyfill::*;
-    // use parser::{*, asn1::*, x509::*};
-    // use parser::OptionDeep::*;
-    // use vpl::*;
-
-    // use chain::specs::*;
-    // use chain::facts::*;
-    // use chain::error::*;
-
-    // let mut facts_deep = vec_deep![];
-    // QueryFacts::facts(&query, &mut facts_deep)?;
-    // let facts = facts_deep.to_vec_owned();
-
-    // let begin = ThreadTime::try_now()?;
-
-    // let goal = TermX::app_str("certVerifiedChain", vec![ query.get_chain(0).cert() ]);
-
-    // // Solve and validate the goal
-    // let res = match solve_and_validate::<C, error::Error>(compiled, &policy, facts, &goal, args.debug, true)? {
-    //     ValidationResult::Success(thm) => {
-    //         Ok(true)
-    //     }
-    //     ValidationResult::ProofFailure => Err(ValidationError::ProofFailure)?,
-    //     ValidationResult::BackendFailure => Ok(false),
-    // };
-
-    // let begin = ThreadTime::try_now()?;
-    // let begin = Instant::now();
-
-    let begin = Instant::now();
-
-    let res = chain::validate::valid_domain::<_, Error>(
-        compiled,
-        &policy,
-        &query,
-        args.debug,
-    );
+    let res = validate::valid_domain(&policy, roots, &VecDeep::from_vec(chain), &entry.domain.to_lowercase())?;
 
     *timer.lock().unwrap() += begin.elapsed();
 
-    res
+    Ok(res)
 }
 
 fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
@@ -322,19 +283,11 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 
     eprintln!("validating {} CT log file(s)", args.csv_files.len());
 
-    // Parse the policy source file
-    let policy_src = std::fs::read_to_string(&args.policy)?;
-    let (policy, _) = vpl::parse_program(&policy_src, &args.policy)?;
-    let policy = Arc::new(policy);
-
-    // Load swipl backend and compile the policy
-    let mut swipl_backend = vpl::SwiplCompiledBackend {
-        debug: args.debug,
-        swipl_bin: args.swipl_bin.clone(),
-    };
-    let compiled = Arc::new(swipl_backend.compile(&policy)?);
-
-    let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp());
+    // Choose the policy according to the command line flag
+    let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
+    let policy = Arc::new(match args.policy {
+        Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
+    });
 
     let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();
     let (tx_res, rx_res) = mpsc::channel();
@@ -347,7 +300,6 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         let tx_res = tx_res.clone();
         let args = args.clone();
         let policy = policy.clone();
-        let compiled = compiled.clone();
         let timer = timer.clone();
 
         // Each worker thread waits for jobs, does the validation, and then sends back the result
@@ -369,7 +321,6 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                         &args,
                         &policy,
                         &roots,
-                        compiled.as_ref(),
                         timestamp,
                         &entry,
                         &timer,
@@ -409,7 +360,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             output_writer.flush()?;
 
             if num_res % 50 == 0 {
-                eprint!("\r{:.7}s", timer.lock().unwrap().as_secs_f64() as f64 / num_res as f64);
+                eprint!("\rparsing + validation average: {:.2}ms", timer.lock().unwrap().as_micros() as f64 / num_res as f64 / 1000f64);
             }
             num_res += 1;
         }

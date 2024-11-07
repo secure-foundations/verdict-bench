@@ -24,7 +24,6 @@ enum Policy {
 #[derive(Parser, Debug)]
 #[command(long_about = None)]
 struct Args {
-    /// A Prolog source file containing the policy program
     policy: Policy,
 
     /// File containing the trusted root certificates
@@ -58,11 +57,11 @@ fn main_args(args: Args) -> Result<(), Error> {
     let roots_bytes = utils::read_pem_file_as_bytes(&args.roots)?;
     let chain_bytes = utils::read_pem_file_as_bytes(&args.chain)?;
 
-    let begin = Instant::now();
-
     let roots = roots_bytes.iter().map(|cert_bytes| {
         utils::parse_x509_certificate(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?;
+
+    let begin = Instant::now();
 
     let chain = chain_bytes.iter().map(|cert_bytes| {
         utils::parse_x509_certificate(cert_bytes)
@@ -77,7 +76,7 @@ fn main_args(args: Args) -> Result<(), Error> {
     let res = validate::valid_domain(&policy, &VecDeep::from_vec(roots), &VecDeep::from_vec(chain), &args.domain)?;
 
     if args.stats {
-        eprintln!("parsing + validation took {}ms", begin.elapsed().as_micros() as f64 / 1000f64);
+        eprintln!("parsing + validation took {:.2}ms", begin.elapsed().as_micros() as f64 / 1000f64);
     }
 
     eprintln!("result: {}", res);

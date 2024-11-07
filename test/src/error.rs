@@ -3,7 +3,6 @@ use thiserror::Error;
 use std::sync::mpsc::{RecvError, SendError};
 
 use parser::ParseError as X509ParseError;
-use vpl::{ProofError as VPLProofError, ParseError as VPLParseError};
 use chain::error::{Error as ChainError, ValidationError};
 
 #[derive(Error, Debug)]
@@ -22,12 +21,6 @@ pub enum Error {
 
     #[error("action parse error: {0}")]
     ParseActionError(#[from] ParseActionError),
-
-    #[error("vpl parse error: {0}")]
-    VPLParseError(VPLParseError),
-
-    #[error("vpl proof error: {0}")]
-    VPLProofError(VPLProofError),
 
     #[error("validation error: {0:?}")]
     ChainValidationError(ValidationError),
@@ -57,18 +50,6 @@ pub enum ParseActionError {
 impl From<X509ParseError> for Error {
     fn from(err: X509ParseError) -> Self {
         Error::X509ParseError(err)
-    }
-}
-
-impl From<VPLParseError> for Error {
-    fn from(err: VPLParseError) -> Self {
-        Error::VPLParseError(err)
-    }
-}
-
-impl From<VPLProofError> for Error {
-    fn from(err: VPLProofError) -> Self {
-        Error::VPLProofError(err)
     }
 }
 

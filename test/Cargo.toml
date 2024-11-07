@@ -8,7 +8,6 @@ builtin_macros = { git = "https://github.com/verus-lang/verus", branch = "main" 
 builtin = { git = "https://github.com/verus-lang/verus", branch = "main" }
 vstd = { git = "https://github.com/verus-lang/verus", branch = "main" }
 parser = { path = "../parser" }
-vpl = { path = "../vpl" }
 chain = { path = "../chain" }
 base64 = "0.22.1"
 clap = { version = "4.5.4", features = ["derive"] }
@@ -20,3 +19,4 @@ regex = "1.11.0"
 crossbeam = "0.8.4"
 cpu-time = "1.0.0"
 heappy = { git = "https://github.com/mkmik/heappy", branch = "main" }
+rspec-lib = { path = "../rspec_lib" }
