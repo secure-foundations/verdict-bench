@@ -5,7 +5,8 @@ mod rsa;
 mod ecdsa;
 mod utils;
 mod policy;
-mod engine;
+mod convert;
+mod validate;
 
 use std::process::ExitCode;
 use std::time::Instant;
@@ -89,7 +90,7 @@ fn main_args(args: Args) -> Result<(), Error> {
 
     let begin = Instant::now();
 
-    let res = engine::valid_domain(&policy, &VecDeep::from_vec(roots), &VecDeep::from_vec(chain), &args.domain)?;
+    let res = validate::valid_domain(&policy, &VecDeep::from_vec(roots), &VecDeep::from_vec(chain), &args.domain)?;
 
     eprintln!("result: {}", res);
 
