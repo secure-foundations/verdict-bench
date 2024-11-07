@@ -35,7 +35,7 @@ pub enum SubjectKey {
     Other,
 }
 
-pub enum ExtendedKeyUsageTypes {
+pub enum ExtendedKeyUsageType {
     ServerAuth,
     ClientAuth,
     CodeSigning,
@@ -43,11 +43,12 @@ pub enum ExtendedKeyUsageTypes {
     TimeStamping,
     OCSPSigning,
     Any,
+    Other(SpecString),
 }
 
 pub struct ExtendedKeyUsage {
     pub critical: bool,
-    pub usages: Seq<ExtendedKeyUsageTypes>,
+    pub usages: Seq<ExtendedKeyUsageType>,
 }
 
 pub struct BasicConstraints {
@@ -59,7 +60,7 @@ pub struct BasicConstraints {
 pub struct KeyUsage {
     pub critical: bool,
     pub digital_signature: bool,
-    pub content_commitment: bool,
+    pub non_repudiation: bool,
     pub key_encipherment: bool,
     pub data_encipherment: bool,
     pub key_agreement: bool,

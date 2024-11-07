@@ -117,6 +117,7 @@ pub fn valid_domain<'a, 'b>(
     Ok(false)
 }
 
+/// Conversions from/to GeneralName and related structures
 impl policy::GeneralName {
     /// Convert each general name to a list of policy::GeneralName's
     pub open spec fn spec_from(name: SpecGeneralNameValue) -> Seq<policy::GeneralName> {
@@ -129,7 +130,7 @@ impl policy::GeneralName {
     }
 
     /// Exec version of spec_from
-    pub fn from<'a, 'b>(name: &'b GeneralNameValue<'a>) -> (res: Vec<policy::ExecGeneralName>)
+    pub fn from(name: &GeneralNameValue) -> (res: Vec<policy::ExecGeneralName>)
         ensures res.deep_view() =~= Self::spec_from(name@),
     {
         match name {
@@ -159,7 +160,7 @@ impl policy::GeneralName {
     }
 
     /// Exec version of spec_from_names
-    pub fn from_names<'a, 'b>(names: &'b GeneralNamesValue<'a>) -> (res: Vec<policy::ExecGeneralName>)
+    pub fn from_names(names: &GeneralNamesValue) -> (res: Vec<policy::ExecGeneralName>)
         ensures res.deep_view() =~= Self::spec_from_names(names@),
     {
         let mut gen_names = Vec::new();
@@ -178,6 +179,40 @@ impl policy::GeneralName {
         }
 
         gen_names
+    }
+
+    /// Convert from GeneralSubtrees to a list of names (all flattened)
+    pub open spec fn spec_from_general_subtrees(subtrees: SpecGeneralSubtreesValue) -> Seq<policy::GeneralName>
+        decreases subtrees.len()
+    {
+        if subtrees.len() == 0 {
+            seq![]
+        } else {
+            Self::spec_from(subtrees.first().base) + Self::spec_from_general_subtrees(subtrees.drop_first())
+        }
+    }
+
+    pub fn from_general_subtrees(subtrees: &GeneralSubtreesValue) -> (res: Vec<policy::ExecGeneralName>)
+        ensures
+            res.deep_view() =~= Self::spec_from_general_subtrees(subtrees@)
+    {
+        let mut names = Vec::new();
+        let len = subtrees.len();
+
+        assert(subtrees@.skip(0) == subtrees@);
+
+        for i in 0..len
+            invariant
+                len == subtrees@.len(),
+                Self::spec_from_general_subtrees(subtrees@) =~=
+                    names.deep_view() + Self::spec_from_general_subtrees(subtrees@.skip(i as int)),
+        {
+            let mut new_names = Self::from(&subtrees.get(i).base);
+            names.append(&mut new_names);
+            assert(subtrees@.skip(i + 1) == subtrees@.skip(i as int).drop_first());
+        }
+
+        names
     }
 }
 
@@ -252,6 +287,223 @@ impl policy::BasicConstraints {
     }
 }
 
+impl policy::CertificatePolicies {
+    pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::CertificatePolicies> {
+        if_let! {
+            let SpecExtensionParamValue::CertificatePolicies(policies) = ext.param;
+
+            Some(policy::CertificatePolicies {
+                critical: ext.critical,
+                policies: policies.map_values(|policy: SpecPolicyInfoValue|
+                    policy::Certificate::spec_oid_to_string(policy.policy_id)),
+            })
+        }
+    }
+
+    /// Exec version of spec_from
+    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecCertificatePolicies, ValidationError>)
+        ensures
+            res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
+    {
+        if let ExtensionParamValue::CertificatePolicies(policies) = &ext.param {
+            let policy_oid_strings = vec_map(policies.to_vec(), |policy| -> (res: String)
+                ensures res.deep_view() =~= policy::Certificate::spec_oid_to_string(policy@.policy_id)
+            {
+                policy::Certificate::oid_to_string(&policy.policy_id)
+            });
+
+            assert(policy_oid_strings.deep_view() =~= policies@.map_values(|policy: SpecPolicyInfoValue|
+                policy::Certificate::spec_oid_to_string(policy.policy_id)));
+
+            Ok(policy::ExecCertificatePolicies {
+                critical: ext.critical,
+                policies: policy_oid_strings,
+            })
+        } else {
+            Err(ValidationError::UnexpectedExtParam)
+        }
+    }
+}
+
+impl policy::NameConstraints {
+    pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::NameConstraints> {
+        if_let! {
+            let SpecExtensionParamValue::NameConstraints(constraints) = ext.param;
+            Some(policy::NameConstraints {
+                critical: ext.critical,
+                // Flattened list of permitted/excluded names
+                permitted: if let OptionDeep::Some(permitted) = constraints.permitted {
+                    policy::GeneralName::spec_from_general_subtrees(permitted)
+                } else {
+                    seq![]
+                },
+                excluded: if let OptionDeep::Some(excluded) = constraints.excluded {
+                    policy::GeneralName::spec_from_general_subtrees(excluded)
+                } else {
+                    seq![]
+                },
+            })
+        }
+    }
+
+    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecNameConstraints, ValidationError>)
+        ensures
+            res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
+    {
+        if let ExtensionParamValue::NameConstraints(constraints) = &ext.param {
+            let permitted = if let OptionDeep::Some(permitted) = &constraints.permitted {
+                policy::GeneralName::from_general_subtrees(permitted)
+            } else {
+                vec![]
+            };
+
+            let excluded = if let OptionDeep::Some(excluded) = &constraints.excluded {
+                policy::GeneralName::from_general_subtrees(excluded)
+            } else {
+                vec![]
+            };
+
+            assert(permitted.deep_view() =~= if let OptionDeep::Some(permitted) = constraints@.permitted {
+                policy::GeneralName::spec_from_general_subtrees(permitted)
+            } else {
+                seq![]
+            });
+
+            assert(excluded.deep_view() =~= if let OptionDeep::Some(excluded) = constraints@.excluded {
+                policy::GeneralName::spec_from_general_subtrees(excluded)
+            } else {
+                seq![]
+            });
+
+            Ok(policy::ExecNameConstraints {
+                critical: ext.critical,
+                permitted,
+                excluded,
+            })
+        } else {
+            Err(ValidationError::UnexpectedExtParam)
+        }
+    }
+}
+
+impl policy::ExtendedKeyUsage {
+    pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::ExtendedKeyUsage> {
+        if_let! {
+            let SpecExtensionParamValue::ExtendedKeyUsage(usages) = ext.param;
+            Some(policy::ExtendedKeyUsage {
+                critical: ext.critical,
+                usages: usages.map_values(|oid| Self::spec_oid_to_key_usage_type(oid)),
+            })
+        }
+    }
+
+    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecExtendedKeyUsage, ValidationError>)
+        ensures
+            res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
+    {
+        if let ExtensionParamValue::ExtendedKeyUsage(usages) = &ext.param {
+            let usage_types = vec_map(usages.to_vec(), |oid| -> (res: policy::ExecExtendedKeyUsageType)
+                ensures res.deep_view() =~= Self::spec_oid_to_key_usage_type(oid@)
+            {
+                Self::oid_to_key_usage_type(oid)
+            });
+
+            assert(usage_types.deep_view() =~= usages@.map_values(|oid| Self::spec_oid_to_key_usage_type(oid)));
+
+            Ok(policy::ExecExtendedKeyUsage {
+                critical: ext.critical,
+                usages: usage_types,
+            })
+        } else {
+            Err(ValidationError::UnexpectedExtParam)
+        }
+    }
+
+    pub open spec fn spec_oid_to_key_usage_type(oid: SpecObjectIdentifierValue) -> policy::ExtendedKeyUsageType {
+        if oid == spec_oid!(SERVER_AUTH) {
+            policy::ExtendedKeyUsageType::ServerAuth
+        } else if oid == spec_oid!(CLIENT_AUTH) {
+            policy::ExtendedKeyUsageType::ClientAuth
+        } else if oid == spec_oid!(CODE_SIGNING) {
+            policy::ExtendedKeyUsageType::CodeSigning
+        } else if oid == spec_oid!(EMAIL_PROTECTION) {
+            policy::ExtendedKeyUsageType::EmailProtection
+        } else if oid == spec_oid!(TIME_STAMPING) {
+            policy::ExtendedKeyUsageType::TimeStamping
+        } else if oid == spec_oid!(OCSP_SIGNING) {
+            policy::ExtendedKeyUsageType::OCSPSigning
+        } else if oid == spec_oid!(EXTENDED_KEY_USAGE) {
+            policy::ExtendedKeyUsageType::Any
+        } else {
+            policy::ExtendedKeyUsageType::Other(policy::Certificate::spec_oid_to_string(oid))
+        }
+    }
+
+    pub fn oid_to_key_usage_type(oid: &ObjectIdentifierValue) -> (res: policy::ExecExtendedKeyUsageType)
+        ensures res.deep_view() =~= Self::spec_oid_to_key_usage_type(oid@)
+    {
+        if oid.polyfill_eq(&oid!(SERVER_AUTH)) {
+            policy::ExecExtendedKeyUsageType::ServerAuth
+        } else if oid.polyfill_eq(&oid!(CLIENT_AUTH)) {
+            policy::ExecExtendedKeyUsageType::ClientAuth
+        } else if oid.polyfill_eq(&oid!(CODE_SIGNING)) {
+            policy::ExecExtendedKeyUsageType::CodeSigning
+        } else if oid.polyfill_eq(&oid!(EMAIL_PROTECTION)) {
+            policy::ExecExtendedKeyUsageType::EmailProtection
+        } else if oid.polyfill_eq(&oid!(TIME_STAMPING)) {
+            policy::ExecExtendedKeyUsageType::TimeStamping
+        } else if oid.polyfill_eq(&oid!(OCSP_SIGNING)) {
+            policy::ExecExtendedKeyUsageType::OCSPSigning
+        } else if oid.polyfill_eq(&oid!(EXTENDED_KEY_USAGE)) {
+            policy::ExecExtendedKeyUsageType::Any
+        } else {
+            policy::ExecExtendedKeyUsageType::Other(policy::Certificate::oid_to_string(oid))
+        }
+    }
+}
+
+impl policy::KeyUsage {
+    pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::KeyUsage> {
+        if_let! {
+            let SpecExtensionParamValue::KeyUsage(usage) = ext.param;
+            Some(policy::KeyUsage {
+                critical: ext.critical,
+                digital_signature: BitStringValue::spec_has_bit(usage, 0),
+                non_repudiation: BitStringValue::spec_has_bit(usage, 1),
+                key_encipherment: BitStringValue::spec_has_bit(usage, 2),
+                data_encipherment: BitStringValue::spec_has_bit(usage, 3),
+                key_agreement: BitStringValue::spec_has_bit(usage, 4),
+                key_cert_sign: BitStringValue::spec_has_bit(usage, 5),
+                crl_sign: BitStringValue::spec_has_bit(usage, 6),
+                encipher_only: BitStringValue::spec_has_bit(usage, 7),
+                decipher_only: BitStringValue::spec_has_bit(usage, 8),
+            })
+        }
+    }
+
+    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecKeyUsage, ValidationError>)
+        ensures
+            res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
+    {
+        if let ExtensionParamValue::KeyUsage(usage) = &ext.param {
+            Ok(policy::ExecKeyUsage {
+                critical: ext.critical,
+                digital_signature: BitStringValue::has_bit(usage, 0),
+                non_repudiation: BitStringValue::has_bit(usage, 1),
+                key_encipherment: BitStringValue::has_bit(usage, 2),
+                data_encipherment: BitStringValue::has_bit(usage, 3),
+                key_agreement: BitStringValue::has_bit(usage, 4),
+                key_cert_sign: BitStringValue::has_bit(usage, 5),
+                crl_sign: BitStringValue::has_bit(usage, 6),
+                encipher_only: BitStringValue::has_bit(usage, 7),
+                decipher_only: BitStringValue::has_bit(usage, 8),
+            })
+        } else {
+            Err(ValidationError::UnexpectedExtParam)
+        }
+    }
+}
+
 impl policy::Certificate {
     /// Convert a more concrete parsed certificate to
     /// an abstract certificate to be used in a policy
@@ -262,21 +514,38 @@ impl policy::Certificate {
             let Some(not_before) = Self::spec_time_to_timestamp(c.cert.validity.not_before);
             let Some(subject_key) = policy::SubjectKey::spec_from(c.cert.subject_key);
 
-            // TODO: simplify this
+            let Some(ext_extended_key_usage) = if let OptionDeep::Some(ext) = spec_get_extension(c, spec_oid!(EXTENDED_KEY_USAGE)) {
+                Self::map_some(policy::ExtendedKeyUsage::spec_from(ext))
+            } else {
+                Some(None)
+            };
+
             let Some(ext_basic_constraints) = if let OptionDeep::Some(ext) = spec_get_extension(c, spec_oid!(BASIC_CONSTRAINTS)) {
-                if_let! {
-                    let Some(ext) = policy::BasicConstraints::spec_from(ext);
-                    Some(Some(ext))
-                }
+                Self::map_some(policy::BasicConstraints::spec_from(ext))
+            } else {
+                Some(None)
+            };
+
+            let Some(ext_key_usage) = if let OptionDeep::Some(ext) = spec_get_extension(c, spec_oid!(KEY_USAGE)) {
+                Self::map_some(policy::KeyUsage::spec_from(ext))
             } else {
                 Some(None)
             };
 
             let Some(ext_subject_alt_name) = if let OptionDeep::Some(ext) = spec_get_extension(c, spec_oid!(SUBJECT_ALT_NAME)) {
-                if_let! {
-                    let Some(ext) = policy::SubjectAltName::spec_from(ext);
-                    Some(Some(ext))
-                }
+                Self::map_some(policy::SubjectAltName::spec_from(ext))
+            } else {
+                Some(None)
+            };
+
+            let Some(ext_name_constraints) = if let OptionDeep::Some(ext) = spec_get_extension(c, spec_oid!(NAME_CONSTRAINTS)) {
+                Self::map_some(policy::NameConstraints::spec_from(ext))
+            } else {
+                Some(None)
+            };
+
+            let Some(ext_certificate_policies) = if let OptionDeep::Some(ext) = spec_get_extension(c, spec_oid!(CERT_POLICIES)) {
+                Self::map_some(policy::CertificatePolicies::spec_from(ext))
             } else {
                 Some(None)
             };
@@ -292,19 +561,18 @@ impl policy::Certificate {
                 subject_name: policy::DirectoryName::spec_from(c.cert.subject),
                 subject_key,
 
-                // TODO
-                ext_extended_key_usage: None,
+                ext_extended_key_usage,
                 ext_basic_constraints,
-                ext_key_usage: None,
+                ext_key_usage,
                 ext_subject_alt_name,
-                ext_name_constraints: None,
-                ext_certificate_policies: None,
+                ext_name_constraints,
+                ext_certificate_policies,
             })
         }
     }
 
     /// Exec version of spec_from
-    pub fn from<'a, 'b>(c: &'b CertificateValue<'a>) -> (res: Result<policy::ExecCertificate, ValidationError>)
+    pub fn from(c: &CertificateValue) -> (res: Result<policy::ExecCertificate, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(c@),
     {
@@ -320,14 +588,38 @@ impl policy::Certificate {
 
         let subject_key = policy::SubjectKey::from(&c.get().cert.get().subject_key)?;
 
+        let ext_extended_key_usage = if let OptionDeep::Some(ext) = get_extension(c, &oid!(EXTENDED_KEY_USAGE)) {
+            Some(policy::ExtendedKeyUsage::from(ext)?)
+        } else {
+            None
+        };
+
         let ext_basic_constraints = if let OptionDeep::Some(ext) = get_extension(c, &oid!(BASIC_CONSTRAINTS)) {
             Some(policy::BasicConstraints::from(ext)?)
         } else {
             None
         };
 
+        let ext_key_usage = if let OptionDeep::Some(ext) = get_extension(c, &oid!(KEY_USAGE)) {
+            Some(policy::KeyUsage::from(ext)?)
+        } else {
+            None
+        };
+
         let ext_subject_alt_name = if let OptionDeep::Some(ext) = get_extension(c, &oid!(SUBJECT_ALT_NAME)) {
             Some(policy::SubjectAltName::from(ext)?)
+        } else {
+            None
+        };
+
+        let ext_name_constraints = if let OptionDeep::Some(ext) = get_extension(c, &oid!(NAME_CONSTRAINTS)) {
+            Some(policy::NameConstraints::from(ext)?)
+        } else {
+            None
+        };
+
+        let ext_certificate_policies = if let OptionDeep::Some(ext) = get_extension(c, &oid!(CERT_POLICIES)) {
+            Some(policy::CertificatePolicies::from(ext)?)
         } else {
             None
         };
@@ -343,14 +635,31 @@ impl policy::Certificate {
             subject_name: policy::DirectoryName::from(&c.get().cert.get().subject),
             subject_key,
 
-            // TODO
-            ext_extended_key_usage: None,
+            ext_extended_key_usage,
             ext_basic_constraints,
-            ext_key_usage: None,
+            ext_key_usage,
             ext_subject_alt_name,
-            ext_name_constraints: None,
-            ext_certificate_policies: None,
+            ext_name_constraints,
+            ext_certificate_policies,
         })
+    }
+
+    pub open spec fn spec_map_some<A>(opt: Option<A>) -> Option<Option<A>>
+    {
+        match opt {
+            Some(a) => Some(Some(a)),
+            None => None,
+        }
+    }
+
+    #[verifier::when_used_as_spec(spec_map_some)]
+    pub fn map_some<A>(opt: Option<A>) -> (res: Option<Option<A>>)
+        ensures res == Self::spec_map_some(opt)
+    {
+        match opt {
+            Some(a) => Some(Some(a)),
+            None => None,
+        }
     }
 
     /// Convert OID to a string by concatenating all arcs with '.'
@@ -449,7 +758,7 @@ impl policy::SubjectKey {
     }
 
     /// Exec version of spec_from
-    pub fn from<'a, 'b> (spki: &'b PublicKeyInfoValue<'a>) -> (res: Result<policy::ExecSubjectKey, ValidationError>)
+    pub fn from(spki: &PublicKeyInfoValue) -> (res: Result<policy::ExecSubjectKey, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(spki@),
     {
@@ -507,7 +816,7 @@ impl policy::DirectoryName {
     }
 
     /// Exec version of spec_from
-    pub fn from<'a, 'b>(name: &'b NameValue<'a>) -> (res: Vec<policy::ExecDirectoryName>)
+    pub fn from(name: &NameValue) -> (res: Vec<policy::ExecDirectoryName>)
         ensures res.deep_view() == Self::spec_from(name@),
     {
         let mut dir_names = Vec::new();

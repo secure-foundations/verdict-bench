@@ -11,7 +11,7 @@ rspec! {
 use ExecDirectoryName as DirectoryName;
 use ExecGeneralName as GeneralName;
 use ExecSubjectKey as SubjectKey;
-use ExecExtendedKeyUsageTypes as ExtendedKeyUsageTypes;
+use ExecExtendedKeyUsageType as ExtendedKeyUsageType;
 use ExecExtendedKeyUsage as ExtendedKeyUsage;
 use ExecBasicConstraints as BasicConstraints;
 use ExecKeyUsage as KeyUsage;
@@ -141,8 +141,8 @@ pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
         Some(key_usage) =>
             exists |i: usize| 0 <= i < key_usage.usages.len() &&
                 match #[trigger] key_usage.usages[i as int] {
-                    ExtendedKeyUsageTypes::ServerAuth => true,
-                    ExtendedKeyUsageTypes::Any => true,
+                    ExtendedKeyUsageType::ServerAuth => true,
+                    ExtendedKeyUsageType::Any => true,
                     _ => false,
                 },
         None => true,
