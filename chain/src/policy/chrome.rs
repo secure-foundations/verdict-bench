@@ -21,7 +21,6 @@ use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 
 use exec_str_lower as str_lower;
-use exec_debug as debug;
 
 pub struct Environment {
     pub time: u64,
@@ -469,12 +468,5 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, domain
 }
 
 } // rspec!
-
-pub open spec fn debug(s: &str) { () }
-
-#[verifier::external_body]
-fn exec_debug(s: &str) {
-    println!("{}", s);
-}
 
 } // verus!
