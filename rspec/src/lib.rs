@@ -944,11 +944,15 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                 ..expr_field.clone()
             })),
 
-        // Rewrite `<string literal>@` to `<string literal>`
+        // Rewrite `<string literal>@` to `<string literal>.to_string()`
         // but throws an error on anything else
         Expr::View(view) =>
             match view.expr.as_ref() {
-                Expr::Lit(ExprLit { lit: Lit::Str(..), .. }) => Ok(view.expr.as_ref().clone()),
+                Expr::Lit(ExprLit { lit: Lit::Str(..), .. }) =>
+                    Ok(expr_method_call!(
+                        view.expr.as_ref().clone(),
+                        "to_string"
+                    )),
                 _ => Err(Error::new_spanned(view, "only string literals are supported for view expression (@)")),
             }
 

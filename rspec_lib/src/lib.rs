@@ -30,25 +30,59 @@ impl<'a, 'b> Eq<&'a str, &'b String> for RSpec {
     }
 }
 
-impl<T: Copy + PartialEq + DeepView> Eq<T, T> for RSpec {
+impl<'a, 'b> Eq<&'a String, String> for RSpec {
     #[verifier::external_body]
-    fn eq(a: T, b: T) -> (res: bool) {
+    fn eq(a: &'a String, b: String) -> (res: bool) {
+        a == &b
+    }
+}
+
+impl<'a, 'b> Eq<&'a String, &'b String> for RSpec {
+    #[verifier::external_body]
+    fn eq(a: &'a String, b: &'b String) -> (res: bool) {
         a == b
     }
 }
 
-impl<'a, T: Copy + PartialEq + DeepView> Eq<&'a T, T> for RSpec {
+impl<'a, 'b, 'c> Eq<&'a String, &'b &'c String> for RSpec {
     #[verifier::external_body]
-    fn eq(a: &'a T, b: T) -> (res: bool) {
-        *a == b
+    fn eq(a: &'a String, b: &'b &'c String) -> (res: bool) {
+        a == *b
     }
 }
 
-impl<'b, T: Copy + PartialEq + DeepView> Eq<T, &'b T> for RSpec {
-    #[verifier::external_body]
-    fn eq(a: T, b: &'b T) -> (res: bool) {
-        a == *b
-    }
+macro_rules! native_eq {
+    () => {};
+    ($ty:ident $($rest:ident)*) => {
+        verus! {
+            impl Eq<$ty, $ty> for RSpec {
+                fn eq(a: $ty, b: $ty) -> (res: bool) {
+                    a == b
+                }
+            }
+
+            impl<'a> Eq<&'a $ty, $ty> for RSpec {
+                fn eq(a: &'a $ty, b: $ty) -> (res: bool) {
+                    *a == b
+                }
+            }
+
+            impl<'b> Eq<$ty, &'b $ty> for RSpec {
+                fn eq(a: $ty, b: &'b$ty) -> (res: bool) {
+                    a == *b
+                }
+            }
+        }
+
+        native_eq!($($rest)*);
+    };
+}
+
+native_eq! {
+    bool
+    u8 u16 u32 u64 u128
+    i8 i16 i32 i64 i128
+    usize char
 }
 
 /// An index trait for both Vec and String

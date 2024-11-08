@@ -304,7 +304,7 @@ pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &Nam
         exists |i: usize| 0 <= i < constraints.permitted.len() && {
             match #[trigger] &constraints.permitted[i as int] {
                 GeneralName::DNSName(permitted_name) =>
-                    permit_name(&permitted_name, &clean_name(&name)),
+                    permit_name(&permitted_name, &name),
                 _ => false,
             }
         }
@@ -378,7 +378,7 @@ pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints:
                 }
 
             // Not explicitly excluded
-            &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+            &&& !permitted_enabled || forall |j: usize| 0 <= j < constraints.excluded.len() ==>
                 match #[trigger] &constraints.excluded[j as int] {
                     GeneralName::DirectoryName(excluded_name) =>
                         !same_directory_name(&leaf_name, &excluded_name),
