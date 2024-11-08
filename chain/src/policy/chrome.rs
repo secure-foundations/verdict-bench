@@ -359,6 +359,13 @@ pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints:
         let leaf_name = #[trigger] &leaf.subject_name[i as int];
         let permitted_enabled = has_permitted_dir_name_with_the_same_type(&constraints, leaf_name);
 
+        // TODO: some oddity: in Hammurabi, the name constraints are all flattened (originally it is a list general names, which
+        // in the case of directory names, is essentially Vec<Vec<Vec<(OID, value)>>>)
+        // but when subject name of the cert is encoded, only the *last* one corresponding to each OID is recorded
+        // see, e.g., https://github.com/semaj/hammurabi/blob/16b253ebd8e2768f9295439bf70e2d50954fba73/src/cert.rs#L206
+        // so the check here should be only done against the last name in each OID
+        // For an example using this, see certificate 4106d1f3f6a02098aa6b84289c7a68ecbd6904f73b720c44f6cb3e12cc0662ea in part-10 of mega-crl
+
         !is_checked_directory_name_type(&leaf_name) || {
             // If permitted list is enabled, check if `leaf_name`
             // is at least permitted by one of them

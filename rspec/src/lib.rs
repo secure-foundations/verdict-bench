@@ -7,7 +7,7 @@ use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
 use syn_verus::spanned::Spanned;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant, Visibility};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, LitStr, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant, Visibility};
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
@@ -1229,7 +1229,7 @@ fn compile_signature(ctx: &Context, sig: &Signature) -> Result<Signature, Error>
     })
 }
 
-fn compile_spec_fn(ctx: &Context, item_fn: &ItemFn) -> Result<ItemFn, Error> {
+fn compile_spec_fn(ctx: &Context, item_fn: &ItemFn, trace: bool) -> Result<ItemFn, Error> {
     // Initialize the local context with the function arguments
     let local = LocalContext {
         vars: item_fn.sig.inputs
@@ -1244,14 +1244,69 @@ fn compile_spec_fn(ctx: &Context, item_fn: &ItemFn) -> Result<ItemFn, Error> {
             .collect::<Result<_, Error>>()?,
     };
 
+    let body = compile_block(ctx, &local, &item_fn.block)?;
+
+    // If tracing is enabled, generate additional code to print the result
+    let body = if trace {
+        Block {
+            brace_token: Default::default(),
+            stmts: vec![
+                // let _res = { <body> }
+                Stmt::Local(Local {
+                    attrs: Vec::new(),
+                    let_token: Default::default(),
+                    tracked: None,
+                    ghost: None,
+                    pat: Pat::Ident(PatIdent {
+                        attrs: Vec::new(),
+                        by_ref: None,
+                        mutability: None,
+                        ident: Ident::new("_res", item_fn.sig.ident.span()),
+                        subpat: None,
+                    }),
+                    init: Some((
+                        Default::default(),
+                        Box::new(Expr::Block(ExprBlock {
+                            attrs: Vec::new(),
+                            label: None,
+                            block: body,
+                        })),
+                    )),
+                    semi_token: Default::default(),
+                }),
+
+                // rspec_trace_result("fn_name", _res)
+                Stmt::Semi(expr_call!(
+                    expr_path![seg!("rspec_lib"), seg!("rspec_trace_result")],
+                    Expr::Lit(ExprLit {
+                        attrs: Vec::new(),
+                        lit: Lit::Str(LitStr::new(&item_fn.sig.ident.to_string(), item_fn.sig.ident.span())),
+                    }),
+                    Expr::Reference(ExprReference {
+                        attrs: Vec::new(),
+                        and_token: Default::default(),
+                        raw: Default::default(),
+                        mutability: None,
+                        expr: Box::new(expr_path![seg!("_res")]),
+                    }),
+                ), Default::default()),
+
+                // _res
+                Stmt::Expr(expr_path!(seg!("_res"))),
+            ],
+        }
+    } else {
+        body
+    };
+
     Ok(ItemFn {
         sig: compile_signature(ctx, &item_fn.sig)?,
-        block: Box::new(compile_block(ctx, &local, &item_fn.block)?),
+        block: Box::new(body),
         ..item_fn.clone()
     })
 }
 
-fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
+fn compile_rspec(items: Items, trace: bool) -> Result<TokenStream2, Error> {
     let mut output = Vec::new();
 
     let mut ctx = Context {
@@ -1312,7 +1367,7 @@ fn compile_rspec(items: Items) -> Result<TokenStream2, Error> {
 
     // For each function, generate an exec version
     for item_fn in ctx.fns.values() {
-        let exec_fn = compile_spec_fn(&ctx, item_fn)?;
+        let exec_fn = compile_spec_fn(&ctx, item_fn, trace)?;
         output.push(quote! { #exec_fn });
     }
 
@@ -1351,7 +1406,18 @@ impl Parse for Items {
 pub fn rspec(input: TokenStream) -> TokenStream {
     let items = parse_macro_input!(input as Items);
 
-    match compile_rspec(items) {
+    match compile_rspec(items, false) {
+        Ok(token_stream) => token_stream.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+/// Same as above, but with trace enabled (i.e., each function will print out the result it returns)
+#[proc_macro]
+pub fn rspec_trace(input: TokenStream) -> TokenStream {
+    let items = parse_macro_input!(input as Items);
+
+    match compile_rspec(items, true) {
         Ok(token_stream) => token_stream.into(),
         Err(err) => err.to_compile_error().into(),
     }

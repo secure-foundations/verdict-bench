@@ -1,4 +1,5 @@
 use vstd::prelude::*;
+use std::fmt::Debug;
 
 verus! {
 
@@ -186,6 +187,12 @@ impl Take<char, String> for str {
     fn rspec_take(&self, n: usize) -> (res: String) {
         self.chars().take(n).collect()
     }
+}
+
+/// Used for tracing the evaluation of rspec functions
+#[verifier::external_body]
+pub fn rspec_trace_result<T: Debug>(s: &str, res: T) {
+    eprintln!("[rspec] fn {}: {:?}", s, res);
 }
 
 }
