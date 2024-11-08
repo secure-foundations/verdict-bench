@@ -262,14 +262,14 @@ fn validate_ct_logs_job(
 
     let begin = Instant::now();
 
-    let mut chain =
-        chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
+    let chain =
+        VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?);
 
-    // if args.debug {
-    //     query.print_debug_info();
-    // }
+    if args.debug {
+        chain::utils::print_debug_info(roots, &chain, &entry.domain, timestamp as i64);
+    }
 
-    let res = validate::valid_domain(&policy, roots, &VecDeep::from_vec(chain), &entry.domain.to_lowercase())?;
+    let res = validate::valid_domain(&policy, roots, &chain, &entry.domain.to_lowercase())?;
 
     *timer.lock().unwrap() += begin.elapsed();
 
@@ -345,6 +345,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             WriterBuilder::new().has_headers(false).from_writer(handle);
 
         let mut num_res = 0;
+        let begin = Instant::now();
 
         while let Ok(res) = rx_res.recv() {
             let result_str = match res.result {
@@ -359,13 +360,15 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             })?;
             output_writer.flush()?;
 
-            if num_res % 50 == 0 {
-                eprint!("\rparsing + validation average: {:.2}ms", timer.lock().unwrap().as_micros() as f64 / num_res as f64 / 1000f64);
-            }
+            // if num_res % 50 == 0 {
+            //     eprint!("\rparsing + validation average: {:.2}ms", timer.lock().unwrap().as_micros() as f64 / num_res as f64 / 1000f64);
+            // }
             num_res += 1;
         }
 
-        eprintln!("");
+        // eprintln!("");
+        eprintln!("validated {} certificate(s); parsing + validation took {:.3}s (across threads); total: {:.3}s",
+            num_res, timer.lock().unwrap().as_secs_f64(), begin.elapsed().as_secs_f64());
 
         Ok(())
     }));

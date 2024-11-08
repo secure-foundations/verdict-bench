@@ -6,16 +6,9 @@ verus! {
 
 rspec! {
 
-pub enum DirectoryName {
-    CommonName(SpecString),
-    Country(SpecString),
-    OrganizationName(SpecString),
-    OrganizationalUnit(SpecString),
-    Locality(SpecString),
-    State(SpecString),
-    PostalCode(SpecString),
-    Surname(SpecString),
-    Other(SpecString, SpecString),
+pub struct DirectoryName {
+    pub oid: SpecString,
+    pub value: SpecString,
 }
 
 pub enum GeneralName {
@@ -120,16 +113,9 @@ impl Clone for ExecDirectoryName {
     fn clone(&self) -> (res: Self)
         ensures res.deep_view() == self.deep_view()
     {
-        match self {
-            ExecDirectoryName::CommonName(x) => ExecDirectoryName::CommonName(x.clone()),
-            ExecDirectoryName::Country(x) => ExecDirectoryName::Country(x.clone()),
-            ExecDirectoryName::OrganizationName(x) => ExecDirectoryName::OrganizationName(x.clone()),
-            ExecDirectoryName::OrganizationalUnit(x) => ExecDirectoryName::OrganizationalUnit(x.clone()),
-            ExecDirectoryName::Locality(x) => ExecDirectoryName::Locality(x.clone()),
-            ExecDirectoryName::State(x) => ExecDirectoryName::State(x.clone()),
-            ExecDirectoryName::PostalCode(x) => ExecDirectoryName::PostalCode(x.clone()),
-            ExecDirectoryName::Surname(x) => ExecDirectoryName::Surname(x.clone()),
-            ExecDirectoryName::Other(x, y) => ExecDirectoryName::Other(x.clone(), y.clone()),
+        ExecDirectoryName {
+            oid: self.oid.clone(),
+            value: self.value.clone(),
         }
     }
 }
@@ -137,34 +123,14 @@ impl Clone for ExecDirectoryName {
 impl DirectoryName {
     pub open spec fn to_string(&self) -> &SpecString
     {
-        match self {
-            DirectoryName::CommonName(x) => x,
-            DirectoryName::Country(x) => x,
-            DirectoryName::OrganizationName(x) => x,
-            DirectoryName::OrganizationalUnit(x) => x,
-            DirectoryName::Locality(x) => x,
-            DirectoryName::State(x) => x,
-            DirectoryName::PostalCode(x) => x,
-            DirectoryName::Surname(x) => x,
-            DirectoryName::Other(x, y) => y,
-        }
+        &self.value
     }
 }
 
 impl ExecDirectoryName {
     pub fn to_string(&self) -> &String
     {
-        match self {
-            ExecDirectoryName::CommonName(x) => x,
-            ExecDirectoryName::Country(x) => x,
-            ExecDirectoryName::OrganizationName(x) => x,
-            ExecDirectoryName::OrganizationalUnit(x) => x,
-            ExecDirectoryName::Locality(x) => x,
-            ExecDirectoryName::State(x) => x,
-            ExecDirectoryName::PostalCode(x) => x,
-            ExecDirectoryName::Surname(x) => x,
-            ExecDirectoryName::Other(x, y) => y,
-        }
+        &self.value
     }
 }
 

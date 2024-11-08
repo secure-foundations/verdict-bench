@@ -778,10 +778,10 @@ impl policy::DirectoryName {
         if_let! {
             let Some(value) = Self::spec_dir_string_to_string(attr.value);
 
-            Some(policy::DirectoryName::Other(
-                policy::Certificate::spec_oid_to_string(attr.typ),
+            Some(policy::DirectoryName {
+                oid: policy::Certificate::spec_oid_to_string(attr.typ),
                 value,
-            ))
+            })
         }
     }
 
@@ -789,10 +789,10 @@ impl policy::DirectoryName {
     pub fn attr_to_dir_name<'a, 'b>(attr: &'b AttributeTypeAndValueValue<'a>) -> (res: Option<policy::ExecDirectoryName>)
         ensures res.deep_view() == Self::spec_attr_to_dir_name(attr@),
     {
-        Some(policy::ExecDirectoryName::Other(
-            policy::Certificate::oid_to_string(&attr.typ),
-            Self::dir_string_to_string(&attr.value)?.to_string(),
-        ))
+        Some(policy::ExecDirectoryName {
+            oid: policy::Certificate::oid_to_string(&attr.typ),
+            value: Self::dir_string_to_string(&attr.value)?.to_string(),
+        })
     }
 
     /// Convert a dir string to string

@@ -21,6 +21,7 @@ use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 
 use exec_str_lower as str_lower;
+use exec_debug as debug;
 
 pub struct Environment {
     pub time: u64,
@@ -262,33 +263,11 @@ pub open spec fn not_exclude_name(name_constraint: &SpecString, name: &SpecStrin
 }
 
 pub open spec fn same_directory_name_type(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-    match (name1, name2) {
-        (DirectoryName::CommonName(_), DirectoryName::CommonName(_)) => true,
-        (DirectoryName::Country(_), DirectoryName::Country(_)) => true,
-        (DirectoryName::OrganizationName(_), DirectoryName::OrganizationName(_)) => true,
-        (DirectoryName::OrganizationalUnit(_), DirectoryName::OrganizationalUnit(_)) => true,
-        (DirectoryName::Locality(_), DirectoryName::Locality(_)) => true,
-        (DirectoryName::State(_), DirectoryName::State(_)) => true,
-        (DirectoryName::PostalCode(_), DirectoryName::PostalCode(_)) => true,
-        (DirectoryName::Surname(_), DirectoryName::Surname(_)) => true,
-        (DirectoryName::Other(oid1, _), DirectoryName::Other(oid2, _)) => oid1 == oid2,
-        _ => false,
-    }
+    &name1.oid == &name2.oid
 }
 
 pub open spec fn same_directory_name(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-    match (name1, name2) {
-        (DirectoryName::CommonName(name1), DirectoryName::CommonName(name2)) => name1 == name2,
-        (DirectoryName::Country(name1), DirectoryName::Country(name2)) => name1 == name2,
-        (DirectoryName::OrganizationName(name1), DirectoryName::OrganizationName(name2)) => name1 == name2,
-        (DirectoryName::OrganizationalUnit(name1), DirectoryName::OrganizationalUnit(name2)) => name1 == name2,
-        (DirectoryName::Locality(name1), DirectoryName::Locality(name2)) => name1 == name2,
-        (DirectoryName::State(name1), DirectoryName::State(name2)) => name1 == name2,
-        (DirectoryName::PostalCode(name1), DirectoryName::PostalCode(name2)) => name1 == name2,
-        (DirectoryName::Surname(name1), DirectoryName::Surname(name2)) => name1 == name2,
-        (DirectoryName::Other(oid1, name1), DirectoryName::Other(oid2, name2)) => oid1 == oid2 && name1 == name2,
-        _ => false,
-    }
+    &name1.oid == &name2.oid && &name1.value == &name2.value
 }
 
 pub open spec fn has_permitted_dns_name(constraints: &NameConstraints) -> bool {
@@ -362,30 +341,44 @@ pub open spec fn has_permitted_dir_name_with_the_same_type(constraints: &NameCon
         }
 }
 
+/// Only certain directory name types are checked
+pub open spec fn is_checked_directory_name_type(name: &DirectoryName) -> bool {
+    ||| &name.oid == "2.5.4.6"@ // country
+    ||| &name.oid == "2.5.4.10"@ // organization
+    ||| &name.oid == "2.5.4.42"@ // given name
+    ||| &name.oid == "2.5.4.4"@ // surname
+    ||| &name.oid == "2.5.4.8"@ // state
+    ||| &name.oid == "2.5.4.9"@ // street address
+    ||| &name.oid == "2.5.4.7"@ // locality
+    ||| &name.oid == "2.5.4.17"@ // postal code
+}
+
 /// Check subject names in the leaf cert against name constraints
 pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
     forall |i: usize| 0 <= i < leaf.subject_name.len() ==> {
         let leaf_name = #[trigger] &leaf.subject_name[i as int];
         let permitted_enabled = has_permitted_dir_name_with_the_same_type(&constraints, leaf_name);
 
-        // If permitted list is enabled, check if `leaf_name`
-        // is at least permitted by one of them
-        &&& !permitted_enabled ||
-            exists |j: usize| 0 <= j < constraints.permitted.len() && {
-                match #[trigger] &constraints.permitted[j as int] {
-                    GeneralName::DirectoryName(permitted_name) =>
-                        same_directory_name(&leaf_name, &permitted_name),
-                    _ => false,
+        !is_checked_directory_name_type(&leaf_name) || {
+            // If permitted list is enabled, check if `leaf_name`
+            // is at least permitted by one of them
+            &&& !permitted_enabled ||
+                exists |j: usize| 0 <= j < constraints.permitted.len() && {
+                    match #[trigger] &constraints.permitted[j as int] {
+                        GeneralName::DirectoryName(permitted_name) =>
+                            same_directory_name(&leaf_name, &permitted_name),
+                        _ => false,
+                    }
                 }
-            }
 
-        // Not explicitly excluded
-        &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
-            match #[trigger] &constraints.excluded[j as int] {
-                GeneralName::DirectoryName(excluded_name) =>
-                    !same_directory_name(&leaf_name, &excluded_name),
-                _ => true,
-            }
+            // Not explicitly excluded
+            &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+                match #[trigger] &constraints.excluded[j as int] {
+                    GeneralName::DirectoryName(excluded_name) =>
+                        !same_directory_name(&leaf_name, &excluded_name),
+                    _ => true,
+                }
+        }
     }
 }
 
@@ -469,5 +462,12 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, domain
 }
 
 } // rspec!
+
+pub open spec fn debug(s: &str) { () }
+
+#[verifier::external_body]
+fn exec_debug(s: &str) {
+    println!("{}", s);
+}
 
 } // verus!
