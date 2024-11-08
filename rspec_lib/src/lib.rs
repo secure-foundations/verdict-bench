@@ -229,4 +229,11 @@ pub fn rspec_trace_result<T: Debug>(s: &str, res: T) {
     eprintln!("[rspec] fn {}: {:?}", s, res);
 }
 
+pub open spec fn debug<T>(t: T) { () }
+
+#[verifier::external_body]
+pub fn rspec_debug<T: Debug>(t: T) {
+    eprintln!("[rspec] debug: {:?}", t);
+}
+
 }

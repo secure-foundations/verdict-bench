@@ -3,7 +3,7 @@ TARGETS = chain libchain.rlib
 
 CARGO_DEPS = macros base64 clap thiserror libcrux libcrux-hacl chrono aws-lc-rs rspec
 VERUS_DEPS = parser polyfill vest rspec_lib
-TEST_TARGETS = test-policy-chrome # test-policy-firefox
+TEST_TARGETS = test-policy-chrome test-policy-firefox
 TEST_TIME = 1725029869
 
 # Temporary fix for https://github.com/verus-lang/verus/issues/1288

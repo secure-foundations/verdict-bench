@@ -64,6 +64,7 @@ struct ParseCTLogArgs {
 #[derive(Debug, Clone, ValueEnum)]
 enum Policy {
     ChromeHammurabi,
+    FirefoxHammurabi,
 }
 
 #[derive(Parser, Debug)]
@@ -287,6 +288,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
     let policy = Arc::new(match args.policy {
         Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
+        Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
     });
 
     let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();

@@ -19,6 +19,7 @@ use error::Error;
 #[derive(Debug, Clone, ValueEnum)]
 enum Policy {
     ChromeHammurabi,
+    FirefoxHammurabi,
 }
 
 #[derive(Parser, Debug)]
@@ -71,6 +72,7 @@ fn main_args(args: Args) -> Result<(), Error> {
 
     let policy = match args.policy {
         Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
+        Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
     };
 
     let res = validate::valid_domain(&policy, &VecDeep::from_vec(roots), &VecDeep::from_vec(chain), &args.domain)?;

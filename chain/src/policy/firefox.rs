@@ -21,6 +21,7 @@ use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 
 use exec_str_lower as str_lower;
+// use rspec_debug as debug;
 
 pub struct EVPolicy {
     pub oid: SpecString,
@@ -43,7 +44,7 @@ pub struct Environment {
     pub symantec_roots: Seq<SpecString>,
     pub symantec_exceptions: Seq<SpecString>,
 
-    pub ev_policies: Seq<EVPolicy>,
+    // pub ev_policies: Seq<EVPolicy>,
 
     // tubitak1Fingerprint/Subtree
     pub tubitak1_trusted: Seq<SpecString>,
@@ -233,7 +234,7 @@ pub open spec fn match_san_domain(env: &Environment, san: &SubjectAltName, domai
         valid_name(&env, #[trigger] &san.names[i as int])
     &&& exists |i: usize|
         0 <= i < san.names.len() &&
-        name_match(#[trigger] &san.names[i as int], &domain)
+        name_match(&str_lower(#[trigger] &san.names[i as int]), &domain)
 }
 
 pub open spec fn is_suffix_of(a: &SpecString, b: &SpecString) -> bool {
