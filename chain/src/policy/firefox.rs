@@ -220,21 +220,33 @@ pub open spec fn not_revoked(env: &Environment, cert: &Certificate) -> bool {
 }
 
 pub open spec fn match_common_name_domain(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
-    exists |i: usize| #![auto]
-        0 <= i < cert.subject_name.len() && {
-            &&& &cert.subject_name[i as int].oid == "2.5.4.3"@ // common name
-            &&& valid_name(&env, &cert.subject_name[i as int].value)
-            &&& name_match(&cert.subject_name[i as int].value, &domain)
+    exists |i: usize| #![trigger cert.subject_name[i as int]]
+        0 <= i < cert.subject_name.len() &&
+    exists |j: usize| #![trigger cert.subject_name[i as int][j as int]]
+        0 <= j < cert.subject_name[i as int].len() &&
+        {
+            let name = &cert.subject_name[i as int][j as int];
+            &&& &name.oid == "2.5.4.3"@ // common name
+            &&& valid_name(&env, &name.value)
+            &&& name_match(&name.value, &domain)
         }
 }
 
 pub open spec fn match_san_domain(env: &Environment, san: &SubjectAltName, domain: &SpecString) -> bool {
     &&& forall |i: usize|
         0 <= i < san.names.len() ==>
-        valid_name(&env, #[trigger] &san.names[i as int])
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) =>
+                valid_name(&env, dns_name),
+            _ => true,
+        }
+
     &&& exists |i: usize|
         0 <= i < san.names.len() &&
-        name_match(&str_lower(#[trigger] &san.names[i as int]), &domain)
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) => name_match(&str_lower(dns_name), &domain),
+            _ => false,
+        }
 }
 
 pub open spec fn is_suffix_of(a: &SpecString, b: &SpecString) -> bool {
@@ -242,10 +254,13 @@ pub open spec fn is_suffix_of(a: &SpecString, b: &SpecString) -> bool {
 }
 
 pub open spec fn has_subject_name(cert: &Certificate, oid: &SpecString, value: &SpecString) -> bool {
-    exists |i: usize| #![auto] 0 <= i < cert.subject_name.len() && {
-        &cert.subject_name[i as int].oid == oid &&
-        &cert.subject_name[i as int].value == value
-    }
+    exists |i: usize| #![trigger cert.subject_name[i as int]] 0 <= i < cert.subject_name.len() &&
+    exists |j: usize| 0 <= j < cert.subject_name[i as int].len() &&
+        {
+            let name = #[trigger] &cert.subject_name[i as int][j as int];
+            &name.oid == oid &&
+            &name.value == value
+        }
 }
 
 pub open spec fn is_international_invalid_name(cert: &Certificate, name: &SpecString) -> bool {
@@ -291,8 +306,12 @@ pub open spec fn is_international_invalid_name(cert: &Certificate, name: &SpecSt
 }
 
 pub open spec fn is_international_invalid_san(cert: &Certificate, san: &SubjectAltName) -> bool {
-    forall |i: usize| #![auto] 0 <= i < san.names.len() ==>
-        !is_international_invalid_name(&cert, &san.names[i as int])
+    exists |i: usize| 0 <= i < san.names.len() &&
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) =>
+                is_international_invalid_name(&cert, dns_name),
+            _ => false,
+        }
 }
 
 // internationalInvalidIntermediate in Hammurabi
@@ -302,10 +321,13 @@ pub open spec fn is_international_invalid_non_leaf(cert: &Certificate, leaf: &Ce
         None => true,
     }
     // No common name is invalid
-    &&& forall |i: usize| #![auto] 0 <= i < leaf.subject_name.len() ==> !{
-        &&& &leaf.subject_name[i as int].oid == "2.5.4.3"@
-        &&& is_international_invalid_name(&cert, &leaf.subject_name[i as int].value)
-    }
+    &&& forall |i: usize| #![trigger leaf.subject_name[i as int]] 0 <= i < leaf.subject_name.len() ==>
+        forall |j: usize| 0 <= j < leaf.subject_name[i as int].len() ==>
+        !{
+            let name = #[trigger] &leaf.subject_name[i as int][j as int];
+            &&& &name.oid == "2.5.4.3"@
+            &&& is_international_invalid_name(&cert, &name.value)
+        }
 }
 
 pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
@@ -351,8 +373,12 @@ pub open spec fn is_international_valid_name(env: &Environment, cert: &Certifica
 }
 
 pub open spec fn is_international_valid_san(env: &Environment, cert: &Certificate, san: &SubjectAltName, leaf: &Certificate) -> bool {
-    exists |i: usize| 0 <= i < san.names.len() &&
-        is_international_valid_name(&env, &cert, #[trigger] &san.names[i as int])
+    forall |i: usize| 0 <= i < san.names.len() ==>
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) =>
+                is_international_valid_name(&env, &cert, dns_name),
+            _ => true,
+        }
 }
 
 /// internationalValid in Hammurabi
@@ -366,12 +392,25 @@ pub open spec fn is_international_valid(env: &Environment, cert: &Certificate, l
     }
 }
 
-pub open spec fn same_directory_name_type(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-    &name1.oid == &name2.oid
+pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName) -> bool {
+    exists |i: usize| 0 <= i < rdn.len() && {
+        &&& #[trigger] &rdn[i as int].oid == &name.oid
+        &&& &rdn[i as int].value == &name.value
+    }
 }
 
-pub open spec fn same_directory_name(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-    &name1.oid == &name2.oid && &name1.value == &name2.value
+/// Check if for any item in rdn2, there is a corresponding item in rdn1 with the same OID
+/// and same value
+pub open spec fn is_subtree_rdn(rdn1: &Seq<DirectoryName>, rdn2: &Seq<DirectoryName>) -> bool {
+    &&& rdn1.len() <= rdn2.len()
+    &&& forall |i: usize| 0 <= i < rdn1.len() ==> rdn_has_name(&rdn2, #[trigger] &rdn1[i as int])
+}
+
+/// Check if name1 is a subset set of name2
+/// See: https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/verify_name_match.cc#L261C6-L261C29
+pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<DirectoryName>>) -> bool {
+    &&& name1.len() <= name2.len()
+    &&& forall |i: usize| 0 <= i < name1.len() ==> is_subtree_rdn(#[trigger] &name1[i as int], &name2[i as int])
 }
 
 pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize, domain: &SpecString) -> bool {
@@ -396,56 +435,38 @@ pub open spec fn is_checked_directory_name_type(name: &DirectoryName) -> bool {
     ||| &name.oid == "2.5.4.17"@ // postal code
 }
 
-/// Check if there is any permitted name with the same type as the given name
-/// (if so, the permitted list is enabled)
-pub open spec fn has_permitted_dir_name_with_the_same_type(constraints: &NameConstraints, name: &DirectoryName) -> bool {
-    exists |i: usize| #![trigger constraints.permitted[i as int]]
-        0 <= i < constraints.permitted.len() &&
-        match &constraints.permitted[i as int] {
-            GeneralName::DirectoryName(permitted_name) =>
-                same_directory_name_type(&name, &permitted_name),
+/// Check if a NameConstraints has a directory name constraint in the permitted list
+pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
+    exists |i: usize| 0 <= i < constraints.permitted.len() && {
+        match #[trigger] &constraints.permitted[i as int] {
+            GeneralName::DirectoryName(_) => true,
             _ => false,
         }
+    }
 }
 
 /// Check subject names in the leaf cert against name constraints
+/// See https://searchfox.org/mozilla-central/source/security/nss/lib/mozpkix/lib/pkixnames.cpp#829
+/// TODO: right now this is done using the same code as Chrome, update it to match Firefox's impl
 pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
-    forall |i: usize| 0 <= i < leaf.subject_name.len() ==> {
-        let leaf_name = #[trigger] &leaf.subject_name[i as int];
-        let permitted_enabled = has_permitted_dir_name_with_the_same_type(&constraints, leaf_name);
+    let directory_name_enabled = has_directory_name_constraint(constraints);
 
-        // TODO: some oddity: in Hammurabi, the name constraints are all flattened (originally it is a list general names, which
-        // in the case of directory names, is essentially Vec<Vec<Vec<(OID, value)>>>)
-        // but when subject name of the cert is encoded, only the *last* one corresponding to each OID is recorded
-        // see, e.g., https://github.com/semaj/hammurabi/blob/16b253ebd8e2768f9295439bf70e2d50954fba73/src/cert.rs#L206
-        // so the check here should be only done against the last name in each OID
-        // For an example using this, see certificate 4106d1f3f6a02098aa6b84289c7a68ecbd6904f73b720c44f6cb3e12cc0662ea in part-10 of mega-crl
-
-        !is_checked_directory_name_type(&leaf_name) || {
-            // If permitted list is enabled, check if `leaf_name`
-            // is at least permitted by one of them
-            &&& !permitted_enabled ||
-                exists |j: usize| 0 <= j < constraints.permitted.len() && {
-                    match #[trigger] &constraints.permitted[j as int] {
-                        GeneralName::DirectoryName(permitted_name) =>
-                            same_directory_name(&leaf_name, &permitted_name),
-                        _ => false,
-                    }
-                }
-
-            // Not explicitly excluded
-            //
-            // NOTE: Firefox policy differs slightly from Chrome
-            // here where in Chrome, this check is disabled if
-            // permitted_enabled is false
-            &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
-                match #[trigger] &constraints.excluded[j as int] {
-                    GeneralName::DirectoryName(excluded_name) =>
-                        !same_directory_name(&leaf_name, &excluded_name),
-                    _ => true,
-                }
+    &&& !directory_name_enabled ||
+        exists |j: usize| 0 <= j < constraints.permitted.len() && {
+            match #[trigger] &constraints.permitted[j as int] {
+                GeneralName::DirectoryName(permitted_name) =>
+                    is_subtree_of(&permitted_name, &leaf.subject_name),
+                _ => false,
+            }
         }
-    }
+
+    // Not explicitly excluded
+    &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+        match #[trigger] &constraints.excluded[j as int] {
+            GeneralName::DirectoryName(excluded_name) =>
+                !is_subtree_of(&excluded_name, &leaf.subject_name),
+            _ => true,
+        }
 }
 
 /// Different from Chrome, Firefox does not clean name first
@@ -528,21 +549,22 @@ pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &Nam
 /// Check the entire SAN section against name constraints
 /// NOTE: factored out due to a proof issue related to nested matches
 pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &NameConstraints) -> bool {
-    forall |i: usize| #![auto] 0 <= i < san.names.len() ==>
-        check_dns_name_constraints(
-            &&san.names[i as int],
-            &constraints,
-        )
+    forall |i: usize| 0 <= i < san.names.len() ==>
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) =>
+                check_dns_name_constraints(dns_name, &constraints),
+            _ => true,
+        }
 }
 
 pub open spec fn check_common_name_constraints(cert: &Certificate, constraints: &NameConstraints) -> bool {
-    forall |i: usize| #![auto] 0 <= i < cert.subject_name.len() ==> {
-        &&& &cert.subject_name[i as int].oid == "2.5.4.3"@ // common name
-        &&& check_dns_name_constraints(
-            &cert.subject_name[i as int].value,
-            &constraints,
-        )
-    }
+    forall |i: usize| #![trigger cert.subject_name[i as int]] 0 <= i < cert.subject_name.len() ==>
+    forall |j: usize| 0 <= j < cert.subject_name[i as int].len() ==>
+        {
+            let name = #[trigger] &cert.subject_name[i as int][j as int];
+            &&& &name.oid == "2.5.4.3"@ // common name
+            &&& check_dns_name_constraints(&name.value, &constraints)
+        }
 }
 
 /// Check a leaf certificate against the name constraints in a parent certificate
@@ -559,14 +581,14 @@ pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) 
                 None => check_common_name_constraints(leaf, constraints),
             }
 
-            // Excluded constraints do not conatin any "domain component" directory name
-            // NOTE: this is an additional check in Firefox not in Chrome
-            &&& forall |i: usize| 0 <= i < constraints.excluded.len() ==>
-                match #[trigger] &constraints.excluded[i as int] {
-                    GeneralName::DirectoryName(excluded) =>
-                        &excluded.oid != "0.9.2342.19200300.100.1.25"@,
-                    _ => true,
-                }
+            // // Excluded constraints do not conatin any "domain component" directory name
+            // // NOTE: this is an additional check in Firefox not in Chrome
+            // &&& forall |i: usize| 0 <= i < constraints.excluded.len() ==>
+            //     match #[trigger] &constraints.excluded[i as int] {
+            //         GeneralName::DirectoryName(excluded) =>
+            //             &excluded.oid != "0.9.2342.19200300.100.1.25"@,
+            //         _ => true,
+            //     }
 
             &&& check_subject_name_constraints(leaf, constraints)
         }

@@ -6,6 +6,7 @@ verus! {
 
 rspec! {
 
+/// Corresponds to `AttributeTypeAndValue` in X.509
 pub struct DirectoryName {
     pub oid: SpecString,
     pub value: SpecString,
@@ -13,7 +14,7 @@ pub struct DirectoryName {
 
 pub enum GeneralName {
     DNSName(SpecString),
-    DirectoryName(DirectoryName),
+    DirectoryName(Seq<Seq<DirectoryName>>),
 }
 
 pub enum SubjectKey {
@@ -65,7 +66,7 @@ pub struct KeyUsage {
 
 pub struct SubjectAltName {
     pub critical: bool,
-    pub names: Seq<SpecString>,
+    pub names: Seq<GeneralName>,
 }
 
 pub struct NameConstraints {
@@ -86,7 +87,7 @@ pub struct Certificate {
     pub not_after: u64,
     pub not_before: u64,
 
-    pub subject_name: Seq<DirectoryName>,
+    pub subject_name: Seq<Seq<DirectoryName>>,
     pub subject_key: SubjectKey,
 
     pub ext_extended_key_usage: Option<ExtendedKeyUsage>,
@@ -116,40 +117,6 @@ impl Clone for ExecDirectoryName {
         ExecDirectoryName {
             oid: self.oid.clone(),
             value: self.value.clone(),
-        }
-    }
-}
-
-impl DirectoryName {
-    pub open spec fn to_string(&self) -> &SpecString
-    {
-        &self.value
-    }
-}
-
-impl ExecDirectoryName {
-    pub fn to_string(&self) -> &String
-    {
-        &self.value
-    }
-}
-
-impl GeneralName {
-    pub open spec fn to_string(&self) -> &SpecString
-    {
-        match self {
-            GeneralName::DNSName(x) => x,
-            GeneralName::DirectoryName(x) => x.to_string(),
-        }
-    }
-}
-
-impl ExecGeneralName {
-    pub fn to_string(&self) -> &String
-    {
-        match self {
-            ExecGeneralName::DNSName(x) => x,
-            ExecGeneralName::DirectoryName(x) => x.to_string(),
         }
     }
 }

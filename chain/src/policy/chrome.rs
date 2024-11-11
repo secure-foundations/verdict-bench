@@ -176,13 +176,21 @@ pub open spec fn valid_name(env: &Environment, name: &SpecString) -> bool {
 
 pub open spec fn valid_san(env: &Environment, san: &SubjectAltName) -> bool {
     &&& san.names.len() > 0
-    &&& forall |i: usize| 0 <= i < san.names.len() ==>
-        valid_name(&env, #[trigger] &san.names[i as int])
+    &&& forall |i: usize| 0 <= i < san.names.len() ==> {
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) => valid_name(&env, &clean_name(dns_name)),
+            _ => true,
+        }
+    }
 }
 
 pub open spec fn name_match_san(env: &Environment, san: &SubjectAltName, name: &SpecString) -> bool {
-    exists |i: usize| 0 <= i < san.names.len() &&
-        name_match(&clean_name(#[trigger] &san.names[i as int]), &name)
+    exists |i: usize| 0 <= i < san.names.len() && {
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) => name_match(&clean_name(dns_name), &name),
+            _ => false,
+        }
+    }
 }
 
 /// Domain matches one of the SANs
@@ -261,12 +269,25 @@ pub open spec fn not_exclude_name(name_constraint: &SpecString, name: &SpecStrin
     !permit_name(name_constraint, name)
 }
 
-pub open spec fn same_directory_name_type(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-    &name1.oid == &name2.oid
+pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName) -> bool {
+    exists |i: usize| 0 <= i < rdn.len() && {
+        &&& #[trigger] &rdn[i as int].oid == &name.oid
+        &&& &rdn[i as int].value == &name.value
+    }
 }
 
-pub open spec fn same_directory_name(name1: &DirectoryName, name2: &DirectoryName) -> bool {
-    &name1.oid == &name2.oid && &name1.value == &name2.value
+/// Check if for any item in rdn2, there is a corresponding item in rdn1 with the same OID
+/// and same value
+pub open spec fn is_subtree_rdn(rdn1: &Seq<DirectoryName>, rdn2: &Seq<DirectoryName>) -> bool {
+    &&& rdn1.len() <= rdn2.len()
+    &&& forall |i: usize| 0 <= i < rdn1.len() ==> rdn_has_name(&rdn2, #[trigger] &rdn1[i as int])
+}
+
+/// Check if name1 is a subset set of name2
+/// See: https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/verify_name_match.cc#L261C6-L261C29
+pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<DirectoryName>>) -> bool {
+    &&& name1.len() <= name2.len()
+    &&& forall |i: usize| 0 <= i < name1.len() ==> is_subtree_rdn(#[trigger] &name1[i as int], &name2[i as int])
 }
 
 pub open spec fn has_permitted_dns_name(constraints: &NameConstraints) -> bool {
@@ -321,23 +342,25 @@ pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &Nam
 /// Check the entire SAN section against name constraints
 /// NOTE: factored out due to a proof issue related to nested matches
 pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &NameConstraints) -> bool {
-    forall |i: usize| #![auto] 0 <= i < san.names.len() ==>
-        check_dns_name_constraints(
-            &clean_name(&san.names[i as int]),
-            &constraints,
-        )
+    forall |i: usize| 0 <= i < san.names.len() ==> {
+        match #[trigger] &san.names[i as int] {
+            GeneralName::DNSName(dns_name) => check_dns_name_constraints(
+                &clean_name(dns_name),
+                &constraints,
+            ),
+            _ => true,
+        }
+    }
 }
 
-/// Check if there is any permitted name with the same type as the given name
-/// (if so, the permitted list is enabled)
-pub open spec fn has_permitted_dir_name_with_the_same_type(constraints: &NameConstraints, name: &DirectoryName) -> bool {
-    exists |i: usize| #![trigger constraints.permitted[i as int]]
-        0 <= i < constraints.permitted.len() &&
-        match &constraints.permitted[i as int] {
-            GeneralName::DirectoryName(permitted_name) =>
-                same_directory_name_type(&name, &permitted_name),
+/// Check if a NameConstraints has a directory name constraint in the permitted list
+pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
+    exists |i: usize| 0 <= i < constraints.permitted.len() && {
+        match #[trigger] &constraints.permitted[i as int] {
+            GeneralName::DirectoryName(_) => true,
             _ => false,
         }
+    }
 }
 
 /// Only certain directory name types are checked
@@ -353,39 +376,26 @@ pub open spec fn is_checked_directory_name_type(name: &DirectoryName) -> bool {
 }
 
 /// Check subject names in the leaf cert against name constraints
+/// See https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/name_constraints.cc#L663
 pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
-    forall |i: usize| 0 <= i < leaf.subject_name.len() ==> {
-        let leaf_name = #[trigger] &leaf.subject_name[i as int];
-        let permitted_enabled = has_permitted_dir_name_with_the_same_type(&constraints, leaf_name);
+    let directory_name_enabled = has_directory_name_constraint(constraints);
 
-        // TODO: some oddity: in Hammurabi, the name constraints are all flattened (originally it is a list general names, which
-        // in the case of directory names, is essentially Vec<Vec<Vec<(OID, value)>>>)
-        // but when subject name of the cert is encoded, only the *last* one corresponding to each OID is recorded
-        // see, e.g., https://github.com/semaj/hammurabi/blob/16b253ebd8e2768f9295439bf70e2d50954fba73/src/cert.rs#L206
-        // so the check here should be only done against the last name in each OID
-        // For an example using this, see certificate 4106d1f3f6a02098aa6b84289c7a68ecbd6904f73b720c44f6cb3e12cc0662ea in part-10 of mega-crl
-
-        !is_checked_directory_name_type(&leaf_name) || {
-            // If permitted list is enabled, check if `leaf_name`
-            // is at least permitted by one of them
-            &&& !permitted_enabled ||
-                exists |j: usize| 0 <= j < constraints.permitted.len() && {
-                    match #[trigger] &constraints.permitted[j as int] {
-                        GeneralName::DirectoryName(permitted_name) =>
-                            same_directory_name(&leaf_name, &permitted_name),
-                        _ => false,
-                    }
-                }
-
-            // Not explicitly excluded
-            &&& !permitted_enabled || forall |j: usize| 0 <= j < constraints.excluded.len() ==>
-                match #[trigger] &constraints.excluded[j as int] {
-                    GeneralName::DirectoryName(excluded_name) =>
-                        !same_directory_name(&leaf_name, &excluded_name),
-                    _ => true,
-                }
+    &&& !directory_name_enabled ||
+        exists |j: usize| 0 <= j < constraints.permitted.len() && {
+            match #[trigger] &constraints.permitted[j as int] {
+                GeneralName::DirectoryName(permitted_name) =>
+                    is_subtree_of(&permitted_name, &leaf.subject_name),
+                _ => false,
+            }
         }
-    }
+
+    // Not explicitly excluded
+    &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+        match #[trigger] &constraints.excluded[j as int] {
+            GeneralName::DirectoryName(excluded_name) =>
+                !is_subtree_of(&excluded_name, &leaf.subject_name),
+            _ => true,
+        }
 }
 
 /// Check a leaf certificate against the name constraints in a parent certificate

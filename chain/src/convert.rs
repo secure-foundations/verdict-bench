@@ -398,7 +398,7 @@ impl policy::SubjectAltName {
             let SpecExtensionParamValue::SubjectAltName(names) = ext.param;
             Some(policy::SubjectAltName {
                 critical: ext.critical,
-                names: policy::GeneralName::spec_from_names(names).map_values(|name: policy::GeneralName| *name.to_string()),
+                names: policy::GeneralName::spec_from_names(names),
             })
         }
     }
@@ -409,18 +409,9 @@ impl policy::SubjectAltName {
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
         if let ExtensionParamValue::SubjectAltName(names) = &ext.param {
-            let name_strings = vec_map(
-                &policy::GeneralName::from_names(names),
-                |name: &policy::ExecGeneralName| -> (res: String)
-                    ensures res.deep_view() =~= *name.deep_view().to_string()
-                    { assume(false); name.to_string().clone() }
-            );
-
-            assert(name_strings.deep_view() =~= policy::GeneralName::spec_from_names(names@).map_values(|name: policy::GeneralName| *name.to_string()));
-
             Ok(policy::ExecSubjectAltName {
                 critical: ext.critical,
-                names: name_strings,
+                names: policy::GeneralName::from_names(names),
             })
         } else {
             Err(ValidationError::UnexpectedExtParam)
@@ -530,42 +521,40 @@ impl policy::CertificatePolicies {
 /// Conversions from/to GeneralName and related structures
 impl policy::GeneralName {
     /// Convert each general name to a list of policy::GeneralName's
-    pub open spec fn spec_from(name: SpecGeneralNameValue) -> Seq<policy::GeneralName> {
+    pub open spec fn spec_from(name: SpecGeneralNameValue) -> Option<policy::GeneralName> {
         match name {
-            SpecGeneralNameValue::DNS(s) => seq![policy::GeneralName::DNSName(s)],
+            SpecGeneralNameValue::DNS(s) =>
+                Some(policy::GeneralName::DNSName(s)),
             SpecGeneralNameValue::Directory(dir_names) =>
-                policy::DirectoryName::spec_from(dir_names).map_values(|dir_name| policy::GeneralName::DirectoryName(dir_name)),
-            _ => seq![],
+                Some(policy::GeneralName::DirectoryName(policy::DirectoryName::spec_from(dir_names))),
+            _ => None,
         }
     }
 
     /// Exec version of spec_from
-    pub fn from(name: &GeneralNameValue) -> (res: Vec<policy::ExecGeneralName>)
+    pub fn from(name: &GeneralNameValue) -> (res: Option<policy::ExecGeneralName>)
         ensures res.deep_view() =~= Self::spec_from(name@),
     {
         match name {
-            GeneralNameValue::DNS(s) => vec![policy::ExecGeneralName::DNSName((*s).to_string())],
+            GeneralNameValue::DNS(s) =>
+                Some(policy::ExecGeneralName::DNSName((*s).to_string())),
             GeneralNameValue::Directory(dir_names) =>
-                vec_map(
-                    &policy::DirectoryName::from(dir_names),
-                    |dir_name| -> (res: policy::ExecGeneralName)
-                        ensures res.deep_view() == policy::GeneralName::DirectoryName(dir_name.deep_view())
-                    {
-                        policy::ExecGeneralName::DirectoryName(dir_name.clone())
-                    }
-                ),
-            _ => vec![],
+                Some(policy::ExecGeneralName::DirectoryName(policy::DirectoryName::from(dir_names))),
+            _ => None,
         }
     }
 
-    /// Similar to spec_from, but for multiple names; the result is flattened
+    /// Similar to spec_from, but for multiple names
     pub open spec fn spec_from_names(names: SpecGeneralNamesValue) -> Seq<policy::GeneralName>
         decreases names.len()
     {
         if names.len() == 0 {
             seq![]
         } else {
-            Self::spec_from(names.first()) + Self::spec_from_names(names.drop_first())
+            match Self::spec_from(names.first()) {
+                Some(name) => seq![name] + Self::spec_from_names(names.drop_first()),
+                None => Self::spec_from_names(names.drop_first()),
+            }
         }
     }
 
@@ -583,14 +572,18 @@ impl policy::GeneralName {
                 len == names@.len(),
                 Self::spec_from_names(names@) =~= gen_names.deep_view() + Self::spec_from_names(names@.skip(i as int)),
         {
-            let mut new_names = Self::from(names.get(i));
-            gen_names.append(&mut new_names);
+            match Self::from(names.get(i)) {
+                Some(name) => gen_names.push(name),
+                None => (),
+            }
+
             assert(names@.skip(i + 1) == names@.skip(i as int).drop_first());
         }
 
         gen_names
     }
 
+    /// Similar to GeneralName::spec_from_names, but for GeneralSubtrees
     /// Convert from GeneralSubtrees to a list of names (all flattened)
     pub open spec fn spec_from_general_subtrees(subtrees: SpecGeneralSubtreesValue) -> Seq<policy::GeneralName>
         decreases subtrees.len()
@@ -598,7 +591,10 @@ impl policy::GeneralName {
         if subtrees.len() == 0 {
             seq![]
         } else {
-            Self::spec_from(subtrees.first().base) + Self::spec_from_general_subtrees(subtrees.drop_first())
+            match Self::spec_from(subtrees.first().base) {
+                Some(name) => seq![name] + Self::spec_from_general_subtrees(subtrees.drop_first()),
+                None => Self::spec_from_general_subtrees(subtrees.drop_first()),
+            }
         }
     }
 
@@ -617,8 +613,11 @@ impl policy::GeneralName {
                 Self::spec_from_general_subtrees(subtrees@) =~=
                     names.deep_view() + Self::spec_from_general_subtrees(subtrees@.skip(i as int)),
         {
-            let mut new_names = Self::from(&subtrees.get(i).base);
-            names.append(&mut new_names);
+            match Self::from(&subtrees.get(i).base) {
+                Some(name) => names.push(name),
+                None => (),
+            }
+
             assert(subtrees@.skip(i + 1) == subtrees@.skip(i as int).drop_first());
         }
 
@@ -701,19 +700,20 @@ impl policy::SubjectKey {
     }
 }
 
+/// Directory Name (`Name` in X.509) is essentially `Seq<Seq<{ type, value }>>`
 impl policy::DirectoryName {
-    pub closed spec fn spec_from(name: SpecNameValue) -> Seq<policy::DirectoryName>
+    pub closed spec fn spec_from(name: SpecNameValue) -> Seq<Seq<policy::DirectoryName>>
         decreases name.len()
     {
         if name.len() == 0 {
             seq![]
         } else {
-            Self::spec_rdn_to_dir_names(name.first()) + Self::spec_from(name.drop_first())
+            seq![Self::spec_rdn_to_dir_names(name.first())] + Self::spec_from(name.drop_first())
         }
     }
 
     /// Exec version of spec_from
-    pub fn from(name: &NameValue) -> (res: Vec<policy::ExecDirectoryName>)
+    pub fn from(name: &NameValue) -> (res: Vec<Vec<policy::ExecDirectoryName>>)
         ensures res.deep_view() == Self::spec_from(name@),
     {
         let mut dir_names = Vec::new();
@@ -726,8 +726,7 @@ impl policy::DirectoryName {
                 len == name@.len(),
                 Self::spec_from(name@) =~= dir_names.deep_view() + Self::spec_from(name@.skip(i as int)),
         {
-            let mut new_names = Self::rdn_to_dir_names(name.get(i));
-            dir_names.append(&mut new_names);
+            dir_names.push(Self::rdn_to_dir_names(name.get(i)));
             assert(name@.skip(i + 1) == name@.skip(i as int).drop_first());
         }
 
