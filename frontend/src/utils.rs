@@ -1,27 +1,13 @@
-use vstd::prelude::*;
-
 use chrono::{DateTime, Utc};
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use base64::{Engine, prelude::BASE64_STANDARD};
+use parser::{*, x509};
+use chain::{policy, issue};
 
-use parser::{*, x509, ParseError, Combinator};
-
-use crate::issue::*;
-use crate::policy;
 use crate::error::Error;
-
-verus! {
-    pub fn parse_x509_certificate<'a>(bytes: &'a [u8]) -> Result<x509::CertificateValue<'a>, ParseError> {
-        let (n, cert) = x509::Certificate.parse(bytes)?;
-        if n != bytes.len() {
-            return Err(ParseError::Other("trailing bytes in certificate".to_string()));
-        }
-        Ok(cert)
-    }
-}
 
 pub fn read_pem_file_as_bytes(path: &str) -> Result<Vec<Vec<u8>>, Error> {
     let file = BufReader::new(File::open(path)?);
@@ -74,7 +60,7 @@ pub fn print_debug_info(roots: &VecDeep<x509::CertificateValue>, chain: &VecDeep
 
     // Check that for each i, cert[i + 1] issued cert[i]
     for i in 0..chain.len() - 1 {
-        if likely_issued(chain.get(i + 1), chain.get(i)) {
+        if issue::likely_issued(chain.get(i + 1), chain.get(i)) {
             eprintln!("cert {} issued cert {}", i + 1, i);
         }
     }
@@ -86,7 +72,7 @@ pub fn print_debug_info(roots: &VecDeep<x509::CertificateValue>, chain: &VecDeep
         let mut used = false;
 
         for (j, chain_cert) in chain.to_vec().iter().enumerate() {
-            if likely_issued(root, chain_cert) {
+            if issue::likely_issued(root, chain_cert) {
                 used = true;
                 eprintln!("root cert {} issued cert {}", i, j);
             }

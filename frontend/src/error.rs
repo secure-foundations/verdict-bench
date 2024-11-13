@@ -3,7 +3,7 @@ use thiserror::Error;
 use std::sync::mpsc::{RecvError, SendError};
 
 use parser::ParseError as X509ParseError;
-use chain::error::{Error as ChainError, ValidationError};
+use chain::error::ValidationError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -19,14 +19,14 @@ pub enum Error {
     #[error("csv error: {0}")]
     CSVError(#[from] csv::Error),
 
-    #[error("action parse error: {0}")]
-    ParseActionError(#[from] ParseActionError),
+    #[error("found BEGIN CERTIFICATE without matching END CERTIFICATE")]
+    NoMatchingEndCertificate,
+
+    #[error("found END CERTIFICATE without matching BEGIN CERTIFICATE")]
+    NoMatchingBeginCertificate,
 
     #[error("validation error: {0:?}")]
     ChainValidationError(ValidationError),
-
-    #[error("chain error: {0}")]
-    ChainError(ChainError),
 
     #[error("regex error: {0}")]
     RegexError(#[from] regex::Error),
@@ -36,15 +36,9 @@ pub enum Error {
 
     #[error("channel receive error: {0}")]
     RecvError(String),
-}
 
-#[derive(Error, Debug)]
-pub enum ParseActionError {
-    #[error("found BEGIN CERTIFICATE without matching END CERTIFICATE")]
-    NoMatchingEndCertificate,
-
-    #[error("found END CERTIFICATE without matching BEGIN CERTIFICATE")]
-    NoMatchingBeginCertificate,
+    #[error("failed to validate domain")]
+    DomainValidationError,
 }
 
 impl From<X509ParseError> for Error {
@@ -56,12 +50,6 @@ impl From<X509ParseError> for Error {
 impl From<ValidationError> for Error {
     fn from(err: ValidationError) -> Self {
         Error::ChainValidationError(err)
-    }
-}
-
-impl From<ChainError> for Error {
-    fn from(err: ChainError) -> Self {
-        Error::ChainError(err)
     }
 }
 

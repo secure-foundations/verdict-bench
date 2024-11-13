@@ -1,4 +1,5 @@
 mod error;
+mod utils;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
 use std::io;
@@ -16,12 +17,13 @@ use clap::{command, Parser, Subcommand, ValueEnum};
 
 use regex::Regex;
 
-use chain::utils::*;
+use parser::parse_x509_certificate;
 use chain::policy;
 use chain::validate;
 
 use parser::{x509, VecDeep};
 use error::*;
+use utils::*;
 
 #[derive(Parser, Debug)]
 #[command(long_about = None)]
@@ -34,6 +36,9 @@ struct Args {
 enum Action {
     /// Parse PEM format X.509 certificates from stdin
     Parse(ParseArgs),
+
+    /// Validate a single certificate chain in PEM format
+    Validate(ValidateArgs),
 
     /// Parse a specific format of certificates stored in CSVs
     ParseCTLog(ParseCTLogArgs),
@@ -68,7 +73,35 @@ enum Policy {
 }
 
 #[derive(Parser, Debug)]
+struct ValidateArgs {
+    /// Policy to use
+    policy: Policy,
+
+    /// Path to the root certificates
+    roots: String,
+
+    /// The certificate chain to verify (in PEM format)
+    chain: String,
+
+    /// The target domain to be validated
+    domain: String,
+
+    /// Enable debug mode
+    #[arg(long, default_value_t = false)]
+    debug: bool,
+
+    /// Override the current time with the given timestamp
+    #[clap(short = 't', long)]
+    override_time: Option<i64>,
+
+    /// Generate timing stats in wall-clock time
+    #[clap(short = 's', long, default_value_t = false)]
+    stats: bool,
+}
+
+#[derive(Parser, Debug)]
 struct ValidateCTLogArgs {
+    /// Policy to use
     policy: Policy,
 
     /// Path to the root certificates
@@ -163,6 +196,43 @@ fn parse_cert_from_stdin(args: ParseArgs) -> Result<(), Error>
     }
 
     println!("time: {:.3}s", total_time.as_secs_f64());
+
+    Ok(())
+}
+
+fn validate(args: ValidateArgs) -> Result<(), Error> {
+    // Parse roots and chain PEM files
+    let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
+    let chain_bytes = read_pem_file_as_bytes(&args.chain)?;
+
+    let roots = roots_bytes.iter().map(|cert_bytes| {
+        parse_x509_certificate(cert_bytes)
+    }).collect::<Result<Vec<_>, _>>()?;
+
+    let begin = Instant::now();
+
+    let chain = chain_bytes.iter().map(|cert_bytes| {
+        parse_x509_certificate(cert_bytes)
+    }).collect::<Result<Vec<_>, _>>()?;
+
+    let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
+
+    let policy = match args.policy {
+        Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
+        Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
+    };
+
+    let res = validate::valid_domain(&policy, &VecDeep::from_vec(roots), &VecDeep::from_vec(chain), &args.domain)?;
+
+    if args.stats {
+        eprintln!("parsing + validation took {:.2}ms", begin.elapsed().as_micros() as f64 / 1000f64);
+    }
+
+    eprintln!("result: {}", res);
+
+    if !res {
+        return Err(Error::DomainValidationError);
+    }
 
     Ok(())
 }
@@ -267,7 +337,7 @@ fn validate_ct_logs_job(
         VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?);
 
     if args.debug {
-        chain::utils::print_debug_info(roots, &chain, &entry.domain, timestamp as i64);
+        print_debug_info(roots, &chain, &entry.domain, timestamp as i64);
     }
 
     let res = validate::valid_domain(&policy, roots, &chain, &entry.domain.to_lowercase())?;
@@ -513,6 +583,7 @@ fn diff_ct_log_results(args: DiffResultsArgs) -> Result<(), Error>
 fn main_args(args: Args) -> Result<(), Error> {
     match args.action {
         Action::Parse(args) => parse_cert_from_stdin(args),
+        Action::Validate(args) => validate(args),
         Action::ParseCTLog(args) => parse_cert_ct_logs(args),
         Action::ValidateCTLog(args) => validate_ct_logs(args),
         Action::DiffResults(args) => diff_ct_log_results(args),
