@@ -32,8 +32,8 @@ pub struct Environment {
     /// NOTE: crlSet in Hammurabi
     pub crl: Seq<SpecString>,
 
-    /// All trusted root stores
-    pub trusted: Seq<SpecString>,
+    //// All trusted root stores
+    // pub trusted: Seq<SpecString>,
 
     pub symantec_roots: Seq<SpecString>,
     pub symantec_exceptions: Seq<SpecString>,
@@ -436,18 +436,15 @@ pub open spec fn is_bad_symantec_root(env: &Environment, cert: &Certificate) -> 
     }
 }
 
-/// NOTE: isChromeRoot in Hammurabi
-pub open spec fn is_chrome_root(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
-    &&& exists |i: usize| 0 <= i < env.trusted.len() && &cert.fingerprint == &env.trusted[i as int]
+/// NOTE: fingerprintValid in Hammurabi
+pub open spec fn valid_root_fingerprint(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
+    // &&& exists |i: usize| 0 <= i < env.trusted.len() && &cert.fingerprint == &env.trusted[i as int]
 
-    // See fingerprintValid in Hammurabi
-    &&& {
-        let is_india_fingerprint = exists |i: usize| 0 <= i < env.india_trusted.len() && &cert.fingerprint == &env.india_trusted[i as int];
-        let is_anssi_fingerprint = exists |i: usize| 0 <= i < env.anssi_trusted.len() && &cert.fingerprint == &env.anssi_trusted[i as int];
+    let is_india_fingerprint = exists |i: usize| 0 <= i < env.india_trusted.len() && &cert.fingerprint == &env.india_trusted[i as int];
+    let is_anssi_fingerprint = exists |i: usize| 0 <= i < env.anssi_trusted.len() && &cert.fingerprint == &env.anssi_trusted[i as int];
 
-        &&& !is_india_fingerprint || exists |i: usize| #![auto] 0 <= i < env.india_domains.len() && name_match(&env.india_domains[i as int], &domain)
-        &&& !is_anssi_fingerprint || exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && name_match(&env.anssi_domains[i as int], &domain)
-    }
+    &&& !is_india_fingerprint || exists |i: usize| #![auto] 0 <= i < env.india_domains.len() && name_match(&env.india_domains[i as int], &domain)
+    &&& !is_anssi_fingerprint || exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && name_match(&env.anssi_domains[i as int], &domain)
 }
 
 pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize, domain: &SpecString) -> bool {
@@ -458,7 +455,7 @@ pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf:
         None => true,
     }
 
-    &&& is_chrome_root(env, cert, domain)
+    &&& valid_root_fingerprint(env, cert, domain)
     &&& !is_bad_symantec_root(env, cert)
     &&& extended_key_usage_valid(cert)
 }

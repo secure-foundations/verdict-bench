@@ -38,8 +38,8 @@ pub struct Environment {
     /// NOTE: crlSet in Hammurabi
     pub crl: Seq<SpecString>,
 
-    /// All trusted root stores
-    pub trusted: Seq<SpecString>,
+    //// All trusted root stores
+    // pub trusted: Seq<SpecString>,
 
     pub symantec_roots: Seq<SpecString>,
     pub symantec_exceptions: Seq<SpecString>,
@@ -416,8 +416,8 @@ pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<
 pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize, domain: &SpecString) -> bool {
     &&& cert_verified_non_leaf(env, cert, leaf, depth)
 
-    &&& exists |i: usize| 0 <= i < env.trusted.len() &&
-        &cert.fingerprint == &env.trusted[i as int]
+    // &&& exists |i: usize| 0 <= i < env.trusted.len() &&
+    //     &cert.fingerprint == &env.trusted[i as int]
 
     &&& !is_bad_symantec_root(env, cert)
     &&& is_international_valid(env, cert, leaf)
