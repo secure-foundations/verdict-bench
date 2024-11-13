@@ -205,15 +205,15 @@ fn validate(args: ValidateArgs) -> Result<(), Error> {
     let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
     let chain_bytes = read_pem_file_as_bytes(&args.chain)?;
 
-    let roots = roots_bytes.iter().map(|cert_bytes| {
+    let roots = VecDeep::from_vec(roots_bytes.iter().map(|cert_bytes| {
         parse_x509_certificate(cert_bytes)
-    }).collect::<Result<Vec<_>, _>>()?;
+    }).collect::<Result<Vec<_>, _>>()?);
 
     let begin = Instant::now();
 
-    let chain = chain_bytes.iter().map(|cert_bytes| {
+    let chain = VecDeep::from_vec(chain_bytes.iter().map(|cert_bytes| {
         parse_x509_certificate(cert_bytes)
-    }).collect::<Result<Vec<_>, _>>()?;
+    }).collect::<Result<Vec<_>, _>>()?);
 
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
 
@@ -222,7 +222,11 @@ fn validate(args: ValidateArgs) -> Result<(), Error> {
         Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
     };
 
-    let res = validate::valid_domain(&policy, &VecDeep::from_vec(roots), &VecDeep::from_vec(chain), &args.domain)?;
+    if args.debug {
+        print_debug_info(&roots, &chain, &args.domain, timestamp as i64);
+    }
+
+    let res = validate::valid_domain(&policy, &roots, &chain, &args.domain)?;
 
     if args.stats {
         eprintln!("parsing + validation took {:.2}ms", begin.elapsed().as_micros() as f64 / 1000f64);
