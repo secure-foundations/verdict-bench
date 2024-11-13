@@ -162,7 +162,7 @@ test_rspec!(mod random_test {
 
             &&& other(&t.version)
             &&& s.len() > b
-            &&& s == "hello"@ || s == "sadsa"@ || "sadd"@ == s
+            &&& s == "hello"@ || s == "sadsa"@ || &"sadd"@ == s
 
             &&& t.fingerprint.len() == 16
             &&& t.fingerprint.char_at(1) == 'a'
@@ -170,7 +170,7 @@ test_rspec!(mod random_test {
             &&& t.some_seq.len() > 1
             &&& t.some_seq[0] == 1
 
-            &&& "what"@ == "what"@
+            &&& &"what"@ == &"what"@
         }
 
         &&& forall |i: usize| 0 <= i < v2.len() ==> #[trigger] v2[i as int] == 'c' || v2[i as int] == 'b'
