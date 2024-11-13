@@ -423,18 +423,6 @@ pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf:
     &&& is_international_valid(env, cert, leaf)
 }
 
-/// Only certain directory name types are checked
-pub open spec fn is_checked_directory_name_type(name: &DirectoryName) -> bool {
-    ||| &name.oid == "2.5.4.6"@ // country
-    ||| &name.oid == "2.5.4.10"@ // organization
-    ||| &name.oid == "2.5.4.42"@ // given name
-    ||| &name.oid == "2.5.4.4"@ // surname
-    ||| &name.oid == "2.5.4.8"@ // state
-    ||| &name.oid == "2.5.4.9"@ // street address
-    ||| &name.oid == "2.5.4.7"@ // locality
-    ||| &name.oid == "2.5.4.17"@ // postal code
-}
-
 /// Check if a NameConstraints has a directory name constraint in the permitted list
 pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
     exists |i: usize| 0 <= i < constraints.permitted.len() && {
@@ -639,6 +627,30 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     &&& not_revoked(env, cert)
 }
 
+/// Additional checks for issuing relation
+/// TODO: subject.akid.auth_cert_issuer matches
+/// References:
+/// - RFC 2459, 4.2.1.1
+/// - https://github.com/openssl/openssl/blob/ed6862328745c51c2afa2b6485cc3e275d543c4e/crypto/x509/v3_purp.c#L1002
+pub open spec fn check_issuer(issuer: &Certificate, subject: &Certificate) -> bool {
+    match &subject.ext_authority_key_id {
+        Some(auth_key_id) => {
+            // Subject's AKID matches issuer's SKID if both exist
+            &&& match (&issuer.ext_subject_key_id, &auth_key_id.key_id) {
+                (Some(skid), Some(akid)) => skid == akid,
+                _ => true,
+            }
+
+            // Subject's AKID serial matches issuer's serial if both exist
+            &&& match &auth_key_id.serial {
+                Some(akid_serial) => akid_serial == &issuer.serial,
+                None => true,
+            }
+        }
+        None => true,
+    }
+}
+
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, domain: &SpecString) -> bool
@@ -647,6 +659,7 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, domain
         let leaf = &chain[0];
         let root = &chain[chain.len() - 1];
 
+        &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_issuer(&chain[i + 1], #[trigger] &chain[i as int])
         &&& cert_verified_leaf(env, leaf, domain, is_ev_chain(env, chain))
         &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
         &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, domain)

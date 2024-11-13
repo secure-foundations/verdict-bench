@@ -29,6 +29,12 @@ pub enum SubjectKey {
     Other,
 }
 
+pub struct AuthorityKeyIdentifier {
+    pub critical: bool,
+    pub key_id: Option<SpecString>,
+    pub serial: Option<SpecString>,
+}
+
 pub enum ExtendedKeyUsageType {
     ServerAuth,
     ClientAuth,
@@ -83,6 +89,7 @@ pub struct CertificatePolicies {
 pub struct Certificate {
     pub fingerprint: SpecString,
     pub version: u32,
+    pub serial: SpecString,
     pub sig_alg: SpecString,
     pub not_after: u64,
     pub not_before: u64,
@@ -90,6 +97,8 @@ pub struct Certificate {
     pub subject_name: Seq<Seq<DirectoryName>>,
     pub subject_key: SubjectKey,
 
+    pub ext_authority_key_id: Option<AuthorityKeyIdentifier>,
+    pub ext_subject_key_id: Option<SpecString>,
     pub ext_extended_key_usage: Option<ExtendedKeyUsage>,
     pub ext_basic_constraints: Option<BasicConstraints>,
     pub ext_key_usage: Option<KeyUsage>,
