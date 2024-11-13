@@ -1,6 +1,5 @@
 #![crate_name = "vest"]
 #![crate_type = "lib"]
-#![warn(missing_docs)]
 //! Vest is a *formally verified* library for parsing and serializing binary data, using combinators.
 //!
 //! # Background

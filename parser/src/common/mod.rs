@@ -17,7 +17,6 @@ mod default;
 mod eq;
 mod unreachable;
 mod cached;
-mod base64;
 
 pub use depend::*;
 pub use repeat::*;
@@ -34,7 +33,6 @@ pub use default::*;
 pub use eq::*;
 pub use unreachable::*;
 pub use cached::*;
-pub use base64::*;
 
 pub use macros::View;
 pub use macros::PolyfillClone;

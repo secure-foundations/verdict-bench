@@ -1,5 +1,5 @@
 # In topological order of dependencies
-PROJECTS = vest polyfill parser vpl chain test
+PROJECTS = chain parser polyfill rspec_test test vest
 
 .PHONY: debug
 debug:

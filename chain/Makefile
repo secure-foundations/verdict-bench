@@ -17,16 +17,16 @@ DOMAINS = github.com google.com outlook.com slack.com verus.rs
 .PHONY: test-policy-%
 test-policy-%: target/debug/chain
 # For each domain in DOMAINS, remove the suffix, then find the corresponding pem
-	@for domain in $(DOMAINS); do \
+	@set -e; \
+	for domain in $(DOMAINS); do \
 		pem_file=tests/chains/$${domain%%.*}.pem; \
 		printf "[$*] $$domain: "; \
 		echo "target/debug/chain $*-hammurabi tests/roots.pem $$pem_file $$domain -t $(TEST_TIME) -s"; \
-		(target/debug/chain \
+		target/debug/chain \
 			$*-hammurabi \
 			tests/roots.pem \
 			$$pem_file \
 			$$domain \
 			-t $(TEST_TIME) \
-			-s) \
-		|| (echo "failed"; exit 1); \
+			-s; \
 	done

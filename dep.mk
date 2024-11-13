@@ -36,16 +36,17 @@ rust-deps-%: $(foreach dep,$(CARGO_DEPS),force-target/%/lib$(dep).rlib)
 # Bulid each dependency in VERUS_DEPS
 .PHONY: verus-deps-%
 verus-deps-%:
-	@for dep in $(VERUS_DEPS); do \
-		pushd ../$$dep; \
+	@set -e; \
+	for dep in $(VERUS_DEPS); do \
+		cd ../$$dep; \
 		echo "Building Verus dependency $$dep"; \
 		rlib=target/$*/lib$$dep.rlib; \
-		make $$rlib || (echo "Fail to compile dependency $$dep"; exit 1) && \
+		make $$rlib; \
 		if [ ! -f $$rlib ] || [ ! -f $$rlib.verusdata ]; then \
 			echo "Cannot find external Verus library $$rlib (or $$rlib.verusdata)"; \
 			exit 1; \
-		fi && \
-		popd; \
+		fi; \
+		cd -; \
     done
 
 # The main verus command to run for TARGET
@@ -61,7 +62,10 @@ VERUS_COMMAND = \
 		--crate-name $(NAME) \
 		$(if $(filter %.rlib,$@),--crate-type=lib,) \
 		-L dependency=target/$*/deps \
-		$(foreach dep,$(CARGO_DEPS),--extern $(subst -,_,$(dep))=$(firstword $(wildcard target/$*/deps/lib$(subst -,_,$(dep))-*.rlib) $(wildcard target/$*/deps/lib$(dep)-*.dylib))) \
+		$(foreach dep,$(CARGO_DEPS),--extern $(subst -,_,$(dep))=$(firstword \
+			$(wildcard target/$*/deps/lib$(subst -,_,$(dep))-*.rlib) \
+			$(wildcard target/$*/deps/lib$(subst -,_,$(dep))-*.so) \
+			$(wildcard target/$*/deps/lib$(subst -,_,$(dep))-*.dylib))) \
 		$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$*/deps) \
 		$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$*) \
 		$(foreach dep,$(VERUS_DEPS),--extern $(dep)=../$(dep)/target/$*/lib$(dep).rlib --import $(dep)=../$(dep)/target/$*/lib$(dep).rlib.verusdata) \
