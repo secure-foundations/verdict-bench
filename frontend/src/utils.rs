@@ -3,7 +3,6 @@ use chrono::{DateTime, Utc};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use base64::{Engine, prelude::BASE64_STANDARD};
 use parser::{*, x509};
 use chain::{policy, issue};
 
@@ -37,7 +36,7 @@ pub fn read_pem_as_bytes<B: BufRead>(reader: B) -> Result<Vec<Vec<u8>>, Error> {
         } else if line_trimmed == SUFFIX {
             match cur_cert_base64.take() {
                 Some(cert_base64) => {
-                    let cert_bytes = BASE64_STANDARD.decode(cert_base64)?;
+                    let cert_bytes = decode_base64(cert_base64.as_bytes())?;
                     certs.push(cert_bytes);
                 }
                 None => {

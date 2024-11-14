@@ -1,7 +1,6 @@
 mod error;
 mod utils;
 
-use base64::{Engine, prelude::BASE64_STANDARD};
 use std::io;
 use std::process::ExitCode;
 use std::fs::File;
@@ -17,7 +16,7 @@ use clap::{command, Parser, Subcommand, ValueEnum};
 
 use regex::Regex;
 
-use parser::parse_x509_certificate;
+use parser::{parse_x509_cert, decode_base64};
 use chain::policy;
 use chain::validate;
 
@@ -175,7 +174,7 @@ fn parse_cert_from_stdin(args: ParseArgs) -> Result<(), Error>
 
     for cert_bytes in read_pem_as_bytes(io::stdin().lock())? {
         let begin = Instant::now();
-        let parsed = parse_x509_certificate(&cert_bytes);
+        let parsed = parse_x509_cert(&cert_bytes);
         total_time += begin.elapsed();
 
         match parsed {
@@ -206,13 +205,13 @@ fn validate(args: ValidateArgs) -> Result<(), Error> {
     let chain_bytes = read_pem_file_as_bytes(&args.chain)?;
 
     let roots = VecDeep::from_vec(roots_bytes.iter().map(|cert_bytes| {
-        parse_x509_certificate(cert_bytes)
+        parse_x509_cert(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?);
 
     let begin = Instant::now();
 
     let chain = VecDeep::from_vec(chain_bytes.iter().map(|cert_bytes| {
-        parse_x509_certificate(cert_bytes)
+        parse_x509_cert(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?);
 
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
@@ -277,9 +276,9 @@ fn parse_cert_ct_logs(args: ParseCTLogArgs) -> Result<(), Error>
         for result in reader.deserialize() {
             let result: CTLogEntry = result?;
 
-            let cert_bytes = BASE64_STANDARD.decode(result.cert_base64)?;
+            let cert_bytes = decode_base64(result.cert_base64.as_bytes())?;
 
-            match parse_x509_certificate(&cert_bytes) {
+            match parse_x509_cert(&cert_bytes) {
                 Ok(cert) => {
                     let alg_str = format!("{:?}", cert.get().cert.get().subject_key.alg);
                     *subject_keys.entry(alg_str).or_insert(0) += 1;
@@ -327,7 +326,7 @@ fn validate_ct_logs_job(
     timer: &Timer,
 ) -> Result<bool, Error>
 {
-    let mut chain_bytes = vec![BASE64_STANDARD.decode(&entry.cert_base64)?];
+    let mut chain_bytes = vec![decode_base64(&entry.cert_base64.as_bytes())?];
 
     // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
     // `entry.interm_certs` is a comma-separated list
@@ -338,7 +337,7 @@ fn validate_ct_logs_job(
     let begin = Instant::now();
 
     let chain =
-        VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?);
+        VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?);
 
     if args.debug {
         print_debug_info(roots, &chain, &entry.domain, timestamp as i64);
@@ -386,7 +385,7 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             // TODO: move this outside
             let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
             let roots =
-                roots_bytes.iter().map(|bytes| parse_x509_certificate(bytes)).collect::<Result<Vec<_>, _>>()?;
+                roots_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?;
             let roots = parser::VecDeep::from_vec(roots);
 
             while let Ok(entry) = rx_job.recv() {

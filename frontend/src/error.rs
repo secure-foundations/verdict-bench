@@ -13,9 +13,6 @@ pub enum Error {
     #[error("x509 parse error: {0:?}")]
     X509ParseError(X509ParseError),
 
-    #[error("base64 decode error: {0}")]
-    Base64DecodeError(#[from] base64::DecodeError),
-
     #[error("csv error: {0}")]
     CSVError(#[from] csv::Error),
 
