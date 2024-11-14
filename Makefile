@@ -1,4 +1,4 @@
-PROJECTS = chain parser polyfill rspec_test test vest
+PROJECTS = chain parser polyfill rspec_test vest frontend
 
 .PHONY: debug
 debug:
