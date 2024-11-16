@@ -488,14 +488,16 @@ pub open spec fn check_issuer(issuer: &Certificate, subject: &Certificate) -> bo
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, domain: &SpecString) -> bool
 {
+    let domain = str_lower(domain);
+
     chain.len() >= 2 && {
         let leaf = &chain[0];
         let root = &chain[chain.len() - 1];
 
         &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_issuer(&chain[i + 1], #[trigger] &chain[i as int])
-        &&& cert_verified_leaf(env, leaf, domain)
+        &&& cert_verified_leaf(env, leaf, &domain)
         &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-        &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, domain)
+        &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, &domain)
     }
 }
 

@@ -241,6 +241,41 @@ pub fn vec_set<T>(v: &mut Vec<T>, i: usize, x: T)
     v[i] = x;
 }
 
+#[verifier::external_body]
+pub fn vec_push_nested<T>(v: &mut Vec<Vec<T>>, i: usize, x: T)
+    requires
+        0 <= i < old(v)@.len(),
+
+    ensures
+        v.len() == old(v).len(),
+        forall |j| #![trigger v@[j]] 0 <= j < v@.len() ==> {
+            &&& i == j ==> v@[j]@ == old(v)@[j]@.push(x)
+            &&& i != j ==> v@[j] == old(v)@[j]
+        },
+{
+    v[i].push(x);
+}
+
+/// Note: this implicitly assumes that v.clone()@ == v@
+#[verifier::external_body]
+pub fn vec_init_n<T: Clone + View>(n: usize, v: &T) -> (res: Vec<T>)
+    ensures
+        res.len() == n,
+        forall |i| 0 <= i < n ==> #[trigger] res@[i]@ == v@,
+{
+    let mut res: Vec<T> = Vec::new();
+
+    for i in 0..n
+        invariant
+            res.len() == i,
+            forall |j| 0 <= j < i ==> #[trigger] res@[j]@ == v@,
+    {
+        res.push(v.clone());
+    }
+
+    res
+}
+
 /// Copied from Verus example
 pub fn vec_reverse<T: DeepView>(v: &mut Vec<&T>)
     ensures

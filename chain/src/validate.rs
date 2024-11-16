@@ -2,6 +2,7 @@
 
 use vstd::prelude::*;
 
+use polyfill::*;
 use parser::{*, x509::*};
 
 use crate::policy;
@@ -10,109 +11,296 @@ use crate::error::*;
 
 verus! {
 
-/// A high-level spec specifying when a certificate chain is considered valid
-/// with respect to a domain
-pub open spec fn spec_valid_domain(
-    policy: policy::Policy,
-    roots: Seq<SpecCertificateValue>,
-    chain: Seq<SpecCertificateValue>,
-    domain: Seq<char>,
-) -> bool
-{
-    exists |i, j| {
-        &&& 0 <= i < roots.len()
-        &&& 0 <= j < chain.len()
-        &&& forall |k: int| 0 <= k < j ==> spec_likely_issued(chain[k + 1], #[trigger] chain[k])
-        &&& spec_likely_issued(roots[i], chain[j])
+pub struct Query {
+    pub policy: policy::Policy,
+    pub roots: Seq<SpecCertificateValue>,
 
-        // Check if the candidate chain satisfies the policy constraints
-        &&& {
-            let candidate = chain.take(j + 1) + seq![roots[i]];
-            let abstract_candidate = Seq::new(candidate.len(), |i| policy::Certificate::spec_from(candidate[i]).unwrap());
+    /// `bundle[0]` is the leaf certificate
+    pub bundle: Seq<SpecCertificateValue>,
+    pub domain: Seq<char>,
+}
 
-            &&& forall |i| #![trigger candidate[i]] 0 <= i < candidate.len() ==> policy::Certificate::spec_from(candidate[i]).is_some()
-            &&& policy::valid_chain(&policy, &abstract_candidate, &domain)
+/// High-level specifications for when a query is valid
+impl Query {
+    pub open spec fn is_simple_partial_path(self, path: Seq<usize>) -> bool {
+        &&& path.len() != 0
+
+        // `path` contains unique indices into `self.bundle`
+        &&& forall |i| 0 <= i < path.len() ==> 0 <= #[trigger] path[i] < self.bundle.len()
+        &&& forall |i, j| 0 <= i < path.len() && 0 <= j < path.len() && i != j ==> path[i] != path[j]
+
+        // `path` = bundle[path[0]] -> ... -> bundle[path.last()]
+        &&& forall |i: int| #![trigger path[i]] 0 <= i < path.len() - 1 ==>
+            spec_likely_issued(self.bundle[path[i + 1] as int], self.bundle[path[i] as int])
+    }
+
+    /// `path` is a valid simple path from `path[0]` to reach a root certificate
+    pub open spec fn is_simple_path(self, path: Seq<usize>, root_idx: int) -> bool {
+        &&& 0 <= root_idx < self.roots.len()
+        &&& self.is_simple_partial_path(path)
+        &&& spec_likely_issued(self.roots[root_idx], self.bundle[path.last() as int])
+    }
+
+    /// Check if the candidate chain satisfies the policy constraints
+    pub open spec fn path_satisfies_policy(self, path: Seq<usize>, root_idx: int) -> bool {
+        let candidate = path.map_values(|i| self.bundle[i as int]) + seq![self.roots[root_idx]];
+        let abstract_candidate = candidate.map_values(|cert| policy::Certificate::spec_from(cert).unwrap());
+        policy::valid_chain(&self.policy, &abstract_candidate, &self.domain)
+    }
+
+    pub open spec fn valid(self) -> bool {
+        &&& self.bundle.len() != 0
+
+        &&& exists |path: Seq<usize>, root_idx| {
+            &&& path[0] == 0 // starts from the leaf (i.e. `bundle[0]`)
+            &&& self.is_simple_path(path, root_idx)
+            &&& self.path_satisfies_policy(path, root_idx)
         }
     }
 }
 
-/// Check that the chain[i] is likely issued by chain[i + 1]
-/// up until chain[n]
-pub fn check_chain_likely_issue(chain: &VecDeep<CertificateValue>, n: usize) -> (res: bool)
-    requires 0 <= n < chain@.len()
-    ensures res == forall |i: int| 0 <= i < n ==> spec_likely_issued(chain@[i + 1], #[trigger] chain@[i]),
-{
-    for i in 0..n
-        invariant
-            n < chain@.len(),
-            forall |j: int| 0 <= j < i ==> spec_likely_issued(chain@[j + 1], #[trigger] chain@[j]),
-    {
-        if !likely_issued(chain.get(i + 1), chain.get(i)) {
-            return false;
-        }
-    }
-    true
+pub struct Validator<'a> {
+    pub policy: policy::ExecPolicy,
+    pub roots: VecDeep<CertificateValue<'a>>,
 }
 
-/// Exec version of spec_valid_domain
-/// TODO: completeness; cache results of policy::Certificate::from
-pub fn valid_domain<'a, 'b>(
-    policy: &policy::ExecPolicy,
-    roots: &VecDeep<CertificateValue<'a>>,
-    chain: &VecDeep<CertificateValue<'b>>,
-    domain: &str,
-) -> (res: Result<bool, ValidationError>)
-    ensures
-        res.is_ok() && res.unwrap() ==>
-            spec_valid_domain(policy.deep_view(), roots@, chain@, domain@)
-{
-    let roots_len = roots.len();
-    let chain_len = chain.len();
-
-    for i in 0..roots_len
-        invariant
-            roots_len == roots@.len(),
-            chain_len == chain@.len(),
+impl<'a> Validator<'a> {
+    pub fn new(policy: policy::ExecPolicy, roots: VecDeep<CertificateValue<'a>>) -> (res: Validator<'a>)
+        ensures
+            res.policy == policy,
+            res.roots == roots,
     {
-        // Check if any intermediate certificate is issued by the root
-        for j in 0..chain_len
+        Validator { policy, roots }
+    }
+
+    closed spec fn is_prefix_of<T>(s1: Seq<T>, s2: Seq<T>) -> bool {
+        s1.len() <= s2.len() && s1 == s2.take(s1.len() as int)
+    }
+
+    fn has_node(path: &Vec<usize>, node: usize) -> (res: bool)
+        ensures res == path@.contains(node)
+    {
+        let path_len = path.len();
+
+        for i in 0..path_len
             invariant
-                roots_len == roots@.len(),
-                chain_len == chain@.len(),
-                0 <= i < roots_len,
+                path_len == path@.len(),
+                forall |j| 0 <= j < i ==> path@[j] != node,
         {
-            if likely_issued(roots.get(i), chain.get(j)) {
-                if check_chain_likely_issue(chain, j) {
-                    let mut candidate: Vec<policy::ExecCertificate> = Vec::new();
+            if path[i] == node {
+                return true;
+            }
+        }
 
-                    // Abstract chain up to j
-                    for k in 0..j + 1
-                        invariant
-                            chain_len == chain@.len(),
-                            0 <= j < chain_len,
-                            candidate.len()
-                             == k,
-                            forall |l: int| #![auto] 0 <= l < k ==> Some(candidate@[l].deep_view()) == policy::Certificate::spec_from(chain@[l]),
-                    {
-                        candidate.push(policy::Certificate::from(chain.get(k))?);
-                    }
+        return false;
+    }
 
-                    candidate.push(policy::Certificate::from(roots.get(i))?);
+    pub open spec fn get_query(
+        &self,
+        bundle: &VecDeep<CertificateValue>,
+        domain: &str,
+    ) -> Query {
+        Query {
+            policy: self.policy.deep_view(),
+            roots: self.roots@,
+            bundle: bundle@,
+            domain: domain@,
+        }
+    }
 
-                    assert(candidate.deep_view() =~= {
-                        let candidate = chain@.take(j + 1) + seq![roots@[i as int]];
-                        Seq::new(candidate.len(), |i| policy::Certificate::spec_from(candidate[i]).unwrap())
-                    });
+    /// Check if a candidate path satisfies the policy
+    /// TODO: cache `policy::Certificate::from` results
+    fn check_policy(
+        &self,
+        bundle: &VecDeep<CertificateValue>,
+        domain: &str,
+        path: &Vec<usize>,
+        root_idx: usize,
+    ) -> (res: Result<bool, ValidationError>)
+        requires
+            self.get_query(bundle, domain).is_simple_path(path@, root_idx as int),
 
-                    if policy::exec_valid_chain(policy, &candidate, &domain.to_string()) {
+        ensures
+            res matches Ok(res) ==>
+                res == self.get_query(bundle, domain).path_satisfies_policy(path@, root_idx as int),
+    {
+        let mut candidate: Vec<policy::ExecCertificate> = Vec::new();
+        let path_len = path.len();
+
+        // Convert the entire path to `ExecCertificate`
+        for i in 0..path_len
+            invariant
+                path_len == path@.len(),
+                self.get_query(bundle, domain).is_simple_path(path@, root_idx as int),
+
+                candidate@.len() == i,
+                forall |j| #![trigger candidate@[j]] 0 <= j < i ==>
+                    Some(candidate@[j].deep_view()) == policy::Certificate::spec_from(bundle@[path@[j] as int]),
+        {
+            candidate.push(policy::Certificate::from(bundle.get(path[i]))?);
+        }
+
+        // Append the root certificate
+        candidate.push(policy::Certificate::from(self.roots.get(root_idx))?);
+
+        assert(candidate.deep_view() =~=
+            (path@.map_values(|i| bundle@[i as int]) + seq![self.roots@[root_idx as int]])
+                .map_values(|cert| policy::Certificate::spec_from(cert).unwrap()));
+
+        Ok(policy::exec_valid_chain(&self.policy, &candidate, &domain.to_string()))
+    }
+
+    /// Validate a leaf certificate (bundle[0]) against
+    /// a domain and try to build a valid chain through
+    /// the `bundle` of intermediate certificates
+    pub fn validate(
+        &self,
+        bundle: &VecDeep<CertificateValue>,
+        domain: &str,
+    ) -> (res: Result<bool, ValidationError>)
+        requires bundle@.len() != 0,
+
+        ensures
+            // Soundness
+            res.is_ok() && res.unwrap() ==> self.get_query(bundle, domain).valid(),
+    {
+        let bundle_len = bundle.len();
+        let roots_len = self.roots.len();
+
+        // issued_by_roots[i] is the indices of root certificates that issued bundle[i]
+        let mut issued_by_roots: Vec<Vec<usize>> = vec_init_n(bundle_len, &Vec::new());
+
+        let ghost root_indices = Seq::new(roots_len as nat, |j| j as usize);
+        let ghost bundle_to_roots = |i: usize, j: usize|
+            spec_likely_issued(self.roots@[j as int], bundle@[i as int]);
+
+        // For each cert in the bundle, find roots that issued it
+        for i in 0..bundle_len
+            invariant
+                bundle_len == bundle@.len(),
+                roots_len == self.roots@.len(),
+
+                root_indices == Seq::new(roots_len as nat, |j| j as usize),
+                bundle_to_roots == |i: usize, j: usize|
+                    spec_likely_issued(self.roots@[j as int], bundle@[i as int]),
+
+                issued_by_roots@.len() == bundle_len,
+
+                // All indices in issued_by_roots[i] are valid
+                forall |i, j| 0 <= i < bundle_len && 0 <= j < issued_by_roots@[i]@.len() ==>
+                        0 <= #[trigger] issued_by_roots@[i]@[j] < roots_len,
+
+                // For processed bundle indices i, issued_by_roots[i] contains the indices of roots that issued bundle[i]
+                forall |k: int| 0 <= k < bundle_len ==> {
+                    &&& k < i ==> #[trigger] issued_by_roots@[k]@ =~= root_indices.filter(|j| bundle_to_roots(k as usize, j))
+                    &&& k >= i ==> issued_by_roots@[k]@ =~= Seq::<usize>::empty()
+                },
+        {
+            reveal_with_fuel(Seq::<_>::filter, 1);
+
+            for j in 0..roots_len
+                invariant
+                    0 <= i < bundle_len,
+
+                    bundle_len == bundle@.len(),
+                    roots_len == self.roots@.len(),
+
+                    root_indices == Seq::new(roots_len as nat, |j| j as usize),
+                    bundle_to_roots == |i: usize, j: usize|
+                        spec_likely_issued(self.roots@[j as int], bundle@[i as int]),
+
+                    issued_by_roots@.len() == bundle_len,
+                    issued_by_roots@[i as int]@ =~= root_indices.take(j as int).filter(|j| bundle_to_roots(i, j)),
+
+                    // All indices in issued_by_roots[i] are valid
+                    forall |i, j| 0 <= i < bundle_len && 0 <= j < issued_by_roots@[i]@.len() ==>
+                        0 <= #[trigger] issued_by_roots@[i]@[j] < roots_len,
+
+                    forall |k: int| 0 <= k < bundle_len ==> {
+                        &&& k < i ==> #[trigger] issued_by_roots@[k]@ =~= root_indices.filter(|j| bundle_to_roots(k as usize, j))
+                        &&& k > i ==> issued_by_roots@[k]@ =~= Seq::<usize>::empty()
+                    },
+            {
+                reveal_with_fuel(Seq::<_>::filter, 1);
+
+                if likely_issued(self.roots.get(j), bundle.get(i)) {
+                    vec_push_nested(&mut issued_by_roots, i, j);
+                }
+
+                assert(root_indices.take(j + 1).drop_last() =~= root_indices.take(j as int));
+            }
+
+            assert(root_indices.take(roots_len as int) =~= root_indices);
+            assert(issued_by_roots@[i as int]@ =~= root_indices.filter(|j| bundle_to_roots(i, j)));
+        }
+
+        assert(forall |i| 0 <= i < bundle_len ==>
+            #[trigger] issued_by_roots@[i]@ =~= root_indices.filter(|j| bundle_to_roots(i as usize, j)));
+
+        let ghost query = self.get_query(bundle, domain);
+
+        // DFS from bundle[0] to try to reach a root
+        // Stack of path prefices to explore
+        let mut stack: Vec<Vec<usize>> = Vec::new();
+        stack.push(vec![ 0 ]);
+
+        // // For completeness
+        // assert(forall |path|
+        //     query.is_simple_partial_path(path) &&
+        //     path[0] == 0 &&
+        //     (forall |i| 0 <= i < stack.len() ==> !is_prefix_of(stack@[i], path)) ==>
+        //         forall |root_idx| 0 <= root_idx < roots_len ==>
+        //             !query.is_simple_path(path, root_idx));
+
+        #[verifier::loop_isolation(false)]
+        loop
+            invariant
+                // bundle_len == bundle@.len(),
+                forall |i| 0 <= i < stack.len() ==> query.is_simple_partial_path(#[trigger] stack@[i]@) && stack@[i]@[0] == 0,
+        {
+            if let Some(path) = stack.pop() {
+                let last = path[path.len() - 1];
+
+                let last_roots = &issued_by_roots[last];
+                let last_roots_len = last_roots.len();
+
+                assert(last_roots@ == root_indices.filter(|j| bundle_to_roots(last, j)));
+
+                // Check if `last` reaches a root
+                #[verifier::loop_isolation(false)]
+                for i in 0..last_roots_len
+                {
+                    // TODO: remove the likely_issued check here
+                    if self.check_policy(bundle, domain, &path, last_roots[i])? {
+                        // Found a valid path
+                        // assert(query.is_simple_path(path@, last_roots@[root_idx as int] as int));
+                        // assert(query.valid());
                         return Ok(true);
                     }
                 }
+
+                // Push any extension of `path` that is still a simple path
+                #[verifier::loop_isolation(false)]
+                for i in 0..bundle_len
+                    invariant
+                        // bundle_len == bundle@.len(),
+                        // query.is_simple_partial_path(path@),
+                        // path@[0] == 0,
+                        forall |i| 0 <= i < stack.len() ==> query.is_simple_partial_path(#[trigger] stack@[i]@) && stack@[i]@[0] == 0,
+                {
+                    if !Self::has_node(&path, i) && likely_issued(bundle.get(i), bundle.get(last)) {
+                        let mut next_path = Clone::clone(&path);
+                        next_path.push(i);
+                        stack.push(next_path);
+                    }
+                }
+            } else {
+                break;
             }
         }
-    }
 
-    Ok(false)
+        Ok(false)
+    }
 }
 
 /// Some helper functions to generate different policies

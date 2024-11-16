@@ -18,9 +18,9 @@ use regex::Regex;
 
 use parser::{parse_x509_cert, decode_base64};
 use chain::policy;
-use chain::validate;
+use chain::validate::Validator;
 
-use parser::{x509, VecDeep};
+use parser::VecDeep;
 use error::*;
 use utils::*;
 
@@ -225,7 +225,7 @@ fn validate(args: ValidateArgs) -> Result<(), Error> {
         print_debug_info(&roots, &chain, &args.domain, timestamp as i64);
     }
 
-    let res = validate::valid_domain(&policy, &roots, &chain, &args.domain)?;
+    let res = Validator::new(policy, roots).validate(&chain, &args.domain)?;
 
     if args.stats {
         eprintln!("parsing + validation took {:.2}ms", begin.elapsed().as_micros() as f64 / 1000f64);
@@ -319,8 +319,9 @@ type Timer = Arc<Mutex<Duration>>;
 
 fn validate_ct_logs_job(
     args: &ValidateCTLogArgs,
-    policy: &policy::ExecPolicy,
-    roots: &VecDeep<x509::CertificateValue>,
+    // policy: &policy::ExecPolicy,
+    // roots: &VecDeep<x509::CertificateValue>,
+    validator: &Validator,
     timestamp: u64,
     entry: &CTLogEntry,
     timer: &Timer,
@@ -340,10 +341,11 @@ fn validate_ct_logs_job(
         VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?);
 
     if args.debug {
-        print_debug_info(roots, &chain, &entry.domain, timestamp as i64);
+        print_debug_info(&validator.roots, &chain, &entry.domain, timestamp as i64);
     }
 
-    let res = validate::valid_domain(&policy, roots, &chain, &entry.domain.to_lowercase())?;
+    let res = validator.validate(&chain, &entry.domain)?;
+    // let res = validate::valid_domain(&policy, roots, &chain, &entry.domain.to_lowercase())?;
 
     *timer.lock().unwrap() += begin.elapsed();
 
@@ -359,10 +361,6 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
 
     // Choose the policy according to the command line flag
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
-    let policy = Arc::new(match args.policy {
-        Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
-        Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
-    });
 
     let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();
     let (tx_res, rx_res) = mpsc::channel();
@@ -374,7 +372,6 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
         let rx_job = rx_job.clone();
         let tx_res = tx_res.clone();
         let args = args.clone();
-        let policy = policy.clone();
         let timer = timer.clone();
 
         // Each worker thread waits for jobs, does the validation, and then sends back the result
@@ -388,14 +385,20 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
                 roots_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?;
             let roots = parser::VecDeep::from_vec(roots);
 
+            let policy = match args.policy {
+                Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
+                Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
+            };
+
+            let validator = Validator::new(policy, roots);
+
             while let Ok(entry) = rx_job.recv() {
                 tx_res.send(ValidationResult {
                     hash: entry.hash.clone(),
                     domain: entry.domain.clone(),
                     result: validate_ct_logs_job(
                         &args,
-                        &policy,
-                        &roots,
+                        &validator,
                         timestamp,
                         &entry,
                         &timer,
