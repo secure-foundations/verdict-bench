@@ -35,15 +35,15 @@ impl Query {
     }
 
     /// `path` is a valid simple path from `path[0]` to reach a root certificate
-    pub open spec fn is_simple_path(self, path: Seq<usize>, root_idx: int) -> bool {
+    pub open spec fn is_simple_path(self, path: Seq<usize>, root_idx: usize) -> bool {
         &&& 0 <= root_idx < self.roots.len()
         &&& self.is_simple_partial_path(path)
-        &&& spec_likely_issued(self.roots[root_idx], self.bundle[path.last() as int])
+        &&& spec_likely_issued(self.roots[root_idx as int], self.bundle[path.last() as int])
     }
 
     /// Check if the candidate chain satisfies the policy constraints
-    pub open spec fn path_satisfies_policy(self, path: Seq<usize>, root_idx: int) -> bool {
-        let candidate = path.map_values(|i| self.bundle[i as int]) + seq![self.roots[root_idx]];
+    pub open spec fn path_satisfies_policy(self, path: Seq<usize>, root_idx: usize) -> bool {
+        let candidate = path.map_values(|i| self.bundle[i as int]) + seq![self.roots[root_idx as int]];
         let abstract_candidate = candidate.map_values(|cert| policy::Certificate::spec_from(cert).unwrap());
         policy::valid_chain(&self.policy, &abstract_candidate, &self.domain)
     }
@@ -51,7 +51,7 @@ impl Query {
     pub open spec fn valid(self) -> bool {
         &&& self.bundle.len() != 0
 
-        &&& exists |path: Seq<usize>, root_idx| {
+        &&& exists |path: Seq<usize>, root_idx: usize| {
             &&& path[0] == 0 // starts from the leaf (i.e. `bundle[0]`)
             &&& self.is_simple_path(path, root_idx)
             &&& self.path_satisfies_policy(path, root_idx)
@@ -74,7 +74,8 @@ impl<'a> Validator<'a> {
     }
 
     closed spec fn is_prefix_of<T>(s1: Seq<T>, s2: Seq<T>) -> bool {
-        s1.len() <= s2.len() && s1 == s2.take(s1.len() as int)
+        &&& s1.len() <= s2.len()
+        &&& forall |i| 0 <= i < s1.len() ==> #[trigger] s1[i] == #[trigger] s2[i]
     }
 
     fn has_node(path: &Vec<usize>, node: usize) -> (res: bool)
@@ -118,11 +119,11 @@ impl<'a> Validator<'a> {
         root_idx: usize,
     ) -> (res: Result<bool, ValidationError>)
         requires
-            self.get_query(bundle, domain).is_simple_path(path@, root_idx as int),
+            self.get_query(bundle, domain).is_simple_path(path@, root_idx),
 
         ensures
             res matches Ok(res) ==>
-                res == self.get_query(bundle, domain).path_satisfies_policy(path@, root_idx as int),
+                res == self.get_query(bundle, domain).path_satisfies_policy(path@, root_idx),
     {
         let mut candidate: Vec<policy::ExecCertificate> = Vec::new();
         let path_len = path.len();
@@ -131,7 +132,7 @@ impl<'a> Validator<'a> {
         for i in 0..path_len
             invariant
                 path_len == path@.len(),
-                self.get_query(bundle, domain).is_simple_path(path@, root_idx as int),
+                self.get_query(bundle, domain).is_simple_path(path@, root_idx),
 
                 candidate@.len() == i,
                 forall |j| #![trigger candidate@[j]] 0 <= j < i ==>
@@ -161,8 +162,8 @@ impl<'a> Validator<'a> {
         requires bundle@.len() != 0,
 
         ensures
-            // Soundness
-            res.is_ok() && res.unwrap() ==> self.get_query(bundle, domain).valid(),
+            // Soundness & completeness (modulo ValidationError)
+            res matches Ok(res) ==> res == self.get_query(bundle, domain).valid(),
     {
         let bundle_len = bundle.len();
         let roots_len = self.roots.len();
@@ -244,22 +245,28 @@ impl<'a> Validator<'a> {
         let mut stack: Vec<Vec<usize>> = Vec::new();
         stack.push(vec![ 0 ]);
 
-        // // For completeness
-        // assert(forall |path|
-        //     query.is_simple_partial_path(path) &&
-        //     path[0] == 0 &&
-        //     (forall |i| 0 <= i < stack.len() ==> !is_prefix_of(stack@[i], path)) ==>
-        //         forall |root_idx| 0 <= root_idx < roots_len ==>
-        //             !query.is_simple_path(path, root_idx));
+        let ghost _ = stack@[0]@;
 
         #[verifier::loop_isolation(false)]
         loop
             invariant
                 // bundle_len == bundle@.len(),
                 forall |i| 0 <= i < stack.len() ==> query.is_simple_partial_path(#[trigger] stack@[i]@) && stack@[i]@[0] == 0,
+
+                // For completeness: any simple path not prefixed by elements in
+                // the current stack should be already confirmed as invalid
+                forall |path: Seq<usize>, root_idx: usize|
+                    path[0] == 0 &&
+                    #[trigger] query.is_simple_path(path, root_idx) &&
+                    (forall |i| 0 <= i < stack.len() ==>
+                        !Self::is_prefix_of(#[trigger] stack@[i]@, path))
+                    ==>
+                    !query.path_satisfies_policy(path, root_idx),
         {
-            if let Some(path) = stack.pop() {
-                let last = path[path.len() - 1];
+            let ghost prev_stack = stack@;
+
+            if let Some(cur_path) = stack.pop() {
+                let last = cur_path[cur_path.len() - 1];
 
                 let last_roots = &issued_by_roots[last];
                 let last_roots_len = last_roots.len();
@@ -269,13 +276,25 @@ impl<'a> Validator<'a> {
                 // Check if `last` reaches a root
                 #[verifier::loop_isolation(false)]
                 for i in 0..last_roots_len
+                    invariant
+                        forall |j| 0 <= j < i ==>
+                            !query.path_satisfies_policy(cur_path@, #[trigger] last_roots[j]),
                 {
-                    // TODO: remove the likely_issued check here
-                    if self.check_policy(bundle, domain, &path, last_roots[i])? {
+                    if self.check_policy(bundle, domain, &cur_path, last_roots[i])? {
                         // Found a valid path
-                        // assert(query.is_simple_path(path@, last_roots@[root_idx as int] as int));
-                        // assert(query.valid());
                         return Ok(true);
+                    }
+                }
+
+                assert forall |root_idx: usize|
+                    #[trigger] query.is_simple_path(cur_path@, root_idx) implies
+                    !query.path_satisfies_policy(cur_path@, root_idx)
+                by {
+                    // By filter_lemma
+                    assert(last_roots@.contains(root_idx)) by {
+                        assert(root_indices[root_idx as int] == root_idx);
+                        assert(bundle_to_roots(last, root_indices[root_idx as int]));
+                        // assert(last_roots@ == root_indices.filter(|j| bundle_to_roots(last, j)));
                     }
                 }
 
@@ -284,22 +303,108 @@ impl<'a> Validator<'a> {
                 for i in 0..bundle_len
                     invariant
                         // bundle_len == bundle@.len(),
-                        // query.is_simple_partial_path(path@),
-                        // path@[0] == 0,
-                        forall |i| 0 <= i < stack.len() ==> query.is_simple_partial_path(#[trigger] stack@[i]@) && stack@[i]@[0] == 0,
+                        // query.is_simple_partial_path(cur_path@),
+                        // cur_path@[0] == 0,
+
+                        stack@.len() >= prev_stack.len() - 1,
+                        forall |i| 0 <= i < prev_stack.len() - 1 ==>
+                            stack@[i] == #[trigger] prev_stack[i],
+
+                        // For any other `path` prefixed by `cur_path` (and longer than it)
+                        // either `path` is prefixed by some path in the stack
+                        // or `path`'s next node >= i
+                        forall |path: Seq<usize>|
+                            #[trigger] Self::is_prefix_of(cur_path@, path) &&
+                            query.is_simple_partial_path(path) &&
+                            path.len() > cur_path@.len() &&
+                            path[cur_path@.len() as int] < i
+                            ==>
+                            exists |j| 0 <= j < stack@.len() && Self::is_prefix_of(#[trigger] stack@[j]@, path),
+
+                        // Stack invariant: all paths in the stack starts with 0
+                        // and is a simple partial path
+                        forall |i| 0 <= i < stack.len() ==>
+                            stack@[i]@[0] == 0 &&
+                            query.is_simple_partial_path(#[trigger] stack@[i]@),
                 {
-                    if !Self::has_node(&path, i) && likely_issued(bundle.get(i), bundle.get(last)) {
-                        let mut next_path = Clone::clone(&path);
+                    let ghost prev_stack = stack@;
+
+                    if !Self::has_node(&cur_path, i) && likely_issued(bundle.get(i), bundle.get(last)) {
+                        let mut next_path = Clone::clone(&cur_path);
                         next_path.push(i);
                         stack.push(next_path);
                     }
+
+                    assert forall |path: Seq<usize>|
+                        #[trigger] Self::is_prefix_of(cur_path@, path) &&
+                        query.is_simple_partial_path(path) &&
+                        path.len() > cur_path@.len() &&
+                        path[cur_path@.len() as int] < i + 1
+                        implies
+                        exists |j| 0 <= j < stack@.len() && Self::is_prefix_of(#[trigger] stack@[j]@, path)
+                    by {
+                        if path[cur_path@.len() as int] == i {
+
+                            if cur_path@.contains(i) {
+                                // Not a simple path
+                                let k = choose |k| 0 <= k < cur_path@.len() && cur_path@[k] == i;
+                                assert(path[k] == i);
+                            } else if !spec_likely_issued(bundle@[i as int], bundle@[last as int]) {
+                                // Not a path
+                                assert(path[cur_path@.len() - 1] == i);
+                            } else {
+                                // Path was just added
+                                assert(Self::is_prefix_of(stack@[stack@.len() - 1]@, path));
+                            }
+                        } else {
+                            // By loop invariant
+                            let k = choose |k| 0 <= k < prev_stack.len() && Self::is_prefix_of(#[trigger] prev_stack[k]@, path);
+                            assert(stack@[k] == prev_stack[k]);
+                        }
+                    }
                 }
+
+                // assert(forall |path: Seq<usize>|
+                //     #[trigger] Self::is_prefix_of(cur_path@, path) &&
+                //     query.is_simple_partial_path(path) &&
+                //     path.len() > cur_path@.len()
+                //     ==>
+                //     exists |j| 0 <= j < stack@.len() && Self::is_prefix_of(#[trigger] stack@[j]@, path));
+
+                // Check the completeness invariant
+                // For any path starting `bundle[0]`
+                // that does NOT have any of the stack
+                // elements as prefix, should not have
+                // a simple valid path to a root
+                assert forall |path: Seq<usize>, root_idx: usize|
+                    path[0] == 0 &&
+                    #[trigger] query.is_simple_path(path, root_idx) &&
+                    (forall |i| 0 <= i < stack.len() ==>
+                        !Self::is_prefix_of(#[trigger] stack@[i]@, path))
+                    implies
+                    // No valid simple path to root
+                    !query.path_satisfies_policy(path, root_idx)
+                by {
+                    if !Self::is_prefix_of(cur_path@, path) {
+                        assert(forall |i| 0 <= i < prev_stack.len()
+                            ==> !Self::is_prefix_of(#[trigger] prev_stack[i]@, path));
+                    } else {
+                        if path.len() <= cur_path@.len() {
+                            assert(path =~= cur_path@);
+                            // By LI of the first inner loop
+                        } // else by LI of the second inner loop
+                    }
+                }
+
             } else {
-                break;
+                // assert(forall |path: Seq<usize>, root_idx: usize|
+                //     path[0] == 0 &&
+                //     #[trigger] query.is_simple_path(path, root_idx) ==>
+                //     !query.path_satisfies_policy(path, root_idx));
+                // assert(!query.valid());
+                return Ok(false);
             }
         }
-
-        Ok(false)
     }
 }
 
