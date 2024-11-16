@@ -19,6 +19,8 @@ use ExecSubjectAltName as SubjectAltName;
 use ExecNameConstraints as NameConstraints;
 use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
+use ExecTask as Task;
+use ExecPolicyResult as PolicyResult;
 
 use exec_str_lower as str_lower;
 // use rspec_debug as debug;
@@ -653,18 +655,27 @@ pub open spec fn check_issuer(issuer: &Certificate, subject: &Certificate) -> bo
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, domain: &SpecString) -> bool
+pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: &Task) -> PolicyResult
 {
-    let domain = str_lower(domain);
+    match task {
+        Task::DomainValidation(domain) => {
+            let domain = str_lower(domain);
 
-    chain.len() >= 2 && {
-        let leaf = &chain[0];
-        let root = &chain[chain.len() - 1];
+            if chain.len() >= 2 && {
+                let leaf = &chain[0];
+                let root = &chain[chain.len() - 1];
 
-        &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_issuer(&chain[i + 1], #[trigger] &chain[i as int])
-        &&& cert_verified_leaf(env, leaf, &domain, is_ev_chain(env, chain))
-        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-        &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, &domain)
+                &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_issuer(&chain[i + 1], #[trigger] &chain[i as int])
+                &&& cert_verified_leaf(env, leaf, &domain, is_ev_chain(env, chain))
+                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
+                &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, &domain)
+            } {
+                PolicyResult::Valid
+            } else {
+                PolicyResult::Invalid
+            }
+        }
+        _ => PolicyResult::UnsupportedTask,
     }
 }
 

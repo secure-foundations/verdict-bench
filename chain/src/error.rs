@@ -10,6 +10,7 @@ pub enum ValidationError {
     TimeParseError,
     RSAPubKeyParseError,
     UnexpectedExtParam,
+    UnsupportedTask,
 }
 
 }

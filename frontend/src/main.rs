@@ -225,7 +225,7 @@ fn validate(args: ValidateArgs) -> Result<(), Error> {
         print_debug_info(&roots, &chain, &args.domain, timestamp as i64);
     }
 
-    let res = Validator::new(policy, roots).validate(&chain, &args.domain)?;
+    let res = Validator::new(policy, roots).validate(&chain, &policy::ExecTask::DomainValidation(args.domain.clone()))?;
 
     if args.stats {
         eprintln!("parsing + validation took {:.2}ms", begin.elapsed().as_micros() as f64 / 1000f64);
@@ -344,7 +344,7 @@ fn validate_ct_logs_job(
         print_debug_info(&validator.roots, &chain, &entry.domain, timestamp as i64);
     }
 
-    let res = validator.validate(&chain, &entry.domain)?;
+    let res = validator.validate(&chain, &policy::ExecTask::DomainValidation(entry.domain.clone()))?;
     // let res = validate::valid_domain(&policy, roots, &chain, &entry.domain.to_lowercase())?;
 
     *timer.lock().unwrap() += begin.elapsed();
