@@ -195,7 +195,33 @@ pub fn str_to_utf8(s: &str) -> (res: &[u8])
     s.as_bytes()
 }
 
+/// NOTE: unspecified
+pub closed spec fn spec_str_lower(s: Seq<char>) -> Seq<char>;
+
+#[verifier::external_body]
+pub fn str_lower(s: &str) -> (res: String)
+    ensures res@ == spec_str_lower(s@)
+{
+    s.to_lowercase()
+}
+
+pub closed spec fn spec_str_trim_char(s: Seq<char>, c: char) -> Seq<char>;
+
+#[verifier::external_body]
+pub fn str_trim_char(s: &str, c: char) -> (res: &str)
+    ensures res@ == spec_str_trim_char(s@, c)
+{
+    s.trim_matches(c)
+}
+
 pub closed spec fn spec_u64_to_string(x: u64) -> (res: Seq<char>);
+
+#[verifier::external_body]
+pub fn char_to_string(c: char) -> (res: String)
+    ensures res@ == seq![c]
+{
+    c.to_string()
+}
 
 /// TODO: specify this
 #[verifier::external_body]
@@ -205,7 +231,7 @@ pub fn u64_to_string(x: u64) -> (res: String)
     x.to_string()
 }
 
-/// By Travis
+/// From Verus tutorial
 pub fn vec_map<T, U>(v: &Vec<T>, f: impl Fn(&T) -> U) -> (res: Vec<U>)
     requires
         forall|i| #![trigger v[i]] 0 <= i < v.len() ==> call_requires(f, (&v[i],)),

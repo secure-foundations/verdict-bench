@@ -22,7 +22,7 @@ pub open spec fn spec_likely_issued(issuer: SpecCertificateValue, subject: SpecC
 
 /// Compare two Names
 /// References:
-/// - RFC 2459, 4.1.2.4
+/// - RFC 5280, 4.1.2.4
 /// - https://github.com/openssl/openssl/blob/ed6862328745c51c2afa2b6485cc3e275d543c4e/crypto/x509/x509_cmp.c#L254
 ///
 /// Basically equality, except that two PrintableString's
@@ -40,12 +40,54 @@ pub open spec fn spec_same_rdn(a: SpecRDNValue, b: SpecRDNValue) -> bool {
 }
 
 /// Continuing the spec of same_name
+/// See RFC 5280, 7.1
+///
+/// NOTE: for TeletexString, BMPString, UniversalString yet
+/// we simply compare their encoding byte-by-byte
 pub open spec fn spec_same_attr(a: SpecAttributeTypeAndValueValue, b: SpecAttributeTypeAndValueValue) -> bool {
     &&& a.typ =~= b.typ
     &&& match (a.value, b.value) {
-        // TODO: normalize PrintableStrings
-        (SpecDirectoryStringValue::PrintableString(a), SpecDirectoryStringValue::PrintableString(b)) => a =~= b,
+        (SpecDirectoryStringValue::PrintableString(a), SpecDirectoryStringValue::PrintableString(b)) |
+        (SpecDirectoryStringValue::UTF8String(a), SpecDirectoryStringValue::UTF8String(b)) |
+        (SpecDirectoryStringValue::IA5String(a), SpecDirectoryStringValue::IA5String(b)) =>
+            spec_normalize_string(a) =~= spec_normalize_string(b),
+
         _ => a.value =~= b.value
+    }
+}
+
+/// NOTE: RFC 5280, 7.1 requires using RFC 4518's normalization procedure
+/// But right now we only support a subset of these normalization rules
+///
+/// 1. Fold cases by calling Rust's str::to_lowercase
+/// 2. Remove leading/trailing spaces
+/// 3. Compress multiple inner spaces into one
+///
+/// Note that we only consider the ASCII space ' ' instead of all white spaces
+pub open spec fn spec_normalize_string(s: Seq<char>) -> Seq<char> {
+    spec_str_lower(spec_fold_char(spec_str_trim_char(s, ' '), ' '))
+}
+
+/// Replace consecutive occurrences of c in s with a single c, and ignore any trailing c
+pub open spec fn spec_fold_char(s: Seq<char>, c: char) -> Seq<char> {
+    spec_fold_char_helper(s, c, false)
+}
+
+pub open spec fn spec_fold_char_helper(s: Seq<char>, c: char, seen_c: bool) -> Seq<char>
+    decreases s.len()
+{
+    if s.len() == 0 {
+        seq![]
+    } else if s[0] == c {
+        spec_fold_char_helper(s.drop_first(), c, true)
+    } else {
+        let prefix = if seen_c {
+            seq![c, s[0]]
+        } else {
+            seq![s[0]]
+        };
+
+        prefix + spec_fold_char_helper(s.drop_first(), c, false)
     }
 }
 
@@ -167,7 +209,7 @@ pub fn same_attr(a: &AttributeTypeAndValueValue, b: &AttributeTypeAndValueValue)
         (DirectoryStringValue::PrintableString(a), DirectoryStringValue::PrintableString(b)) |
         (DirectoryStringValue::UTF8String(a), DirectoryStringValue::UTF8String(b)) |
         (DirectoryStringValue::IA5String(a), DirectoryStringValue::IA5String(b)) =>
-            str_eq_str(a, b),
+            str_eq_str(normalize_string(a).as_str(), normalize_string(b).as_str()),
 
         (DirectoryStringValue::TeletexString(a), DirectoryStringValue::TeletexString(b)) |
         (DirectoryStringValue::BMPString(a), DirectoryStringValue::BMPString(b)) |
@@ -178,6 +220,46 @@ pub fn same_attr(a: &AttributeTypeAndValueValue, b: &AttributeTypeAndValueValue)
 
         _ => false,
     }
+}
+
+pub fn normalize_string(s: &str) -> (res: String)
+    ensures res@ == spec_normalize_string(s@)
+{
+    str_lower(fold_char(str_trim_char(s, ' '), ' ').as_str())
+}
+
+/// Exec version of fold_char
+fn fold_char(s: &str, c: char) -> (res: String)
+    ensures res@ =~= spec_fold_char(s@, c)
+{
+    let mut seen_c = false;
+    let mut res = string_new();
+    let mut char_len = s.unicode_len();
+
+    assert(s@.skip(0) == s@);
+
+    // NOTE: performance might be bad since get_char is O(n)
+    for i in 0..char_len
+        invariant
+            char_len == s@.len(),
+            spec_fold_char(s@, c) =~= res@ + spec_fold_char_helper(s@.skip(i as int), c, seen_c),
+    {
+        let cur_c = s.get_char(i);
+
+        if cur_c == c {
+            seen_c = true;
+        } else {
+            if seen_c {
+                res.append(char_to_string(c).as_str());
+            }
+            seen_c = false;
+            res.append(char_to_string(cur_c).as_str());
+        }
+
+        assert(s@.skip(i as int).drop_first() == s@.skip(i + 1));
+    }
+
+    res
 }
 
 pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -> (res: bool)
@@ -224,4 +306,17 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
     false
 }
 
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn normalization() {
+        assert_eq!(normalize_string(""), "");
+        assert_eq!(normalize_string("  "), "");
+        assert_eq!(normalize_string("  a  "), "a");
+        assert_eq!(normalize_string("   aa b   C  "), "aa b c");
+    }
 }
