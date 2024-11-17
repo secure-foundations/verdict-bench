@@ -365,18 +365,6 @@ pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) ->
     }
 }
 
-/// Only certain directory name types are checked
-pub open spec fn is_checked_directory_name_type(name: &DirectoryName) -> bool {
-    ||| &name.oid == "2.5.4.6"@ // country
-    ||| &name.oid == "2.5.4.10"@ // organization
-    ||| &name.oid == "2.5.4.42"@ // given name
-    ||| &name.oid == "2.5.4.4"@ // surname
-    ||| &name.oid == "2.5.4.8"@ // state
-    ||| &name.oid == "2.5.4.9"@ // street address
-    ||| &name.oid == "2.5.4.7"@ // locality
-    ||| &name.oid == "2.5.4.17"@ // postal code
-}
-
 /// Check subject names in the leaf cert against name constraints
 /// See https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/name_constraints.cc#L663
 pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
@@ -513,5 +501,16 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
 }
 
 } // rspec!
+
+/// A validated chain should not contain expired certificates
+proof fn property_non_expiring(env: &Environment, chain: &Seq<Certificate>, task: &Task)
+    requires valid_chain(env, chain, task) == PolicyResult::Valid
+    ensures
+        forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
+            chain[i as int].not_before < env.time < chain[i as int].not_after
+{
+    assert(chain[0].not_before < env.time < chain[0].not_after);
+    assert(chain.last().not_before < env.time < chain.last().not_after);
+}
 
 } // verus!

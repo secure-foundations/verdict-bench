@@ -16,6 +16,8 @@ pub struct Query {
 
     /// `bundle[0]` is the leaf certificate
     pub bundle: Seq<SpecCertificateValue>,
+
+    /// Hostname validation, chain validation, etc.
     pub task: policy::Task,
 }
 
