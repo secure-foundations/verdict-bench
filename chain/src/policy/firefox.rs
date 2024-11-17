@@ -106,12 +106,16 @@ pub open spec fn strong_signature(alg: &SpecString) -> bool {
 }
 
 pub open spec fn key_usage_valid_non_leaf(cert: &Certificate) -> bool {
-    (&cert.ext_basic_constraints, &cert.ext_key_usage) matches (Some(bc), Some(key_usage))
-    ==> bc.is_ca && key_usage.key_cert_sign
+    &cert.ext_key_usage matches Some(key_usage)
+    ==> {
+        &&& &cert.ext_basic_constraints matches Some(bc)
+        &&& bc.is_ca
+        &&& key_usage.key_cert_sign
+    }
 }
 
 pub open spec fn key_usage_valid_leaf(cert: &Certificate) -> bool {
-    (&cert.ext_basic_constraints, &cert.ext_key_usage) matches (Some(bc), Some(key_usage))
+    &cert.ext_key_usage matches Some(key_usage)
     ==> {
         ||| key_usage.digital_signature
         ||| key_usage.key_encipherment
@@ -259,6 +263,7 @@ pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, l
     &&& bc.is_ca
     &&& bc.path_len matches Some(limit) ==> depth <= limit
 
+    &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
@@ -419,7 +424,7 @@ pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) 
 pub open spec fn cert_verified_intermediate(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(env, cert, leaf, depth)
     &&& not_in_crl(env, cert)
-    &&& strong_signature(&cert.sig_alg)
+    &&& strong_signature(&cert.sig_alg_inner.id)
     &&& extended_key_usage_valid(cert)
     &&& not_revoked(env, cert)
     &&& check_name_constraints(cert, leaf)
@@ -447,10 +452,11 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
 
     &&& not_in_crl(env, cert)
 
+    &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
-    &&& strong_signature(&cert.sig_alg)
+    &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid_leaf(cert)
     &&& extended_key_usage_valid(cert)
     &&& not_revoked(env, cert)

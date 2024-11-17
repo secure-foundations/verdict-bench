@@ -108,17 +108,17 @@ pub open spec fn strong_signature(alg: &SpecString) -> bool {
 }
 
 pub open spec fn key_usage_valid(cert: &Certificate) -> bool {
-    (&cert.ext_basic_constraints, &cert.ext_key_usage) matches (Some(bc), Some(key_usage))
+    &cert.ext_key_usage matches Some(key_usage)
     ==>
-    if bc.is_ca {
-        key_usage.key_cert_sign
-    } else {
-        !key_usage.key_cert_sign && {
-            ||| key_usage.digital_signature
-            ||| key_usage.key_encipherment
-            ||| key_usage.key_agreement
+        if &cert.ext_basic_constraints matches Some(bc) && bc.is_ca {
+            key_usage.key_cert_sign
+        } else {
+            !key_usage.key_cert_sign && {
+                ||| key_usage.digital_signature
+                ||| key_usage.key_encipherment
+                ||| key_usage.key_agreement
+            }
         }
-    }
 }
 
 pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
@@ -186,6 +186,7 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
+    &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
@@ -194,7 +195,7 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     &&& leaf_duration_valid(cert)
 
     &&& not_in_crl(env, cert)
-    &&& strong_signature(&cert.sig_alg)
+    &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
 }
@@ -203,6 +204,7 @@ pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, d
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
+    &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
@@ -310,7 +312,7 @@ pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) 
 pub open spec fn cert_verified_intermediate(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
     &&& not_in_crl(env, cert)
-    &&& strong_signature(&cert.sig_alg)
+    &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
     &&& check_name_constraints(cert, leaf)
@@ -375,12 +377,31 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
 
 } // rspec!
 
-/// A validated chain should not contain expired certificates
-proof fn property_non_expiring(env: &Environment, chain: &Seq<Certificate>, task: &Task)
+/// A subset of RFC rules
+proof fn rfc_properties(env: &Environment, chain: &Seq<Certificate>, task: &Task)
     requires valid_chain(env, chain, task) == PolicyResult::Valid
     ensures
+        // A validated chain should not contain expired certificates
         forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
-            chain[i as int].not_before < env.time < chain[i as int].not_after
+            chain[i as int].not_before < env.time < chain[i as int].not_after,
+
+        // Outer signature algorithm should match the inner one
+        forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
+            chain[i as int].sig_alg_inner.bytes == chain[i as int].sig_alg_outer.bytes,
+
+        // If the extension KeyUsage is present, at least one bit must be set
+        forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
+            (chain[i as int].ext_key_usage matches Some(key_usage) ==> {
+                ||| key_usage.digital_signature
+                ||| key_usage.non_repudiation
+                ||| key_usage.key_encipherment
+                ||| key_usage.data_encipherment
+                ||| key_usage.key_agreement
+                ||| key_usage.key_cert_sign
+                ||| key_usage.crl_sign
+                ||| key_usage.encipher_only
+                ||| key_usage.decipher_only
+            }),
 {
     assert(chain[0].not_before < env.time < chain[0].not_after);
 }

@@ -13,7 +13,7 @@ asn1! {
         #[default(0i64)] version: ASN1<ExplicitTag<ASN1<Integer>>> = ASN1(ExplicitTag(tag_of!(EXPLICIT 0), ASN1(Integer))),
 
         serial: ASN1<BigInt> = ASN1(BigInt),
-        signature: ASN1<AlgorithmIdentifier> = ASN1(AlgorithmIdentifier),
+        signature: Cached<ASN1<AlgorithmIdentifier>> = Cached(ASN1(AlgorithmIdentifier)),
         issuer: ASN1<Name> = ASN1(Name),
         validity: ASN1<Validity> = ASN1(Validity),
         subject: ASN1<Name> = ASN1(Name),

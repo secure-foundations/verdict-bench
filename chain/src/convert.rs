@@ -19,6 +19,10 @@ impl policy::Certificate {
     pub open spec fn spec_from(c: SpecCertificateValue) -> Option<policy::Certificate> {
         if_let! {
             let Ok(ser_cert) = ASN1(CertificateInner).view().spec_serialize(c);
+
+            let Ok(sig_alg_outer) = ASN1(AlgorithmIdentifier).view().spec_serialize(c.sig_alg);
+            let Ok(sig_alg_inner) = ASN1(AlgorithmIdentifier).view().spec_serialize(c.cert.signature);
+
             let Some(not_after) = Self::spec_time_to_timestamp(c.cert.validity.not_after);
             let Some(not_before) = Self::spec_time_to_timestamp(c.cert.validity.not_before);
             let Some(subject_key) = policy::SubjectKey::spec_from(c.cert.subject_key);
@@ -78,7 +82,15 @@ impl policy::Certificate {
                 fingerprint: hash::spec_to_hex_upper(hash::spec_sha256_digest(ser_cert)),
                 version: c.cert.version as u32,
                 serial: hash::spec_to_hex_upper(c.cert.serial),
-                sig_alg: Self::spec_oid_to_string(c.sig_alg.id),
+
+                sig_alg_outer: policy::SignatureAlgorithm {
+                    id: Self::spec_oid_to_string(c.sig_alg.id),
+                    bytes: hash::spec_to_hex_upper(sig_alg_outer),
+                },
+                sig_alg_inner: policy::SignatureAlgorithm {
+                    id: Self::spec_oid_to_string(c.cert.signature.id),
+                    bytes: hash::spec_to_hex_upper(sig_alg_inner),
+                },
 
                 not_after: not_after as u64,
                 not_before: not_before as u64,
@@ -171,7 +183,15 @@ impl policy::Certificate {
             fingerprint: hash::to_hex_upper(&hash::sha256_digest(c.serialize())),
             version: c.get().cert.get().version as u32,
             serial: hash::to_hex_upper(c.get().cert.get().serial.bytes()),
-            sig_alg: Self::oid_to_string(&c.get().sig_alg.id),
+
+            sig_alg_outer: policy::ExecSignatureAlgorithm {
+                id: Self::oid_to_string(&c.get().sig_alg.get().id),
+                bytes: hash::to_hex_upper(c.get().sig_alg.serialize()),
+            },
+            sig_alg_inner: policy::ExecSignatureAlgorithm {
+                id: Self::oid_to_string(&c.get().cert.get().signature.get().id),
+                bytes: hash::to_hex_upper(c.get().cert.get().signature.serialize()),
+            },
 
             not_after: not_after as u64,
             not_before: not_before as u64,

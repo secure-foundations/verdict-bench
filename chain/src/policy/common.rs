@@ -99,11 +99,17 @@ pub struct CertificatePolicies {
     pub policies: Seq<SpecString>,
 }
 
+pub struct SignatureAlgorithm {
+    pub id: SpecString,
+    pub bytes: SpecString,
+}
+
 pub struct Certificate {
     pub fingerprint: SpecString,
     pub version: u32,
     pub serial: SpecString,
-    pub sig_alg: SpecString,
+    pub sig_alg_outer: SignatureAlgorithm,
+    pub sig_alg_inner: SignatureAlgorithm,
     pub not_after: u64,
     pub not_before: u64,
 

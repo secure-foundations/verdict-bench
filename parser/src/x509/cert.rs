@@ -14,7 +14,7 @@ verus! {
 asn1! {
     seq CertificateInner {
         cert: Cached<ASN1<TBSCertificate>> = Cached(ASN1(TBSCertificate)),
-        sig_alg: ASN1<AlgorithmIdentifier> = ASN1(AlgorithmIdentifier),
+        sig_alg: Cached<ASN1<AlgorithmIdentifier>> = Cached(ASN1(AlgorithmIdentifier)),
         sig: ASN1<BitString> = ASN1(BitString),
     }
 }

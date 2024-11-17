@@ -50,11 +50,9 @@ pub open spec fn spec_same_attr(a: SpecAttributeTypeAndValueValue, b: SpecAttrib
 }
 
 /// Verify the subject cert's signature using issuer's public key
+/// NOTE: Comparison of subject.sig_alg == subject.cert.signature is done in the policy
 pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: SpecCertificateValue) -> bool
 {
-    // Signature algorithm is consistent in the subject cert
-    &&& subject.sig_alg =~= subject.cert.signature
-
     &&& ASN1(TBSCertificate)@.spec_serialize(subject.cert) matches Ok(tbs_cert)
 
     // TODO: support more algorithms
@@ -185,23 +183,19 @@ pub fn same_attr(a: &AttributeTypeAndValueValue, b: &AttributeTypeAndValueValue)
 pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -> (res: bool)
     ensures res == spec_verify_signature(issuer@, subject@)
 {
-    if !subject.get().sig_alg.polyfill_eq(&subject.get().cert.get().signature) {
-        return false;
-    }
-
     let tbs_cert = subject.get().cert.serialize();
 
-    let sig_alg = &subject.get().sig_alg;
+    let sig_alg = &subject.get().sig_alg.get();
     let pub_key = issuer.get().cert.get().subject_key.pub_key.bytes();
     let sig = subject.get().sig.bytes();
 
     match &issuer.get().cert.get().subject_key.alg.param {
         // RSA PKCS#1 v1.5
         AlgorithmParamValue::RSAEncryption(..) => {
-            if  subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
-                subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
-                subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
-                subject.get().sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
+            if sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
+               sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
+               sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
+               sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
                 return rsa::rsa_pkcs1_v1_5_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
         }
@@ -209,16 +203,16 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
         // ECDSA P-256 and P-384
         AlgorithmParamValue::ECPublicKey(curve) => {
             if curve.polyfill_eq(&oid!(EC_P_256)) && (
-                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
-                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) ||
-                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA512))
+                sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
+                sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) ||
+                sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA512))
             ) {
                 return ecdsa::ecdsa_p256_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
 
             if curve.polyfill_eq(&oid!(EC_P_384)) && (
-                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
-                subject.get().sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384))
+                sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
+                sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384))
             ) {
                 return ecdsa::ecdsa_p384_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
