@@ -195,25 +195,6 @@ pub fn str_to_utf8(s: &str) -> (res: &[u8])
     s.as_bytes()
 }
 
-/// NOTE: unspecified
-pub closed spec fn spec_str_lower(s: Seq<char>) -> Seq<char>;
-
-#[verifier::external_body]
-pub fn str_lower(s: &str) -> (res: String)
-    ensures res@ == spec_str_lower(s@)
-{
-    s.to_lowercase()
-}
-
-pub closed spec fn spec_str_trim_char(s: Seq<char>, c: char) -> Seq<char>;
-
-#[verifier::external_body]
-pub fn str_trim_char(s: &str, c: char) -> (res: &str)
-    ensures res@ == spec_str_trim_char(s@, c)
-{
-    s.trim_matches(c)
-}
-
 pub closed spec fn spec_u64_to_string(x: u64) -> (res: Seq<char>);
 
 #[verifier::external_body]

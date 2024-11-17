@@ -59,35 +59,33 @@ pub open spec fn spec_same_attr(a: SpecAttributeTypeAndValueValue, b: SpecAttrib
 /// NOTE: RFC 5280, 7.1 requires using RFC 4518's normalization procedure
 /// But right now we only support a subset of these normalization rules
 ///
-/// 1. Fold cases by calling Rust's str::to_lowercase
+/// 1. Fold cases by Rust's char::to_lowercase
 /// 2. Remove leading/trailing spaces
 /// 3. Compress multiple inner spaces into one
 ///
 /// Note that we only consider the ASCII space ' ' instead of all white spaces
 pub open spec fn spec_normalize_string(s: Seq<char>) -> Seq<char> {
-    spec_str_lower(spec_fold_char(spec_str_trim_char(s, ' '), ' '))
+    spec_normalize_string_helper(s, false, false)
 }
 
-/// Replace consecutive occurrences of c in s with a single c, and ignore any trailing c
-pub open spec fn spec_fold_char(s: Seq<char>, c: char) -> Seq<char> {
-    spec_fold_char_helper(s, c, false)
-}
-
-pub open spec fn spec_fold_char_helper(s: Seq<char>, c: char, seen_c: bool) -> Seq<char>
+/// Helper function for spec_normalize_string
+/// `seen_nw` = have seen a non-whitespace since the start of the string
+/// `seen_ws` = have seen a whitespace since the last non-whitespace character
+pub open spec fn spec_normalize_string_helper(s: Seq<char>, seen_nw: bool, seen_ws: bool) -> Seq<char>
     decreases s.len()
 {
     if s.len() == 0 {
-        seq![]
-    } else if s[0] == c {
-        spec_fold_char_helper(s.drop_first(), c, true)
+        seq![] // Ignores spaces seen so far
+    } else if s[0] == ' ' {
+        spec_normalize_string_helper(s.drop_first(), seen_nw, true)
     } else {
-        let prefix = if seen_c {
-            seq![c, s[0]]
+        let prefix = if seen_nw && seen_ws {
+            seq![' '] + spec_char_lower(s[0])
         } else {
-            seq![s[0]]
+            spec_char_lower(s[0])
         };
 
-        prefix + spec_fold_char_helper(s.drop_first(), c, false)
+        prefix + spec_normalize_string_helper(s.drop_first(), true, false)
     }
 }
 
@@ -222,17 +220,13 @@ pub fn same_attr(a: &AttributeTypeAndValueValue, b: &AttributeTypeAndValueValue)
     }
 }
 
-pub fn normalize_string(s: &str) -> (res: String)
-    ensures res@ == spec_normalize_string(s@)
+/// Exec version of spec_normalize_string
+fn normalize_string(s: &str) -> (res: String)
+    ensures res@ =~= spec_normalize_string(s@)
 {
-    str_lower(fold_char(str_trim_char(s, ' '), ' ').as_str())
-}
+    let mut seen_nw = false;
+    let mut seen_ws = false;
 
-/// Exec version of fold_char
-fn fold_char(s: &str, c: char) -> (res: String)
-    ensures res@ =~= spec_fold_char(s@, c)
-{
-    let mut seen_c = false;
     let mut res = string_new();
     let mut char_len = s.unicode_len();
 
@@ -242,24 +236,37 @@ fn fold_char(s: &str, c: char) -> (res: String)
     for i in 0..char_len
         invariant
             char_len == s@.len(),
-            spec_fold_char(s@, c) =~= res@ + spec_fold_char_helper(s@.skip(i as int), c, seen_c),
+            spec_normalize_string(s@) =~= res@ + spec_normalize_string_helper(s@.skip(i as int), seen_nw, seen_ws),
     {
-        let cur_c = s.get_char(i);
+        let c = s.get_char(i);
 
-        if cur_c == c {
-            seen_c = true;
+        if c == ' ' {
+            seen_ws = true;
         } else {
-            if seen_c {
-                res.append(char_to_string(c).as_str());
+            if seen_nw && seen_ws {
+                res.append(" ");
             }
-            seen_c = false;
-            res.append(char_to_string(cur_c).as_str());
+            res.append(char_lower(c).as_str());
+
+            seen_nw = true;
+            seen_ws = false;
         }
 
+        proof { reveal_strlit(" "); }
         assert(s@.skip(i as int).drop_first() == s@.skip(i + 1));
     }
 
     res
+}
+
+/// NOTE: For lower case folding, we trust Rust's built-in definition
+pub closed spec fn spec_char_lower(c: char) -> Seq<char>;
+
+#[verifier::external_body]
+fn char_lower(c: char) -> (res: String)
+    ensures res@ == spec_char_lower(c)
+{
+    c.to_lowercase().to_string()
 }
 
 pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -> (res: bool)
@@ -313,10 +320,11 @@ mod test {
     use super::*;
 
     #[test]
-    fn normalization() {
+    fn sanity() {
         assert_eq!(normalize_string(""), "");
         assert_eq!(normalize_string("  "), "");
         assert_eq!(normalize_string("  a  "), "a");
         assert_eq!(normalize_string("   aa b   C  "), "aa b c");
+        assert_eq!(normalize_string("  a  b  c  "), "a b c");
     }
 }
