@@ -7,7 +7,7 @@ use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
 use syn_verus::spanned::Spanned;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, LitStr, Local, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant, Visibility};
+use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMatches, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, LitBool, LitStr, Local, MatchesOpExpr, MatchesOpToken, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, PatWild, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant, Visibility};
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
@@ -172,6 +172,31 @@ macro_rules! expr_method_call {
             args: Punctuated::from_iter(args),
         })
     }};
+}
+
+macro_rules! expr_bool_lit {
+    ($value:expr $(,)?) => {
+        Expr::Lit(ExprLit {
+            attrs: Vec::new(),
+            lit: Lit::Bool(LitBool {
+                value: $value,
+                span: Span::call_site(),
+            }),
+        })
+    };
+}
+
+macro_rules! arm {
+    ($pat:expr, $body:expr $(,)?) => {
+        Arm {
+            attrs: Vec::new(),
+            pat: $pat,
+            guard: None,
+            fat_arrow_token: Default::default(),
+            body: Box::new($body),
+            comma: Some(Default::default()),
+        }
+    };
 }
 
 fn exec_type_name(name: &str) -> String {
@@ -774,6 +799,14 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                         compile_expr(ctx, local, &expr_binary.right)?,
                     ))),
 
+                BinOp::Imply(..) =>
+                    // `a ==> b` to `!a || b`
+                    Ok(expr_binary!(
+                        expr_unary!(Not, compile_expr(ctx, local, &expr_binary.left)?),
+                        Or,
+                        compile_expr(ctx, local, &expr_binary.right)?,
+                    )),
+
                 // By default, we just clone the same binary operation
                 _ => Ok(Expr::Binary(ExprBinary {
                     left: Box::new(compile_expr(ctx, local, &expr_binary.left)?),
@@ -1051,6 +1084,53 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                 elems: expr_tuple.elems.iter().map(|expr| compile_expr(ctx, local, expr)).collect::<Result<_, Error>>()?,
                 ..expr_tuple.clone()
             })),
+
+        Expr::Matches(ExprMatches {
+            lhs, pat, op_expr, ..
+        }) => {
+            let mut local = local.clone();
+            let pat = compile_pattern(ctx, &mut local, pat)?;
+
+            // 1. `lhs matches pat ==> rhs` to `match lhs { pat => rhs, _ => true }`
+            // 2. `lhs matches pat && rhs` to `match lhs { pat => rhs, _ => false }`
+            // 3. `lhs matches pat` to `match lhs { pat => true, _ => false }`
+            Ok(Expr::Match(ExprMatch {
+                attrs: Vec::new(),
+                match_token: Default::default(),
+                expr: Box::new(compile_expr(ctx, &local, lhs)?),
+                brace_token: Default::default(),
+                arms: vec![
+                    if let Some(MatchesOpExpr { rhs, .. }) = op_expr {
+                        arm!(pat, Expr::Block(ExprBlock {
+                            attrs: Vec::new(),
+                            label: None,
+                            block: Block {
+                                brace_token: Default::default(),
+                                stmts: vec![
+                                    Stmt::Expr(compile_expr(ctx, &local, rhs)?),
+                                ],
+                            }
+                        }))
+                    } else {
+                        // If no RHS, use true
+                        arm!(pat, expr_bool_lit!(true))
+                    },
+
+                    arm!(
+                        Pat::Wild(PatWild { attrs: Vec::new(), underscore_token: Default::default() }),
+                        expr_bool_lit!(match op_expr {
+                            Some(MatchesOpExpr { op_token, .. }) =>
+                                match op_token {
+                                    MatchesOpToken::Implies(..) => true,
+                                    MatchesOpToken::AndAnd(..) => false,
+                                    MatchesOpToken::BigAnd => false,
+                                }
+                            None => false,
+                        }),
+                    ),
+                ],
+            }))
+        }
 
         // TODO: maybe?
         // Expr::Matches(expr_matches) => todo!(),

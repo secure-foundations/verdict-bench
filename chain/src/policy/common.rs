@@ -125,7 +125,6 @@ pub enum Task {
     ChainValidation,
 }
 
-use ExecCertificate as Certificate;
 use ExecChromeEnvironment as ChromeEnvironment;
 use ExecFirefoxEnvironment as FirefoxEnvironment;
 use exec_chrome_valid_chain as chrome_valid_chain;
@@ -146,6 +145,85 @@ pub open spec fn valid_chain(policy: &Policy, chain: &Seq<Certificate>, task: &T
     match policy {
         Policy::Chrome(env) => chrome_valid_chain(env, chain, task),
         Policy::Firefox(env) => firefox_valid_chain(env, chain, task),
+    }
+}
+
+/// Match a pattern with wildcard (e.g. "*.example.com") against a string
+pub open spec fn match_name(pattern: &SpecString, name: &SpecString) -> bool {
+    if pattern.len() > 2 && pattern.char_at(0) == '*' && pattern.char_at(1) == '.' {
+        let suffix = pattern.skip(2);
+
+        ||| &suffix == name
+        ||| suffix.len() + 1 < name.len() && // `name` should be longer than ".{suffix}"
+            &suffix == &name.skip(name.len() - suffix.len()) &&
+            name.char_at(name.len() - suffix.len() - 1) == '.' &&
+            // the prefix of `name` that matches '*' should not contain '.'
+            !name.take(name.len() - suffix.len() - 1).has_char('.')
+    } else {
+        pattern == name
+    }
+}
+
+/// Additional checks for issuing relation
+/// TODO: check subject.akid.auth_cert_issuer
+/// References:
+/// - RFC 2459, 4.2.1.1
+/// - https://github.com/openssl/openssl/blob/ed6862328745c51c2afa2b6485cc3e275d543c4e/crypto/x509/v3_purp.c#L1002
+pub open spec fn check_auth_key_id(issuer: &Certificate, subject: &Certificate) -> bool {
+    match &subject.ext_authority_key_id {
+        Some(auth_key_id) => {
+            // Subject's AKID matches issuer's SKID if both exist
+            &&& match (&issuer.ext_subject_key_id, &auth_key_id.key_id) {
+                (Some(skid), Some(akid)) => skid == akid,
+                _ => true,
+            }
+
+            // Subject's AKID serial matches issuer's serial if both exist
+            &&& match &auth_key_id.serial {
+                Some(akid_serial) => akid_serial == &issuer.serial,
+                None => true,
+            }
+        }
+        None => true,
+    }
+}
+
+pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName) -> bool {
+    exists |i: usize| 0 <= i < rdn.len() && {
+        &&& #[trigger] &rdn[i as int].oid == &name.oid
+        &&& &rdn[i as int].value == &name.value
+    }
+}
+
+/// Check if for any item in rdn2, there is a corresponding item in rdn1 with the same OID
+/// and same value
+pub open spec fn is_subtree_rdn(rdn1: &Seq<DirectoryName>, rdn2: &Seq<DirectoryName>) -> bool {
+    &&& rdn1.len() <= rdn2.len()
+    &&& forall |i: usize| 0 <= i < rdn1.len() ==> rdn_has_name(&rdn2, #[trigger] &rdn1[i as int])
+}
+
+/// Check if name1 is a subset set of name2
+/// See: https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/verify_name_match.cc#L261C6-L261C29
+pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<DirectoryName>>) -> bool {
+    &&& name1.len() <= name2.len()
+    &&& forall |i: usize| 0 <= i < name1.len() ==> is_subtree_rdn(#[trigger] &name1[i as int], &name2[i as int])
+}
+
+/// Similar to `match_name`, but used for checking name constraints
+/// TODO: reference
+pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) -> bool {
+    ||| name_constraint.len() == 0 // empty string matches everything
+    ||| if name_constraint.char_at(0) == '.' {
+        // name_constraint starts with '.': name_constraint should be a suffix of name
+        &&& name_constraint.len() <= name.len()
+        &&& &name.skip(name.len() - name_constraint.len()) == name_constraint
+    } else {
+        // name_constraint starts with a label: name must be the same
+        // or have a suffix of '.<name_constraint>'
+        ||| name == name_constraint
+        ||| name.len() > name_constraint.len() &&
+            name.char_at(name.len() - name_constraint.len() - 1) == '.' &&
+            &name.skip(name.len() - name_constraint.len()) == name_constraint
     }
 }
 
