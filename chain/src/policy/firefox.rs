@@ -261,7 +261,7 @@ pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, l
     &&& depth <= 6 // global max intermediates limit in Firefox
     &&& &cert.ext_basic_constraints matches Some(bc)
     &&& bc.is_ca
-    &&& bc.path_len matches Some(limit) ==> depth <= limit
+    &&& bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
     &&& cert.not_before < env.time

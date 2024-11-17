@@ -176,7 +176,7 @@ pub open spec fn match_san(env: &Environment, san: &SubjectAltName, name: &SpecS
 }
 
 /// Domain matches one of the SANs
-pub open spec fn domain_matches_san(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
+pub open spec fn match_san_domain(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
     &&& &cert.ext_subject_alt_name matches Some(san)
     &&& valid_san(env, san)
     &&& match_san(env, san, domain)
@@ -190,7 +190,7 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
 
-    &&& domain_matches_san(env, cert, domain)
+    &&& match_san_domain(env, cert, domain)
 
     &&& leaf_duration_valid(cert)
 
@@ -198,6 +198,9 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
+
+    &&& &cert.ext_basic_constraints matches Some(bc) ==> (bc.path_len matches Some(limit) ==> limit >= 0)
+    &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
 }
 
 pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, depth: usize) -> bool {
@@ -210,7 +213,11 @@ pub open spec fn cert_verified_non_leaf(env: &Environment, cert: &Certificate, d
 
     &&& &cert.ext_basic_constraints matches Some(bc)
     &&& bc.is_ca
-    &&& bc.path_len matches Some(limit) ==> depth <= limit
+    &&& bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize
+    &&& key_usage_valid(cert)
+    &&& extended_key_usage_valid(cert)
+
+    &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
 }
 
 pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
@@ -313,8 +320,6 @@ pub open spec fn cert_verified_intermediate(env: &Environment, cert: &Certificat
     &&& cert_verified_non_leaf(env, cert, depth)
     &&& not_in_crl(env, cert)
     &&& strong_signature(&cert.sig_alg_inner.id)
-    &&& key_usage_valid(cert)
-    &&& extended_key_usage_valid(cert)
     &&& check_name_constraints(cert, leaf)
 }
 
@@ -346,7 +351,6 @@ pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf:
 
     &&& valid_root_fingerprint(env, cert, domain)
     &&& !is_bad_symantec_root(env, cert)
-    &&& extended_key_usage_valid(cert)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
@@ -402,6 +406,44 @@ proof fn rfc_properties(env: &Environment, chain: &Seq<Certificate>, task: &Task
                 ||| key_usage.encipher_only
                 ||| key_usage.decipher_only
             }),
+
+        // Issuer and subject UID should only appear if version is 2 or 3
+        forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
+            (chain[i as int].issuer_uid matches Some(_) || chain[i as int].subject_uid matches Some(_))
+            ==>
+            chain[i as int].version == 2 || chain[i as int].version == 3,
+
+        // PathLenConstraints should be non-negative
+        forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
+            (chain[i as int].ext_basic_constraints matches Some(bc)
+            ==> (bc.path_len matches Some(limit) ==> limit >= 0)),
+
+        // If SubjectAltName is present, it should contain at least one name
+        // NOTE: not checked for intermediate certs
+        // forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>
+        //     chain[i as int].ext_subject_alt_name matches Some(san) ==> san.names.len() > 0,
+
+        // If BasicConstraints.PathLenConstraint is present,
+        // is_ca is set, and key_usage.key_cert_sign is set (if present)
+        // then the cert must not be followed by more than PathLenConstraint
+        // non-leaf certificates
+        forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==> {
+            &chain[i as int].ext_basic_constraints matches Some(bc) ==> {
+                bc.path_len matches Some(limit) ==> {
+                    bc.is_ca && (chain[i as int].ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign)
+                    ==>
+                    (i - 1) <= limit as usize
+                }
+            }
+        },
+
+        // Every non-leaf certificate must be a CA certificate
+        forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
+            (&chain[i as int].ext_basic_constraints matches Some(bc) && bc.is_ca),
+
+        // Every non-leaf certificate must have keyCertSign set in KeyUsage (if present)
+        forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
+            (&chain[i as int].ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign),
 {
     assert(chain[0].not_before < env.time < chain[0].not_after);
 }

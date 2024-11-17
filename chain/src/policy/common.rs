@@ -67,7 +67,7 @@ pub struct ExtendedKeyUsage {
 pub struct BasicConstraints {
     pub critical: bool,
     pub is_ca: bool,
-    pub path_len: Option<usize>,
+    pub path_len: Option<i64>,
 }
 
 pub struct KeyUsage {
@@ -115,6 +115,9 @@ pub struct Certificate {
 
     pub subject_name: Seq<Seq<DirectoryName>>,
     pub subject_key: SubjectKey,
+
+    pub issuer_uid: Option<SpecString>,
+    pub subject_uid: Option<SpecString>,
 
     pub ext_authority_key_id: Option<AuthorityKeyIdentifier>,
     pub ext_subject_key_id: Option<SpecString>,

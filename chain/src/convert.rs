@@ -98,6 +98,17 @@ impl policy::Certificate {
                 subject_name: policy::DirectoryName::spec_from(c.cert.subject),
                 subject_key,
 
+                issuer_uid: if let OptionDeep::Some(uid) = c.cert.issuer_uid {
+                    Some(hash::spec_to_hex_upper(BitStringValue::spec_bytes(uid)))
+                } else {
+                    None
+                },
+                subject_uid: if let OptionDeep::Some(uid) = c.cert.subject_uid {
+                    Some(hash::spec_to_hex_upper(BitStringValue::spec_bytes(uid)))
+                } else {
+                    None
+                },
+
                 ext_authority_key_id,
                 ext_subject_key_id,
                 ext_extended_key_usage,
@@ -198,6 +209,17 @@ impl policy::Certificate {
 
             subject_name: policy::DirectoryName::from(&c.get().cert.get().subject),
             subject_key,
+
+            issuer_uid: if let OptionDeep::Some(uid) = &c.get().cert.get().issuer_uid {
+                Some(hash::to_hex_upper(uid.bytes()))
+            } else {
+                None
+            },
+            subject_uid: if let OptionDeep::Some(uid) = &c.get().cert.get().subject_uid {
+                Some(hash::to_hex_upper(uid.bytes()))
+            } else {
+                None
+            },
 
             ext_authority_key_id,
             ext_subject_key_id,
@@ -475,7 +497,7 @@ impl policy::BasicConstraints {
                 critical: ext.critical,
                 is_ca: bc.is_ca,
                 path_len: match bc.path_len {
-                    OptionDeep::Some(len) => Some(len as usize),
+                    OptionDeep::Some(len) => Some(len as i64),
                     OptionDeep::None => None,
                 },
             })
@@ -492,7 +514,7 @@ impl policy::BasicConstraints {
                 critical: ext.critical,
                 is_ca: bc.is_ca,
                 path_len: match bc.path_len {
-                    OptionDeep::Some(len) => Some(len as usize),
+                    OptionDeep::Some(len) => Some(len as i64),
                     OptionDeep::None => None,
                 },
             })
