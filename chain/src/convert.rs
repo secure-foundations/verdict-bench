@@ -924,7 +924,6 @@ impl policy::DirectoryName {
     }
 
     /// Convert each attribute of RDN to a DirectoryName, ignoring unsupported ones
-    /// TODO: support for more dir strings
     pub closed spec fn spec_rdn_to_dir_names(rdn: SpecRDNValue) -> Seq<policy::DirectoryName>
         decreases rdn.len()
     {
@@ -987,6 +986,7 @@ impl policy::DirectoryName {
     /// Convert a dir string to string
     /// NOTE: DirectoryString refers to a overloaded string type in X.509
     /// DirectoryName refers to the string attached with an OID used in subject name
+    /// TODO: support more dir strings
     pub closed spec fn spec_dir_string_to_string(dir: SpecDirectoryStringValue) -> Option<Seq<char>>
     {
         match dir {

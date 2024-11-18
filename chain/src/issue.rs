@@ -89,12 +89,20 @@ pub open spec fn spec_normalize_string_helper(s: Seq<char>, seen_nw: bool, seen_
 }
 
 /// Verify the subject cert's signature using issuer's public key
+///
+/// Currently we support these signature schemes:
+/// - RSA PKCS#1 v1.5 with SHA-224, SHA-256, SHA-384, SHA-512 (Evercrypt through libcrux)
+/// - P-256 with SHA-256, SHA-384, SHA-512 (Evercrypt through libcrux)
+/// - P-384 with SHA-256, SHA-384 (AWS-LC)
+///
+/// NOTE: P-384 + SHA-256 is not yet verified in AWS-LC
+/// Also P-384 + SHA-384 is only verified for Intel CPUs (SandyBridge+)
+/// See https://github.com/awslabs/aws-lc-verification
+///
 /// NOTE: Comparison of subject.sig_alg == subject.cert.signature is done in the policy
 pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: SpecCertificateValue) -> bool
 {
     &&& ASN1(TBSCertificate)@.spec_serialize(subject.cert) matches Ok(tbs_cert)
-
-    // TODO: support more algorithms
     &&& {
         // RSA
         ||| {
