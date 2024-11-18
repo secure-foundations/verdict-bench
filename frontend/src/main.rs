@@ -96,6 +96,10 @@ struct ValidateArgs {
     /// Generate timing stats in wall-clock time
     #[clap(short = 's', long, default_value_t = false)]
     stats: bool,
+
+    /// Repeat the validation for benchmarking purpose
+    #[clap(short = 'n', long)]
+    repeat: Option<usize>,
 }
 
 #[derive(Parser, Debug)]
@@ -208,27 +212,44 @@ fn validate(args: ValidateArgs) -> Result<(), Error> {
         parse_x509_cert(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?);
 
-    let begin = Instant::now();
+    let repeat = args.repeat.unwrap_or(1);
 
-    let chain = VecDeep::from_vec(chain_bytes.iter().map(|cert_bytes| {
-        parse_x509_cert(cert_bytes)
-    }).collect::<Result<Vec<_>, _>>()?);
+    if repeat == 0 {
+        return Err(Error::ZeroRepeat);
+    }
 
     let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
-
     let policy = match args.policy {
         Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
         Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
     };
 
-    if args.debug {
-        print_debug_info(&roots, &chain, &args.domain, timestamp as i64);
+    let validator = Validator::new(policy, roots);
+
+    let mut durations = Vec::with_capacity(repeat);
+    let mut res = false;
+
+    // Repeat <repeat> times
+    for i in 0..repeat {
+        let begin = Instant::now();
+
+        let chain = VecDeep::from_vec(chain_bytes.iter().map(|cert_bytes| {
+            parse_x509_cert(cert_bytes)
+        }).collect::<Result<Vec<_>, _>>()?);
+
+        if args.debug && i == 0 {
+            print_debug_info(&validator.roots, &chain, &args.domain, timestamp as i64);
+        }
+
+        res = validator.validate(&chain, &policy::ExecTask::DomainValidation(args.domain.clone()))?;
+
+        durations.push(begin.elapsed().as_micros());
     }
 
-    let res = Validator::new(policy, roots).validate(&chain, &policy::ExecTask::DomainValidation(args.domain.clone()))?;
-
     if args.stats {
-        eprintln!("parsing + validation took {:.2}ms", begin.elapsed().as_micros() as f64 / 1000f64);
+        for duration in durations {
+            eprintln!("validation took {:.2}ms", duration as f64 / 1000f64);
+        }
     }
 
     eprintln!("result: {}", res);
@@ -439,13 +460,13 @@ fn validate_ct_logs(args: ValidateCTLogArgs) -> Result<(), Error>
             output_writer.flush()?;
 
             // if num_res % 50 == 0 {
-            //     eprint!("\rparsing + validation average: {:.2}ms", timer.lock().unwrap().as_micros() as f64 / num_res as f64 / 1000f64);
+            //     eprint!("\rvalidation average: {:.2}ms", timer.lock().unwrap().as_micros() as f64 / num_res as f64 / 1000f64);
             // }
             num_res += 1;
         }
 
         // eprintln!("");
-        eprintln!("validated {} certificate(s); parsing + validation took {:.3}s (across threads); total: {:.3}s",
+        eprintln!("validated {} certificate(s); validation took {:.3}s (across threads); total: {:.3}s",
             num_res, timer.lock().unwrap().as_secs_f64(), begin.elapsed().as_secs_f64());
 
         Ok(())

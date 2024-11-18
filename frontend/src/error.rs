@@ -36,6 +36,9 @@ pub enum Error {
 
     #[error("failed to validate domain")]
     DomainValidationError,
+
+    #[error("repeat number must be positive")]
+    ZeroRepeat,
 }
 
 impl From<X509ParseError> for Error {

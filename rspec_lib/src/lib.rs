@@ -18,6 +18,7 @@ pub trait Eq<A: DeepView, B: DeepView<V = A::V>> {
 
 impl<'a, 'b> Eq<&'a String, &'b str> for RSpec {
     #[verifier::external_body]
+    #[inline(always)]
     fn eq(a: &'a String, b: &'b str) -> (res: bool) {
         a == b
     }
@@ -25,6 +26,7 @@ impl<'a, 'b> Eq<&'a String, &'b str> for RSpec {
 
 impl<'a, 'b> Eq<&'a str, &'b String> for RSpec {
     #[verifier::external_body]
+    #[inline(always)]
     fn eq(a: &'a str, b: &'b String) -> (res: bool) {
         a == b
     }
@@ -32,6 +34,7 @@ impl<'a, 'b> Eq<&'a str, &'b String> for RSpec {
 
 impl<'a, 'b> Eq<&'a String, String> for RSpec {
     #[verifier::external_body]
+    #[inline(always)]
     fn eq(a: &'a String, b: String) -> (res: bool) {
         a == &b
     }
@@ -39,6 +42,7 @@ impl<'a, 'b> Eq<&'a String, String> for RSpec {
 
 impl<'a, 'b> Eq<&'a String, &'b String> for RSpec {
     #[verifier::external_body]
+    #[inline(always)]
     fn eq(a: &'a String, b: &'b String) -> (res: bool) {
         a == b
     }
@@ -46,6 +50,7 @@ impl<'a, 'b> Eq<&'a String, &'b String> for RSpec {
 
 impl<'a, 'b, 'c> Eq<&'a String, &'b &'c String> for RSpec {
     #[verifier::external_body]
+    #[inline(always)]
     fn eq(a: &'a String, b: &'b &'c String) -> (res: bool) {
         a == *b
     }
@@ -56,18 +61,21 @@ macro_rules! native_eq {
     ($ty:ident $($rest:ident)*) => {
         verus! {
             impl Eq<$ty, $ty> for RSpec {
+                #[inline(always)]
                 fn eq(a: $ty, b: $ty) -> (res: bool) {
                     a == b
                 }
             }
 
             impl<'a> Eq<&'a $ty, $ty> for RSpec {
+                #[inline(always)]
                 fn eq(a: &'a $ty, b: $ty) -> (res: bool) {
                     *a == b
                 }
             }
 
             impl<'b> Eq<$ty, &'b $ty> for RSpec {
+                #[inline(always)]
                 fn eq(a: $ty, b: &'b$ty) -> (res: bool) {
                     a == *b
                 }
@@ -95,6 +103,7 @@ pub trait Index<E: DeepView>: DeepView<V = Seq<E::V>> {
 }
 
 impl<E: DeepView> Index<E> for Vec<E> {
+    #[inline(always)]
     fn rspec_index(&self, i: usize) -> (res: &E) {
         &self[i]
     }
@@ -119,12 +128,14 @@ pub trait CharAt: DeepView<V = Seq<char>> {
 }
 
 impl CharAt for String {
+    #[inline(always)]
     fn rspec_char_at(&self, i: usize) -> (res: char) {
         self.as_str().get_char(i)
     }
 }
 
 impl CharAt for str {
+    #[inline(always)]
     fn rspec_char_at(&self, i: usize) -> (res: char) {
         self.get_char(i)
     }
@@ -149,6 +160,7 @@ pub trait HasChar: DeepView<V = Seq<char>> {
 
 impl HasChar for String {
     #[verifier::external_body]
+    #[inline(always)]
     fn rspec_has_char(&self, c: char) -> (res: bool) {
         self.chars().any(|x| x == c)
     }
@@ -156,6 +168,7 @@ impl HasChar for String {
 
 impl HasChar for str {
     #[verifier::external_body]
+    #[inline(always)]
     fn rspec_has_char(&self, c: char) -> (res: bool) {
         self.chars().any(|x| x == c)
     }
@@ -168,12 +181,14 @@ pub trait Len<E: DeepView>: DeepView<V = Seq<E::V>> {
 }
 
 impl<E: DeepView> Len<E> for Vec<E> {
+    #[inline(always)]
     fn rspec_len(&self) -> (res: usize) {
         self.len()
     }
 }
 
 impl Len<char> for String {
+    #[inline(always)]
     fn rspec_len(&self) -> (res: usize) {
         self.as_str().unicode_len()
     }
@@ -190,15 +205,18 @@ pub trait Skip<E, R: DeepView<V = Seq<E>>>: DeepView<V = Seq<E>> {
 
 impl Skip<char, String> for String {
     #[verifier::external_body]
+    #[inline(always)]
     fn rspec_skip(&self, n: usize) -> (res: String) {
-        self.as_str().chars().skip(n).collect()
+        self.as_str().rspec_skip(n)
     }
 }
 
 impl Skip<char, String> for str {
     #[verifier::external_body]
+    #[inline(always)]
     fn rspec_skip(&self, n: usize) -> (res: String) {
-        self.chars().skip(n).collect()
+        let offset = self.char_indices().nth(n).unwrap().0;
+        self[offset..].to_string()
     }
 }
 
@@ -211,15 +229,18 @@ pub trait Take<E, R: DeepView<V = Seq<E>>>: DeepView<V = Seq<E>> {
 
 impl Take<char, String> for String {
     #[verifier::external_body]
+    #[inline(always)]
     fn rspec_take(&self, n: usize) -> (res: String) {
-        self.as_str().chars().take(n).collect()
+        self.as_str().rspec_take(n)
     }
 }
 
 impl Take<char, String> for str {
     #[verifier::external_body]
+    #[inline(always)]
     fn rspec_take(&self, n: usize) -> (res: String) {
-        self.chars().take(n).collect()
+        let offset = self.char_indices().nth(n).unwrap().0;
+        self[..offset].to_string()
     }
 }
 

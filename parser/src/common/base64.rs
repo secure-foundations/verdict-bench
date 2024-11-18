@@ -359,7 +359,7 @@ impl Combinator for Base64 {
     }
 
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(s.len() / 4 * 3);
         let mut i = 0;
         let len = s.len();
 

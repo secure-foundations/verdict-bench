@@ -15,7 +15,7 @@ verus! {
 
 /// A macro to find the first occurrence of an extension with the given OID
 /// and then abstract it using the given function
-#[warn(unused_macros)]
+#[allow(unused_macros)]
 macro_rules! spec_get_extension {
     ($cert: expr, $oid: ident, $converter: expr) => {
         if let Some(ext) = Self::spec_get_extension($cert, spec_oid!($oid)) {
