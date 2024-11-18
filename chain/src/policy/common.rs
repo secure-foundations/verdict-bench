@@ -104,6 +104,11 @@ pub struct SignatureAlgorithm {
     pub bytes: SpecString,
 }
 
+pub struct Extension {
+    pub oid: SpecString,
+    pub critical: bool,
+}
+
 pub struct Certificate {
     pub fingerprint: SpecString,
     pub version: u32,
@@ -127,6 +132,9 @@ pub struct Certificate {
     pub ext_subject_alt_name: Option<SubjectAltName>,
     pub ext_name_constraints: Option<NameConstraints>,
     pub ext_certificate_policies: Option<CertificatePolicies>,
+
+    // All extensions without parameters
+    pub all_exts: Option<Seq<Extension>>,
 }
 
 pub enum Task {

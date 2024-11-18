@@ -17,7 +17,6 @@ pub open spec fn spec_likely_issued(issuer: SpecCertificateValue, subject: SpecC
 {
     &&& spec_same_name(issuer.cert.subject, subject.cert.issuer)
     &&& spec_verify_signature(issuer, subject)
-    // TODO: more conditions
 }
 
 /// Compare two Names

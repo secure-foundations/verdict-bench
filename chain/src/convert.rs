@@ -13,6 +13,19 @@ use crate::error::*;
 
 verus! {
 
+/// A macro to find the first occurrence of an extension with the given OID
+/// and then abstract it using the given function
+#[warn(unused_macros)]
+macro_rules! spec_get_extension {
+    ($cert: expr, $oid: ident, $converter: expr) => {
+        if let Some(ext) = Self::spec_get_extension($cert, spec_oid!($oid)) {
+            Self::map_some($converter(ext))
+        } else {
+            Some(None)
+        }
+    }
+}
+
 impl policy::Certificate {
     /// Convert a more concrete parsed certificate to
     /// an abstract certificate to be used in a policy
@@ -27,12 +40,6 @@ impl policy::Certificate {
             let Some(not_before) = Self::spec_time_to_timestamp(c.cert.validity.not_before);
             let Some(subject_key) = policy::SubjectKey::spec_from(c.cert.subject_key);
 
-            let Some(ext_authority_key_id) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(AUTH_KEY_IDENT)) {
-                Self::map_some(policy::AuthorityKeyIdentifier::spec_from(ext))
-            } else {
-                Some(None)
-            };
-
             let Some(ext_subject_key_id) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(SUBJECT_KEY_IDENT)) {
                 if_let! {
                     let SpecExtensionParamValue::SubjectKeyIdentifier(skid) = ext.param;
@@ -42,41 +49,13 @@ impl policy::Certificate {
                 Some(None)
             };
 
-            let Some(ext_extended_key_usage) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(EXTENDED_KEY_USAGE)) {
-                Self::map_some(policy::ExtendedKeyUsage::spec_from(ext))
-            } else {
-                Some(None)
-            };
-
-            let Some(ext_basic_constraints) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(BASIC_CONSTRAINTS)) {
-                Self::map_some(policy::BasicConstraints::spec_from(ext))
-            } else {
-                Some(None)
-            };
-
-            let Some(ext_key_usage) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(KEY_USAGE)) {
-                Self::map_some(policy::KeyUsage::spec_from(ext))
-            } else {
-                Some(None)
-            };
-
-            let Some(ext_subject_alt_name) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(SUBJECT_ALT_NAME)) {
-                Self::map_some(policy::SubjectAltName::spec_from(ext))
-            } else {
-                Some(None)
-            };
-
-            let Some(ext_name_constraints) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(NAME_CONSTRAINTS)) {
-                Self::map_some(policy::NameConstraints::spec_from(ext))
-            } else {
-                Some(None)
-            };
-
-            let Some(ext_certificate_policies) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(CERT_POLICIES)) {
-                Self::map_some(policy::CertificatePolicies::spec_from(ext))
-            } else {
-                Some(None)
-            };
+            let Some(ext_authority_key_id) = spec_get_extension!(c, AUTH_KEY_IDENT, policy::AuthorityKeyIdentifier::spec_from);
+            let Some(ext_extended_key_usage) = spec_get_extension!(c, EXTENDED_KEY_USAGE, policy::ExtendedKeyUsage::spec_from);
+            let Some(ext_basic_constraints) = spec_get_extension!(c, BASIC_CONSTRAINTS, policy::BasicConstraints::spec_from);
+            let Some(ext_key_usage) = spec_get_extension!(c, KEY_USAGE, policy::KeyUsage::spec_from);
+            let Some(ext_subject_alt_name) = spec_get_extension!(c, SUBJECT_ALT_NAME, policy::SubjectAltName::spec_from);
+            let Some(ext_name_constraints) = spec_get_extension!(c, NAME_CONSTRAINTS, policy::NameConstraints::spec_from);
+            let Some(ext_certificate_policies) = spec_get_extension!(c, CERT_POLICIES, policy::CertificatePolicies::spec_from);
 
             Some(policy::Certificate {
                 fingerprint: hash::spec_to_hex_upper(hash::spec_sha256_digest(ser_cert)),
@@ -117,6 +96,12 @@ impl policy::Certificate {
                 ext_subject_alt_name,
                 ext_name_constraints,
                 ext_certificate_policies,
+
+                all_exts: if let OptionDeep::Some(exts) = c.cert.extensions {
+                    Some(Self::spec_from_exts(exts))
+                } else {
+                    None
+                },
             })
         }
     }
@@ -229,6 +214,37 @@ impl policy::Certificate {
             ext_subject_alt_name,
             ext_name_constraints,
             ext_certificate_policies,
+
+            all_exts: if let OptionDeep::Some(exts) = &c.get().cert.get().extensions {
+                Some(Self::from_exts(exts))
+            } else {
+                None
+            },
+        })
+    }
+
+    /// Map the seq of extensions to a seq of policy::Extension
+    pub open spec fn spec_from_exts(exts: Seq<SpecExtensionValue>) -> Seq<policy::Extension>
+    {
+        exts.map_values(|ext: SpecExtensionValue| policy::Extension {
+            oid: Self::spec_oid_to_string(ext.id),
+            critical: ext.critical,
+        })
+    }
+
+    pub fn from_exts(exts: &VecDeep<ExtensionValue>) -> (res: Vec<policy::ExecExtension>)
+        ensures res.deep_view() =~= Self::spec_from_exts(exts@),
+    {
+        vec_map(exts.to_vec(), |ext: &ExtensionValue| -> (res: policy::ExecExtension)
+            ensures res.deep_view() == (policy::Extension {
+                oid: Self::spec_oid_to_string(ext@.id),
+                critical: ext@.critical,
+            })
+        {
+            policy::ExecExtension {
+                oid: Self::oid_to_string(&ext.id),
+                critical: ext.critical,
+            }
         })
     }
 
