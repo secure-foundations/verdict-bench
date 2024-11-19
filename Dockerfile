@@ -1,9 +1,6 @@
 ARG DEPOT_TOOLS_REPO=https://chromium.googlesource.com/chromium/tools/depot_tools.git
 ARG DEPOT_TOOLS_COMMIT=c08c71bedfbb76a839518633ce2ea92feaf36163
 
-ARG GN_REPO=https://gn.googlesource.com/gn.git
-ARG GN_COMMIT=89e6425be159d58960cd6a16ef5f2be2c26bfb56
-
 # Using an old version of Ubuntu for building Chrome
 FROM ubuntu:20.04
 
