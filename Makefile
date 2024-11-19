@@ -27,10 +27,16 @@ release: build-env
 build-env:
 	$(DOCKER) build . -t $(DOCKER_IMAGE_TAG)
 
-%.diff:
-	cd src && git diff --staged ../$*.diff
+.PHONY: enter
+enter:
+	$(DOCKER) run -it --init \
+		-v $(CURRENT_DIR):/build/local \
+		$(DOCKER_IMAGE_TAG)
 
 ##### Targets below are executed within Docker #####
+
+%.diff:
+	cd src && git diff --staged > ../$*.diff
 
 # Fetch Chromium source and apply our changes (${DIFF_FILE})
 src/.fetched:
