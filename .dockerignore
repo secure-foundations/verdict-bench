@@ -1,0 +1,6 @@
+/src
+/.cipd
+/_gclient*
+/.gclient_entries
+/target
+.vscode

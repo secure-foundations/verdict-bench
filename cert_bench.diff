@@ -1,0 +1,305 @@
+diff --git a/net/BUILD.gn b/net/BUILD.gn
+index cba943e73f..2293551141 100644
+--- a/net/BUILD.gn
++++ b/net/BUILD.gn
+@@ -5594,3 +5594,19 @@ if (is_linux || is_chromeos) {
+     ]
+   }
+ }
++
++executable("cert_bench") {
++  testonly = true
++  sources = [
++    "tools/cert_bench/cert_bench.cc",
++  ]
++
++  deps = [
++    ":net",
++    "//base",
++  ]
++
++  if (is_mac) {
++    frameworks = [ "Security.framework" ]
++  }
++}
+diff --git a/net/tools/cert_bench/cert_bench.cc b/net/tools/cert_bench/cert_bench.cc
+new file mode 100644
+index 0000000000..692c45c19c
+--- /dev/null
++++ b/net/tools/cert_bench/cert_bench.cc
+@@ -0,0 +1,275 @@
++#include <iostream>
++
++#include "base/base64.h"
++#include "base/at_exit.h"
++#include "base/bind.h"
++#include "base/callback_helpers.h"
++#include "base/command_line.h"
++#include "base/logging.h"
++#include "base/files/file_util.h"
++#include "base/message_loop/message_pump_type.h"
++#include "base/strings/string_split.h"
++#include "base/synchronization/waitable_event.h"
++#include "base/task/thread_pool/thread_pool_instance.h"
++#include "base/threading/thread.h"
++#include "base/time/time.h"
++#include "build/build_config.h"
++#include "net/cert/cert_net_fetcher.h"
++#include "net/cert/cert_verify_proc.h"
++#include "net/cert/cert_verify_proc_builtin.h"
++#include "net/cert/crl_set.h"
++#include "net/cert/pem.h"
++#include "net/cert/internal/system_trust_store.h"
++#include "net/cert_net/cert_net_fetcher_url_request.h"
++#include "net/tools/cert_verify_tool/cert_verify_tool_util.h"
++#include "net/tools/cert_verify_tool/verify_using_cert_verify_proc.h"
++#include "net/tools/cert_verify_tool/verify_using_path_builder.h"
++#include "net/url_request/url_request_context.h"
++#include "net/url_request/url_request_context_builder.h"
++#include "net/url_request/url_request_context_getter.h"
++
++using namespace net;
++
++class DummySystemTrustStoreProvider : public SystemTrustStoreProvider {
++ public:
++  std::unique_ptr<SystemTrustStore> CreateSystemTrustStore() override {
++    return CreateEmptySystemTrustStore();
++  }
++};
++
++// The PEM block header used for PEM-encoded DER certificates.
++const char kCertificateHeader[] = "CERTIFICATE";
++
++// Parses |data_string| as a single DER cert or a PEM certificate list.
++// This is an alternative to X509Certificate::CreateFrom[...] which
++// is designed to decouple the file input and decoding from the DER Certificate
++// parsing.
++void ExtractCertificatesFromData(const std::string& data_string,
++                                 const base::FilePath& file_path,
++                                 std::vector<CertInput>* certs) {
++  // TODO(mattm): support PKCS #7 (.p7b) files.
++  PEMTokenizer pem_tokenizer(data_string, {kCertificateHeader});
++  int block = 0;
++  while (pem_tokenizer.GetNext()) {
++    CertInput cert;
++    cert.der_cert = pem_tokenizer.data();
++    cert.source_file_path = file_path;
++    cert.source_details =
++        base::StringPrintf("%s block %i", kCertificateHeader, block);
++    certs->push_back(cert);
++    ++block;
++  }
++
++  // If it was a PEM file, return the extracted results.
++  if (block)
++    return;
++
++  // Otherwise, assume it is a single DER cert.
++  CertInput cert;
++  cert.der_cert = data_string;
++  cert.source_file_path = file_path;
++  certs->push_back(cert);
++}
++
++void PrintCertError(const std::string& error, const CertInput& cert) {
++  std::cerr << error << " " << cert.source_file_path.value();
++  if (!cert.source_details.empty())
++    std::cerr << " (" << cert.source_details << ")";
++  std::cerr << "\n";
++}
++
++bssl::UniquePtr<CRYPTO_BUFFER> DecodeCertBase64(std::string& base64) {
++    std::string decoded;
++
++    if (!base::Base64Decode(base64, &decoded)) {
++        return nullptr;
++    }
++
++    return X509Certificate::CreateCertBufferFromBytes(decoded.c_str(), decoded.size());
++}
++
++int main(int argc, char** argv) {
++    if (!base::CommandLine::Init(argc, argv)) {
++        std::cerr << "failed to parse args\n";
++        return 1;
++    }
++
++    // logging::LoggingSettings settings;
++    // settings.logging_dest = logging::LOG_NONE;
++    // logging::InitLogging(settings);
++
++    base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
++
++    base::CommandLine::StringVector args = command_line.GetArgs();
++    if (args.size() != 1U || command_line.HasSwitch("help")) {
++        std::cout << "usage: " << argv[0] << " <roots in PEM format> [--bench=<n>]\n";
++        return 1;
++    }
++
++    // Read benchmarking args
++    size_t bench_repeat = 1;
++    if (command_line.HasSwitch("bench")) {
++        int parsed = std::atoi(command_line.GetSwitchValueASCII("bench").c_str());
++
++        if (parsed <= 0) {
++            std::cout << "error: invalid option --bench=<n>\n";
++            return 1;
++        }
++
++        bench_repeat = parsed;
++    }
++
++    base::FilePath roots_path = base::FilePath(args[0]);
++
++    // Read roots from roots_path
++    std::vector<CertInput> root_der_certs;
++    std::string file_data;
++    if (!base::ReadFileToString(roots_path, &file_data)) {
++        std::cout << "error: failed to read roots " << roots_path.value() << ": " << strerror(errno) << "\n";
++        return 1;
++    }
++    ExtractCertificatesFromData(file_data, roots_path, &root_der_certs);
++
++    // Parse roots
++    CertificateList roots;
++    for (const auto& cert : root_der_certs) {
++        scoped_refptr<X509Certificate> root =
++            X509Certificate::CreateFromBytes(cert.der_cert.data(), cert.der_cert.size());
++
++        if (!root) {
++            std::cout << "error: failed to parse root\n";
++            return 1;
++        } else {
++            roots.push_back(root);
++        }
++    }
++
++    std::string line;
++
++    // Leaf and intermediates in base64
++    std::string leaf;
++    std::vector<std::string> interm;
++
++    scoped_refptr<CertVerifyProc> proc = CreateCertVerifyProcBuiltin(
++        nullptr, // no network
++        std::make_unique<DummySystemTrustStoreProvider>() // no system roots
++    );
++
++    scoped_refptr<CRLSet> crl_set = CRLSet::BuiltinCRLSet();
++
++    int flags = 0; // CertVerifyProc::VERIFY_REV_CHECKING_ENABLED
++
++    while (std::getline(std::cin, line)) {
++        // Three types of input lines:
++        // 1. "leaf: <base64>": set leaf cert
++        // 2. "interm: <base64>": add an intermediate cert
++        // 3. "domain: <domain>": validate the domain based on previous certs
++        // 4. "repeat: <n>": set repeat to n
++        //
++        // The input is expected to be in the format of (12*3)*
++
++        // Check if line starts with "leaf: "
++
++        std::string leaf_prefix = "leaf: ";
++        std::string interm_prefix = "interm: ";
++        std::string domain_prefix = "domain: ";
++        std::string repeat_prefix = "repeat: ";
++
++        std::string decoded;
++
++        if (line.empty()) {
++            continue;
++        } else if (line.find(leaf_prefix, 0) == 0) {
++            if (!leaf.empty()) {
++                std::cout << "error: duplicate leaves" << std::endl;
++                return 1;
++            }
++
++            leaf = line.substr(leaf_prefix.length());
++        } else if (line.rfind(interm_prefix, 0) == 0) {
++            if (leaf.empty()) {
++                std::cout << "error: interm sent before leaf" << std::endl;
++                return 1;
++            }
++
++            interm.push_back(line.substr(interm_prefix.length()));
++        } else if (line.rfind(repeat_prefix, 0) == 0) {
++            int new_repeat = std::atoi(line.substr(repeat_prefix.length()).c_str());
++
++            if (new_repeat <= 0) {
++                std::cout << "error: invalid repeat" << std::endl;
++                return 1;
++            }
++
++            bench_repeat = new_repeat;
++        } else if (line.rfind(domain_prefix, 0) == 0) {
++            if (leaf.empty()) {
++                std::cout << "error: domain sent before leaf" << std::endl;
++                return 1;
++            }
++
++            std::string domain = line.substr(domain_prefix.length());
++            std::vector<int64_t> durations;
++            durations.reserve(bench_repeat);
++
++            int error;
++
++            for (size_t i = 0; i < bench_repeat; i++) {
++                // Start at Base64 decoding
++                auto start = base::TimeTicks::Now();
++
++                // Parse base64 certificates
++                bssl::UniquePtr<CRYPTO_BUFFER> leaf_buffer = DecodeCertBase64(leaf);
++                std::vector<bssl::UniquePtr<CRYPTO_BUFFER>> interm_buffer;
++
++                if (!leaf_buffer) {
++                    std::cout << "error: failed to base64 decode leaf" << std::endl;
++                    return 1;
++                }
++
++                for (auto cert : interm) {
++                    auto decoded = DecodeCertBase64(cert);
++                    if (!decoded) {
++                        std::cout << "error: failed to base64 decode interm" << std::endl;
++                        return 1;
++                    }
++
++                    interm_buffer.push_back(std::move(decoded));
++                }
++
++                scoped_refptr<X509Certificate> cert = X509Certificate::CreateFromBuffer(std::move(leaf_buffer), std::move(interm_buffer));
++                if (!cert) {
++                    std::cout << "error: failed to parse cert" << std::endl;
++                    return 1;
++                }
++
++                // Verify certificate with intermediates
++                CertVerifyResult result;
++                error = proc.get()->Verify(
++                    cert.get(), domain,
++                    /*ocsp_response=*/ std::string(), /*sct_list=*/ std::string(),
++                    flags,
++                    crl_set.get(),
++                    roots,
++                    &result,
++                    NetLogWithSource()
++                );
++
++                // End after verification
++                durations.push_back((base::TimeTicks::Now() - start).InMicroseconds());
++            }
++
++            std::cout << "result: " << ErrorToShortString(error);
++            for (size_t i = 0; i < bench_repeat; i++) {
++                std::cout << " " << durations[i];
++            }
++            std::cout << std::endl;
++            
++            leaf.clear();
++            interm.clear();
++        } else {
++            std::cout << "error: invalid line" << std::endl;
++            return 1;
++        }
++    }
++}
