@@ -9,12 +9,14 @@ Currently it is set up to build Chromium at a version around Aug, 2020 (590dcf7b
 
 # Usage
 
-Run `make debug`, which will download the Chromium source code, apply our `cert_bench.diff`,
-and compile the tool to `src/out/Debug/cert_bench`.
+Run `make release`, which will download the Chromium source code, apply our `cert_bench.diff`,
+and compile the tool to `src/out/Release/cert_bench`.
+
+NOTE: right now `make release` calls Docker with `sudo docker`.
 
 # Development
 
-After the first successful `make debug`, the source tree should be set up.
+After the first successful `make release`, the source tree should be set up.
 Make changes as you wish in `src`, and then save all the changes by
 ```
 make enter
