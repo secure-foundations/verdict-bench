@@ -4,7 +4,7 @@ DOCKER_IMAGE_TAG = firefox-build
 FIREFOX_CHANGESET = dbd5ee74c531204784baa6a81961ed556783ea15
 
 CURRENT_DIR = $(shell pwd)
-DIFF_FILE = cert_bench.diff
+DIFF_FILE = remove_builtin_roots.diff
 
 .PHONY: release
 release: build-env
