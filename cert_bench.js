@@ -41,17 +41,6 @@ function readFile(file) {
     return data;
 }
 
-// // Delete all certificates in the DB
-// function clearAllCerts() {
-//     let certdb = Cc["@mozilla.org/security/x509certdb;1"]
-//         .getService(Ci.nsIX509CertDB);
-
-//     for (const cert of certdb.getCerts()) {
-//         console.log(cert.commonName);
-//         certdb.deleteCertificate(cert);
-//     }
-// }
-
 function trustAsRoot(rootCert) {
     let certdb = Cc["@mozilla.org/security/x509certdb;1"]
         .getService(Ci.nsIX509CertDB);
@@ -105,12 +94,12 @@ class VerifyResult {
         this.resolve = resolve;
     }
 
-    verifyCertFinished(aPRErrorCode, aVerifiedChain, aHasEVPolicy) {
-        this.resolve(aPRErrorCode, aVerifiedChain, aHasEVPolicy);
+    verifyCertFinished(aPRErrorCode) {
+        this.resolve(aPRErrorCode);
     }
 }
 
-async function verifyCert(cert, hostname, time) {
+async function verifyCert(cert, hostname, time, repeat) {
     const certificateUsageSSLClient         = 0x0001;
     const certificateUsageSSLServer         = 0x0002;
     const certificateUsageEmailSigner       = 0x0010;
@@ -118,9 +107,11 @@ async function verifyCert(cert, hostname, time) {
     const certificateUsageAnyCA             = 0x0800;
     let certdb = Cc["@mozilla.org/security/x509certdb;1"]
         .getService(Ci.nsIX509CertDB);
-    let result = null;
+        
+    let result;
+    let durations = [];
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < repeat; i++) {
         let start = Cu.now();
         result = await new Promise((resolve, reject) => {
             let result = new VerifyResult(resolve);
@@ -133,9 +124,15 @@ async function verifyCert(cert, hostname, time) {
                 result,
             );
         });
-        let elapsed = Cu.now() - start;
-        dump(`elapsed: ${elapsed}ms\n`)
+        durations.push(Cu.now() - start);
     }
+
+    dump(`result: ${result}`);
+    for (const duration of durations) {
+        let duration_micro_sec = Math.round(duration * 1000);
+        dump(` ${duration_micro_sec}`)
+    }
+    dump("\n")
 
     return result
 }
@@ -150,18 +147,17 @@ function spinMainThreadUntil(predicate) {
     }
 }
 
-let done = false;
-
-// ****************************************************************************
-// This is where the action happens:
-if (arguments.length != 4) {
-    throw "Usage: verify.js <roots.pem> <chain.pem> <domain> <time>";
+// Verify a given chain using only the roots provided, at a given time,
+// repeating <repeat> times for benchmarking
+if (arguments.length != 5) {
+    throw "Usage: verify.js <roots.pem> <chain.pem> <domain> <time> <repeat>";
 }
 
 let rootsPath = arguments[0];
 let certsPath = arguments[1];
 let domain = arguments[2];
 let time = Number(arguments[3]);
+let repeat = Number(arguments[4]);
 
 let roots = loadCerts(rootsPath);
 let certs = loadCerts(certsPath);
@@ -174,13 +170,12 @@ for (const root of roots) {
 
 let cert = certs[0];
 let exitCode;
+let done = false;
 
-verifyCert(cert, domain, time).then((result, verifiedChain, hasEVPolicy) => {
-    dump("result for " + certsPath + ": " + result + "\n");
+verifyCert(cert, domain, time, repeat).then((result) => {
     exitCode = (result == 0 ? 1 : 0);
     done = true;
 });
 
 spinMainThreadUntil(function() { return done; });
 quit(exitCode);
-// ****************************************************************************

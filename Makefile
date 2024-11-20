@@ -6,13 +6,6 @@ FIREFOX_CHANGESET = dbd5ee74c531204784baa6a81961ed556783ea15
 CURRENT_DIR = $(shell pwd)
 DIFF_FILE = remove_builtin_roots.diff
 
-.PHONY: release
-release: build-env
-	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):/build/local \
-		$(DOCKER_IMAGE_TAG) \
-		make src
-
 .PHONY: build-env
 build-env:
 	$(DOCKER) build . -t $(DOCKER_IMAGE_TAG)
@@ -20,27 +13,31 @@ build-env:
 .PHONY: enter
 enter: build-env
 	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):/build/local \
+		-v $(CURRENT_DIR):$(CURRENT_DIR) \
+		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG)
 
 .PHONY: build
 build: build-env
 	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):/build/local \
+		-v $(CURRENT_DIR):$(CURRENT_DIR) \
+		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG) \
 		make inner-build
 
 .PHONY: clean
 clean: build-env
 	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):/build/local \
+		-v $(CURRENT_DIR):$(CURRENT_DIR) \
+		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG) \
 		make inner-clean
 
 .PHONY: xpcshell
 xpcshell: build-env
 	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):/build/local \
+		-v $(CURRENT_DIR):$(CURRENT_DIR) \
+		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG) \
 		bash -c "LD_LIBRARY_PATH=/build/local/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin:$$LD_LIBRARY_PATH \
 			mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell"
