@@ -6,6 +6,14 @@ FIREFOX_CHANGESET = dbd5ee74c531204784baa6a81961ed556783ea15
 CURRENT_DIR = $(shell pwd)
 DIFF_FILE = remove_builtin_roots.diff
 
+.PHONY: build
+build: build-env
+	$(DOCKER) run -it --init \
+		-v $(CURRENT_DIR):$(CURRENT_DIR) \
+		-w $(CURRENT_DIR) \
+		$(DOCKER_IMAGE_TAG) \
+		make inner-build
+
 .PHONY: build-env
 build-env:
 	$(DOCKER) build . -t $(DOCKER_IMAGE_TAG)
@@ -16,14 +24,6 @@ enter: build-env
 		-v $(CURRENT_DIR):$(CURRENT_DIR) \
 		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG)
-
-.PHONY: build
-build: build-env
-	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):$(CURRENT_DIR) \
-		-w $(CURRENT_DIR) \
-		$(DOCKER_IMAGE_TAG) \
-		make inner-build
 
 .PHONY: clean
 clean: build-env

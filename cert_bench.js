@@ -521,7 +521,6 @@ async function verifyChain(certsPEM, hostname, time, repeat) {
         for (let certPEM of certsPEM) {
             certs.push(certdb.constructX509FromBase64(certPEM));
         }
-
         result = await new Promise((resolve, reject) => {
             certdb.asyncVerifyCertAtTime(
                 certs[0],
@@ -588,6 +587,9 @@ let done = false;
 verifyChain(certsPEM, domain, time, repeat).then((result) => {
     exitCode = (result == 0 ? 1 : 0);
     done = true;
+}).catch((e) => {
+    done = true;
+    throw e;
 });
 
 spinMainThreadUntil(function() { return done; });
