@@ -514,23 +514,22 @@ async function verifyChain(certsPEM, hostname, time, repeat) {
     let durations = [];
 
     for (let i = 0; i < repeat; i++) {
+        // Measure parsing + validation time
         let start = Cu.now();
 
         let certs = [];
-
         for (let certPEM of certsPEM) {
             certs.push(certdb.constructX509FromBase64(certPEM));
         }
 
         result = await new Promise((resolve, reject) => {
-            let result = new VerifyResult(resolve);
             certdb.asyncVerifyCertAtTime(
                 certs[0],
                 certificateUsageSSLServer,
                 Ci.nsIX509CertDB.FLAG_LOCAL_ONLY,
                 hostname,
                 time, // (new Date()).getTime() / 1000,
-                result,
+                new VerifyResult(resolve),
             );
         });
         
