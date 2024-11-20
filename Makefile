@@ -37,6 +37,14 @@ clean: build-env
 		$(DOCKER_IMAGE_TAG) \
 		make inner-clean
 
+.PHONY: xpcshell
+xpcshell: build-env
+	$(DOCKER) run -it --init \
+		-v $(CURRENT_DIR):/build/local \
+		$(DOCKER_IMAGE_TAG) \
+		bash -c "LD_LIBRARY_PATH=/build/local/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin:$$LD_LIBRARY_PATH \
+			mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell"
+
 ##### Targets below are executed within Docker #####
 
 .PHONY: src
