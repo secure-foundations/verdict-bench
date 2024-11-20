@@ -20,6 +20,6 @@ After the first successful `make release`, the source tree should be set up.
 Make changes as you wish in `src`, and then save all the changes by
 ```
 make enter
-git add ...
+cd src && git add ... && cd ..
 make cert_bench.diff
 ```

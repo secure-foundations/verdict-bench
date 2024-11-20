@@ -24,10 +24,10 @@ index cba943e73f..2293551141 100644
 +}
 diff --git a/net/tools/cert_bench/cert_bench.cc b/net/tools/cert_bench/cert_bench.cc
 new file mode 100644
-index 0000000000..692c45c19c
+index 0000000000..bf2795b238
 --- /dev/null
 +++ b/net/tools/cert_bench/cert_bench.cc
-@@ -0,0 +1,275 @@
+@@ -0,0 +1,304 @@
 +#include <iostream>
 +
 +#include "base/base64.h"
@@ -44,10 +44,12 @@ index 0000000000..692c45c19c
 +#include "base/threading/thread.h"
 +#include "base/time/time.h"
 +#include "build/build_config.h"
++#include "net/cert/x509_util.h"
 +#include "net/cert/cert_net_fetcher.h"
 +#include "net/cert/cert_verify_proc.h"
 +#include "net/cert/cert_verify_proc_builtin.h"
 +#include "net/cert/crl_set.h"
++#include "net/cert/internal/cert_errors.h"
 +#include "net/cert/pem.h"
 +#include "net/cert/internal/system_trust_store.h"
 +#include "net/cert_net/cert_net_fetcher_url_request.h"
@@ -60,11 +62,17 @@ index 0000000000..692c45c19c
 +
 +using namespace net;
 +
-+class DummySystemTrustStoreProvider : public SystemTrustStoreProvider {
-+ public:
-+  std::unique_ptr<SystemTrustStore> CreateSystemTrustStore() override {
-+    return CreateEmptySystemTrustStore();
-+  }
++class OneTimeSystemTrustStoreProvider : public SystemTrustStoreProvider {
++    public:
++        std::unique_ptr<SystemTrustStore> trust_store;
++
++        OneTimeSystemTrustStoreProvider(std::unique_ptr<SystemTrustStore> _trust_store) {
++            this->trust_store = std::move(_trust_store);
++        }
++
++        std::unique_ptr<SystemTrustStore> CreateSystemTrustStore() override {
++            return std::move(this->trust_store);
++        }
 +};
 +
 +// The PEM block header used for PEM-encoded DER certificates.
@@ -77,35 +85,35 @@ index 0000000000..692c45c19c
 +void ExtractCertificatesFromData(const std::string& data_string,
 +                                 const base::FilePath& file_path,
 +                                 std::vector<CertInput>* certs) {
-+  // TODO(mattm): support PKCS #7 (.p7b) files.
-+  PEMTokenizer pem_tokenizer(data_string, {kCertificateHeader});
-+  int block = 0;
-+  while (pem_tokenizer.GetNext()) {
++    // TODO(mattm): support PKCS #7 (.p7b) files.
++    PEMTokenizer pem_tokenizer(data_string, {kCertificateHeader});
++    int block = 0;
++    while (pem_tokenizer.GetNext()) {
++        CertInput cert;
++        cert.der_cert = pem_tokenizer.data();
++        cert.source_file_path = file_path;
++        cert.source_details =
++            base::StringPrintf("%s block %i", kCertificateHeader, block);
++        certs->push_back(cert);
++        ++block;
++    }
++
++    // If it was a PEM file, return the extracted results.
++    if (block)
++        return;
++
++    // Otherwise, assume it is a single DER cert.
 +    CertInput cert;
-+    cert.der_cert = pem_tokenizer.data();
++    cert.der_cert = data_string;
 +    cert.source_file_path = file_path;
-+    cert.source_details =
-+        base::StringPrintf("%s block %i", kCertificateHeader, block);
 +    certs->push_back(cert);
-+    ++block;
-+  }
-+
-+  // If it was a PEM file, return the extracted results.
-+  if (block)
-+    return;
-+
-+  // Otherwise, assume it is a single DER cert.
-+  CertInput cert;
-+  cert.der_cert = data_string;
-+  cert.source_file_path = file_path;
-+  certs->push_back(cert);
 +}
 +
 +void PrintCertError(const std::string& error, const CertInput& cert) {
-+  std::cerr << error << " " << cert.source_file_path.value();
-+  if (!cert.source_details.empty())
-+    std::cerr << " (" << cert.source_details << ")";
-+  std::cerr << "\n";
++    std::cerr << error << " " << cert.source_file_path.value();
++    if (!cert.source_details.empty())
++        std::cerr << " (" << cert.source_details << ")";
++    std::cerr << "\n";
 +}
 +
 +bssl::UniquePtr<CRYPTO_BUFFER> DecodeCertBase64(std::string& base64) {
@@ -116,6 +124,14 @@ index 0000000000..692c45c19c
 +    }
 +
 +    return X509Certificate::CreateCertBufferFromBytes(decoded.c_str(), decoded.size());
++}
++
++scoped_refptr<ParsedCertificate> ParseCertificateFromBuffer(
++    CRYPTO_BUFFER* cert_handle,
++    CertErrors* errors) {
++    return ParsedCertificate::Create(bssl::UpRef(cert_handle),
++                                    x509_util::DefaultParseCertificateOptions(),
++                                    errors);
 +}
 +
 +int main(int argc, char** argv) {
@@ -160,18 +176,26 @@ index 0000000000..692c45c19c
 +    }
 +    ExtractCertificatesFromData(file_data, roots_path, &root_der_certs);
 +
-+    // Parse roots
-+    CertificateList roots;
++    std::vector<scoped_refptr<ParsedCertificate>> parsed_roots;
 +    for (const auto& cert : root_der_certs) {
-+        scoped_refptr<X509Certificate> root =
++        scoped_refptr<X509Certificate> tmp =
 +            X509Certificate::CreateFromBytes(cert.der_cert.data(), cert.der_cert.size());
 +
-+        if (!root) {
++        if (!tmp) {
 +            std::cout << "error: failed to parse root\n";
 +            return 1;
-+        } else {
-+            roots.push_back(root);
 +        }
++
++        CertErrors parsing_errors;
++        scoped_refptr<ParsedCertificate> parsed_root =
++            ParseCertificateFromBuffer(tmp->cert_buffer(), &parsing_errors);
++
++        if (!parsed_root) {
++            std::cout << "error: failed to parse root\n";
++            return 1;
++        }
++
++        parsed_roots.push_back(parsed_root);
 +    }
 +
 +    std::string line;
@@ -179,11 +203,6 @@ index 0000000000..692c45c19c
 +    // Leaf and intermediates in base64
 +    std::string leaf;
 +    std::vector<std::string> interm;
-+
-+    scoped_refptr<CertVerifyProc> proc = CreateCertVerifyProcBuiltin(
-+        nullptr, // no network
-+        std::make_unique<DummySystemTrustStoreProvider>() // no system roots
-+    );
 +
 +    scoped_refptr<CRLSet> crl_set = CRLSet::BuiltinCRLSet();
 +
@@ -245,6 +264,16 @@ index 0000000000..692c45c19c
 +            int error;
 +
 +            for (size_t i = 0; i < bench_repeat; i++) {
++                std::unique_ptr<SystemTrustStore> trust_store = CreateEmptySystemTrustStore();
++                for (const auto& parsed_root : parsed_roots) {
++                    trust_store->AddTrustAnchor(parsed_root);
++                }
++
++                scoped_refptr<CertVerifyProc> proc = CreateCertVerifyProcBuiltin(
++                    nullptr, // no network
++                    std::make_unique<OneTimeSystemTrustStoreProvider>(std::move(trust_store))
++                );
++
 +                // Start at Base64 decoding
 +                auto start = base::TimeTicks::Now();
 +
@@ -280,7 +309,7 @@ index 0000000000..692c45c19c
 +                    /*ocsp_response=*/ std::string(), /*sct_list=*/ std::string(),
 +                    flags,
 +                    crl_set.get(),
-+                    roots,
++                    CertificateList(),
 +                    &result,
 +                    NetLogWithSource()
 +                );

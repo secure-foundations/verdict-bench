@@ -9,19 +9,19 @@ DIFF_FILE = cert_bench.diff
 
 TARGET = cert_bench
 
-.PHONY: debug
-debug: build-env
-	$(DOCKER) run -it --init \
-		-v $(CURRENT_DIR):/build/local \
-		$(DOCKER_IMAGE_TAG) \
-		make src/out/Debug/$(TARGET)
-
 .PHONY: release
 release: build-env
 	$(DOCKER) run -it --init \
 		-v $(CURRENT_DIR):/build/local \
 		$(DOCKER_IMAGE_TAG) \
 		make src/out/Release/$(TARGET)
+
+.PHONY: debug
+debug: build-env
+	$(DOCKER) run -it --init \
+		-v $(CURRENT_DIR):/build/local \
+		$(DOCKER_IMAGE_TAG) \
+		make src/out/Debug/$(TARGET)
 
 .PHONY: build-env
 build-env:
@@ -61,8 +61,11 @@ src/out/%/build.ninja: src/.fetched
 	[ -f "src/out/$*/build.ninja" ] || (cd src && gn gen out/$*)
 	chown -R 777 src/out
 
-src/out/Debug/%: src/out/Debug/build.ninja
+src/out/Debug/%: force src/out/Debug/build.ninja
 	cd src && autoninja -C out/Debug $*
 
-src/out/Release/%: src/out/Release/build.ninja
+src/out/Release/%: force src/out/Release/build.ninja
 	cd src && autoninja -C out/Release $*
+
+.PHONY: force
+force:
