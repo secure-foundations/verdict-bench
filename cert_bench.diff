@@ -1,0 +1,83 @@
+diff -r dbd5ee74c531 Cargo.toml
+--- a/Cargo.toml	Tue Aug 25 00:54:38 2020 +0000
++++ b/Cargo.toml	Wed Nov 20 01:00:14 2024 +0000
+@@ -12,6 +12,7 @@
+   "js/src/wasm/cranelift",
+   "netwerk/test/http3server",
+   "security/manager/ssl/osclientcerts",
++  "testing/cert_bench",
+   "testing/geckodriver",
+   "toolkit/components/updateagent",
+   "toolkit/crashreporter/rust",
+diff -r dbd5ee74c531 testing/cert_bench/Cargo.toml
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/testing/cert_bench/Cargo.toml	Wed Nov 20 01:00:14 2024 +0000
+@@ -0,0 +1,11 @@
++[package]
++name = "cert_bench"
++version = "0.0.1"
++
++[dependencies]
++nserror = { path = "../../xpcom/rust/nserror" }
++nsstring = { path = "../../xpcom/rust/nsstring" }
++xpcom = { path = "../../xpcom/rust/xpcom" }
++
++[[bin]]
++name = "cert_bench"
+diff -r dbd5ee74c531 testing/cert_bench/moz.build
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/testing/cert_bench/moz.build	Wed Nov 20 01:00:14 2024 +0000
+@@ -0,0 +1,1 @@
++RUST_PROGRAMS += ["cert_bench"]
+diff -r dbd5ee74c531 testing/cert_bench/src/main.rs
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/testing/cert_bench/src/main.rs	Wed Nov 20 01:00:14 2024 +0000
+@@ -0,0 +1,39 @@
++#[macro_use]
++extern crate xpcom;
++
++use xpcom::interfaces::nsIX509CertDB;
++
++// use xpcom::GetterAddrefs;
++// use xpcom::interfaces::{nsISupports, nsIX509CertDB};
++// use xpcom::{RefPtr, xpcom};
++
++// fn get_cert_db_service() -> Option<RefPtr<nsIX509CertDB>> {
++//     unsafe {
++//         // Get the XPCOM service manager
++//         let service_manager = xpcom::xpcom::services_manager().ok()?;
++//         let mut supports = GetterAddrefs::<nsISupports>::new();
++
++//         // Retrieve the nsISupports interface for the nsIX509CertDB service
++//         service_manager.GetServiceByContractID(
++//             b"@mozilla.org/security/x509certdb;1".as_ptr() as *const _,
++//             &nsISupports::IID,
++//             supports.void_ptr(),
++//         )?;
++
++//         // Cast nsISupports to nsIX509CertDB
++//         supports.refptr()?.query_interface::<nsIX509CertDB>().ok()
++//     }
++// }
++
++fn main() {
++    // let mut cert: *const nsIX509Cert = std::ptr::null();
++    // let base64_encoded = nsCString::from("BASE64_ENCODED_CERTIFICATE_STRING");
++    // let result = cert_db.ConstructX509FromBase64(&base64_encoded, &mut cert);
++
++    // if result == NS_OK {
++    //     println!("Successfully created an X.509 certificate!");
++    // } else {
++    //     println!("Failed to create X.509 certificate: {}", result);
++    // }
++    // let cert_db = xpcom::services::get::<nsIX509CertDB>();
++}
+diff -r dbd5ee74c531 toolkit/toolkit.mozbuild
+--- a/toolkit/toolkit.mozbuild	Tue Aug 25 00:54:38 2020 +0000
++++ b/toolkit/toolkit.mozbuild	Wed Nov 20 01:00:14 2024 +0000
+@@ -205,3 +205,5 @@
+ 
+ if CONFIG['FUZZING']:
+     DIRS += ['/tools/fuzzing']
++
++DIRS += ['/testing/cert_bench']
