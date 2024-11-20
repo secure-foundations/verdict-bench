@@ -28,6 +28,12 @@ let { Services } = Cu.import("resource://gre/modules/Services.jsm", {});
 let { FileUtils } = Cu.import("resource://gre/modules/FileUtils.jsm", {});
 let { Promise } = Cu.import("resource://gre/modules/Promise.jsm", {});
 
+const certificateUsageSSLClient         = 0x0001;
+const certificateUsageSSLServer         = 0x0002;
+const certificateUsageEmailSigner       = 0x0010;
+const certificateUsageVerifyCA          = 0x0100;
+const certificateUsageAnyCA             = 0x0800;
+
 const ERROR_CODES = new Map([
     // Copied from mozilla-unified/obj-x86_64-pc-linux-gnu/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/nss_sslerr.rs
     [-12288, "SSL_ERROR_EXPORT_ONLY_SERVER"],
@@ -501,55 +507,6 @@ class VerifyResult {
     }
 }
 
-async function verifyChain(certsPEM, hostname, time, repeat) {
-    const certificateUsageSSLClient         = 0x0001;
-    const certificateUsageSSLServer         = 0x0002;
-    const certificateUsageEmailSigner       = 0x0010;
-    const certificateUsageVerifyCA          = 0x0100;
-    const certificateUsageAnyCA             = 0x0800;
-    let certdb = Cc["@mozilla.org/security/x509certdb;1"]
-        .getService(Ci.nsIX509CertDB);
-
-    let result;
-    let durations = [];
-
-    for (let i = 0; i < repeat; i++) {
-        // Measure parsing + validation time
-        let start = Cu.now();
-
-        let certs = [];
-        for (let certPEM of certsPEM) {
-            certs.push(certdb.constructX509FromBase64(certPEM));
-        }
-        result = await new Promise((resolve, reject) => {
-            certdb.asyncVerifyCertAtTime(
-                certs[0],
-                certificateUsageSSLServer,
-                Ci.nsIX509CertDB.FLAG_LOCAL_ONLY,
-                hostname,
-                time, // (new Date()).getTime() / 1000,
-                new VerifyResult(resolve),
-            );
-        });
-        
-        durations.push(Cu.now() - start);
-    
-        // Remove certs
-        for (let cert of certs) {
-            certdb.deleteCertificate(cert);
-        }
-    }
-
-    dump(`result: ${errorCodeToName(result)}`);
-    for (const duration of durations) {
-        let duration_micro_sec = Math.round(duration * 1000);
-        dump(` ${duration_micro_sec}`)
-    }
-    dump("\n")
-
-    return result
-}
-
 function spinMainThreadUntil(predicate) {
     let threadManager = Cc["@mozilla.org/thread-manager;1"]
         .getService(Ci.nsIThreadManager);
@@ -560,37 +517,167 @@ function spinMainThreadUntil(predicate) {
     }
 }
 
-// Verify a given chain using only the roots provided, at a given time,
-// repeating <repeat> times for benchmarking
-if (arguments.length != 5) {
-    throw "Usage: verify.js <roots.pem> <chain.pem> <domain> <time> <repeat>";
+async function main(args) {
+    if (args.length != 2) {
+        throw "Usage: verify.js <roots.pem> <time>";
+    }
+
+    let roots_path = args[0];
+    let timestamp = parseInt(args[1]);
+
+    let roots = loadCerts(roots_path);
+    // NOTE: we assume that all built-in roots have been removed
+    // see security/nss/lib/ckfw/builtins/certdata.txt
+    for (const root of roots) {
+        trustAsRoot(root);
+    }
+
+    let certdb = Cc["@mozilla.org/security/x509certdb;1"]
+        .getService(Ci.nsIX509CertDB);
+
+    const leaf_prefix = "leaf: ";
+    const interm_prefix = "interm: ";
+    const domain_prefix = "domain: ";
+    const repeat_prefix = "repeat: ";
+
+    let repeat_count = 1;
+
+    let leaf_base64 = null;
+    let interm_base64 = [];
+
+    // There is an annoying issue in xpcshell
+    // where `readline` only reads the first 4096
+    // characters off a line, so we have to keep
+    // track of unfinished lines
+    let last_reading = 0; // 1 for leaf; 2 for interm
+    let read_sofar = "";
+
+    // Three types of input lines:
+    // 1. "leaf: <base64>": set leaf cert
+    // 2. "interm: <base64>": add an intermediate cert
+    // 3. "domain: <domain>": validate the domain based on previous certs
+    // 4. "repeat: <n>": set repeat to n
+    //
+    // The input is expected to be in the format of (12*3)*
+    while (true) {
+        let line = readline();
+
+        if (line.startsWith(leaf_prefix)) {
+            line = line.slice(leaf_prefix.length);
+
+            if (leaf_base64) {
+                print("error: leaf already set");
+                return 1;
+            }
+
+            if (last_reading != 0) {
+                print("error: ill-formed input");
+                return 1;
+            }
+
+            last_reading = 1
+            read_sofar = line
+        } else if (line.startsWith(interm_prefix)) {
+            line = line.slice(interm_prefix.length);
+
+            if (last_reading == 1) {
+                leaf_base64 = read_sofar;
+                last_reading = 0;
+            } else if (last_reading == 2) {
+                interm_base64.push(read_sofar);
+                last_reading = 0;
+            }
+
+            if (!leaf_base64) {
+                print("error: leaf not set");
+                return 1;
+            }
+
+            last_reading = 2
+            read_sofar = line
+        } else if (line.startsWith(domain_prefix)) {
+            line = line.slice(domain_prefix.length);
+            hostname = line;
+
+            if (last_reading == 1) {
+                leaf_base64 = read_sofar;
+                last_reading = 0;
+            } else if (last_reading == 2) {
+                interm_base64.push(read_sofar);
+                last_reading = 0;
+            }
+
+            if (!leaf_base64) {
+                print("error: leaf not set");
+                return 1;
+            }
+
+            let result;
+            let durations = [];
+
+            for (let i = 0; i < repeat_count; i++) {
+                // Measure parsing + validation time
+                let start = Cu.now();
+
+                // Parse all certificates
+                // print(leaf_base64)
+                let certs = [certdb.constructX509FromBase64(leaf_base64)];
+                for (let interm of interm_base64) {
+                    certs.push(certdb.constructX509FromBase64(interm));
+                }
+
+                result = await new Promise((resolve, reject) => {
+                    certdb.asyncVerifyCertAtTime(
+                        certs[0],
+                        certificateUsageSSLServer,
+                        Ci.nsIX509CertDB.FLAG_LOCAL_ONLY,
+                        hostname,
+                        timestamp,
+                        new VerifyResult(resolve),
+                    );
+                });
+                
+                durations.push(Cu.now() - start);
+            
+                // Remove certs
+                for (let cert of certs) {
+                    certdb.deleteCertificate(cert);
+                }
+            }
+
+            dump(`result: ${errorCodeToName(result)}`);
+            for (const duration of durations) {
+                let duration_micro_sec = Math.round(duration * 1000);
+                dump(` ${duration_micro_sec}`)
+            }
+            dump("\n")
+
+            leaf_base64 = null;
+            interm = [];
+        } else if (line.startsWith(repeat_prefix)) {
+            line = line.slice(repeat_prefix.length);
+            repeat_count = parseInt(line);
+
+            if (last_reading == 1) {
+                leaf_base64 = read_sofar;
+                last_reading = 0;
+            } else if (last_reading == 2) {
+                interm_base64.push(read_sofar);
+                last_reading = 0;
+            }
+
+            if (repeat_count <= 0) {
+                print("error: invalid repeat");
+                return 1;
+            }
+        } else {
+            read_sofar += line;
+        }
+    }
+
+    return 0;
 }
 
-let rootsPath = arguments[0];
-let certsPath = arguments[1];
-let domain = arguments[2];
-let time = Number(arguments[3]);
-let repeat = Number(arguments[4]);
-
-let roots = loadCerts(rootsPath);
-let certsPEM = loadPEM(certsPath);
-
-// NOTE: we assume that all built-in roots have been removed
-// see security/nss/lib/ckfw/builtins/certdata.txt
-for (const root of roots) {
-    trustAsRoot(root);
-}
-
-let exitCode;
 let done = false;
-
-verifyChain(certsPEM, domain, time, repeat).then((result) => {
-    exitCode = (result == 0 ? 1 : 0);
-    done = true;
-}).catch((e) => {
-    done = true;
-    throw e;
-});
-
-spinMainThreadUntil(function() { return done; });
-quit(exitCode);
+main(arguments).finally(() => { done = true; })
+spinMainThreadUntil(() => done);
