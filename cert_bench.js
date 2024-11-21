@@ -492,7 +492,7 @@ function loadCerts(certsPath) {
 
 function errorCodeToName(code) {
     if (code == 0) {
-        return "success";
+        return "OK";
     }
     return ERROR_CODES.get(code) || code;
 }
