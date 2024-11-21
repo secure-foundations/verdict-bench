@@ -9,7 +9,6 @@ DIST_BIN="$MOZILLA/obj-x86_64-pc-linux-gnu/dist/bin"
 XPCSHELL="$DIST_BIN/run-mozilla.sh $DIST_BIN/xpcshell"
 
 roots=$1
-chain=$2
-shift 2
+shift 1
 
-exec $XPCSHELL "$SCRIPT_DIR/cert_bench.js" $(realpath $roots) $(realpath $chain) "$@"
+exec $XPCSHELL "$SCRIPT_DIR/cert_bench.js" $(realpath $roots) "$@"

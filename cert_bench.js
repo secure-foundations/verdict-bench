@@ -440,12 +440,6 @@ function readFile(file) {
     return data;
 }
 
-function trustAsRoot(rootCert) {
-    let certdb = Cc["@mozilla.org/security/x509certdb;1"]
-        .getService(Ci.nsIX509CertDB);
-    certdb.setCertTrustFromString(rootCert, "Cu,Cu,Cu");
-}
-
 function loadPEM(path) {
     let pem = readFile(pathToFile(path));
     
@@ -525,15 +519,15 @@ async function main(args) {
     let roots_path = args[0];
     let timestamp = parseInt(args[1]);
 
+    let certdb = Cc["@mozilla.org/security/x509certdb;1"]
+        .getService(Ci.nsIX509CertDB);
+
     let roots = loadCerts(roots_path);
     // NOTE: we assume that all built-in roots have been removed
     // see security/nss/lib/ckfw/builtins/certdata.txt
     for (const root of roots) {
-        trustAsRoot(root);
+        certdb.setCertTrustFromString(root, "Cu,Cu,Cu");
     }
-
-    let certdb = Cc["@mozilla.org/security/x509certdb;1"]
-        .getService(Ci.nsIX509CertDB);
 
     const leaf_prefix = "leaf: ";
     const interm_prefix = "interm: ";
@@ -622,7 +616,9 @@ async function main(args) {
                 // Parse all certificates
                 // print(leaf_base64)
                 let certs = [certdb.constructX509FromBase64(leaf_base64)];
+                print(leaf_base64)
                 for (let interm of interm_base64) {
+                    print(interm)
                     certs.push(certdb.constructX509FromBase64(interm));
                 }
 
