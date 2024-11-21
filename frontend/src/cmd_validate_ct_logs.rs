@@ -5,21 +5,21 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use csv::{ReaderBuilder, WriterBuilder};
 
 use parser::{parse_x509_cert, decode_base64, VecDeep};
-use chain::policy;
 use chain::validate::Validator;
 
 use crate::ct_logs::*;
 use crate::error::*;
 use crate::utils::*;
+use crate::validator;
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// Policy to use
-    policy: Policy,
+    #[clap(flatten)]
+    validator: validator::Args,
 
     /// Path to the root certificates
     roots: String,
@@ -38,18 +38,6 @@ pub struct Args {
     #[clap(short = 'o', long)]
     out_csv: Option<String>,
 
-    /// Path to the SWI-Prolog binary
-    #[clap(long, value_parser, num_args = 0.., value_delimiter = ' ', default_value = "swipl")]
-    swipl_bin: String,
-
-    /// Enable debug mode
-    #[arg(long, default_value_t = false)]
-    debug: bool,
-
-    /// Override the current time with the given timestamp
-    #[clap(short = 't', long)]
-    override_time: Option<i64>,
-
     /// Number of parallel threads to run validation
     #[clap(short = 'j', long = "jobs", default_value = "1")]
     num_jobs: usize,
@@ -57,12 +45,6 @@ pub struct Args {
     /// Only validate the first <limit> certificates, if specified
     #[clap(short = 'l', long)]
     limit: Option<usize>,
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-enum Policy {
-    ChromeHammurabi,
-    FirefoxHammurabi,
 }
 
 struct ValidationResult {
@@ -75,10 +57,7 @@ type Timer = Arc<Mutex<Duration>>;
 
 fn validate_ct_logs_job(
     args: &Args,
-    // policy: &policy::ExecPolicy,
-    // roots: &VecDeep<x509::CertificateValue>,
     validator: &Validator,
-    timestamp: u64,
     entry: &CTLogEntry,
     timer: &Timer,
 ) -> Result<bool, Error>
@@ -88,7 +67,7 @@ fn validate_ct_logs_job(
     // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
     // `entry.interm_certs` is a comma-separated list
     for interm_cert in entry.interm_certs.split(",") {
-        chain_bytes.append(&mut read_pem_file_as_bytes(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
+        chain_bytes.extend(read_pem_file_as_bytes(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
     }
 
     let begin = Instant::now();
@@ -96,12 +75,11 @@ fn validate_ct_logs_job(
     let chain =
         VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?);
 
-    if args.debug {
-        print_debug_info(&validator.roots, &chain, &entry.domain, timestamp as i64);
+    if args.validator.debug {
+        print_debug_info(&validator.roots, &chain, &entry.domain, validator.get_validation_time());
     }
 
-    let res = validator.validate(&chain, &policy::ExecTask::DomainValidation(entry.domain.clone()))?;
-    // let res = validate::valid_domain(&policy, roots, &chain, &entry.domain.to_lowercase())?;
+    let res = validator.validate_hostname(&chain, &entry.domain)?;
 
     *timer.lock().unwrap() += begin.elapsed();
 
@@ -114,9 +92,6 @@ pub fn main(args: Args) -> Result<(), Error>
     // let heap_profiler = heappy::HeapProfilerGuard::new(1).unwrap();
 
     eprintln!("validating {} CT log file(s)", args.csv_files.len());
-
-    // Choose the policy according to the command line flag
-    let timestamp = args.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
 
     let (tx_job, rx_job) = crossbeam::channel::unbounded::<CTLogEntry>();
     let (tx_res, rx_res) = mpsc::channel();
@@ -139,14 +114,8 @@ pub fn main(args: Args) -> Result<(), Error>
             let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
             let roots =
                 roots_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?;
-            let roots = parser::VecDeep::from_vec(roots);
 
-            let policy = match args.policy {
-                Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
-                Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
-            };
-
-            let validator = Validator::new(policy, roots);
+            let validator = validator::new_validator(&args.validator, roots)?;
 
             while let Ok(entry) = rx_job.recv() {
                 tx_res.send(ValidationResult {
@@ -155,7 +124,6 @@ pub fn main(args: Args) -> Result<(), Error>
                     result: validate_ct_logs_job(
                         &args,
                         &validator,
-                        timestamp,
                         &entry,
                         &timer,
                     ),

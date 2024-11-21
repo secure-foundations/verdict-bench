@@ -1,11 +1,13 @@
 mod error;
 mod utils;
 mod ct_logs;
+mod validator;
 mod cmd_parse_cert;
 mod cmd_validate;
 mod cmd_parse_ct_logs;
 mod cmd_validate_ct_logs;
 mod cmd_diff_results;
+mod cmd_bench_ct_logs;
 
 use std::process::ExitCode;
 use clap::{command, Parser, Subcommand};
@@ -34,6 +36,9 @@ enum Action {
 
     /// Compare the results of two CT logs
     DiffResults(cmd_diff_results::Args),
+
+    /// Benchmark CT logs on multiple clients
+    BenchCTLogs(cmd_bench_ct_logs::Args),
 }
 
 fn main_args(args: Args) -> Result<(), Error> {
@@ -43,6 +48,7 @@ fn main_args(args: Args) -> Result<(), Error> {
         Action::ParseCTLogs(args) => cmd_parse_ct_logs::main(args),
         Action::ValidateCTLog(args) => cmd_validate_ct_logs::main(args),
         Action::DiffResults(args) => cmd_diff_results::main(args),
+        Action::BenchCTLogs(args) => cmd_bench_ct_logs::main(args),
     }
 }
 

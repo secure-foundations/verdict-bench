@@ -39,6 +39,21 @@ pub enum Error {
 
     #[error("repeat number must be positive")]
     ZeroRepeat,
+
+    #[error("libfaketime.so not found")]
+    LibFakeTimeNotFound,
+
+    #[error("failed to get child process stdin")]
+    ChildStdin,
+
+    #[error("failed to get child process stdout")]
+    ChildStdout,
+
+    #[error("empty certificate bundle")]
+    EmptyBundle,
+
+    #[error("chromium cert bench error: {0}")]
+    ChromiumBenchError(String),
 }
 
 impl From<X509ParseError> for Error {

@@ -24,7 +24,9 @@ pub fn main(args: Args) -> Result<(), Error>
     let mut num_parsed = 0;
     let mut total_time = Duration::new(0, 0);
 
-    for cert_bytes in read_pem_as_bytes(io::stdin().lock())? {
+    for cert_bytes in read_pem_as_bytes(io::stdin().lock()) {
+        let cert_bytes = cert_bytes?;
+
         let begin = Instant::now();
         let parsed = parse_x509_cert(&cert_bytes);
         total_time += begin.elapsed();

@@ -98,14 +98,14 @@ impl<'a> Validator<'a> {
 
     pub open spec fn get_query(
         &self,
-        bundle: &VecDeep<CertificateValue>,
-        task: &policy::ExecTask,
+        bundle: Seq<SpecCertificateValue>,
+        task: policy::Task,
     ) -> Query {
         Query {
             policy: self.policy.deep_view(),
             roots: self.roots@,
-            bundle: bundle@,
-            task: task.deep_view(),
+            bundle: bundle,
+            task: task,
         }
     }
 
@@ -119,11 +119,11 @@ impl<'a> Validator<'a> {
         root_idx: usize,
     ) -> (res: Result<bool, ValidationError>)
         requires
-            self.get_query(bundle, task).is_simple_path_to_root(path@, root_idx),
+            self.get_query(bundle@, task.deep_view()).is_simple_path_to_root(path@, root_idx),
 
         ensures
             res matches Ok(res) ==>
-                res == self.get_query(bundle, task).path_satisfies_policy(path@, root_idx),
+                res == self.get_query(bundle@, task.deep_view()).path_satisfies_policy(path@, root_idx),
     {
         let mut candidate: Vec<policy::ExecCertificate> = Vec::new();
         let path_len = path.len();
@@ -132,7 +132,7 @@ impl<'a> Validator<'a> {
         for i in 0..path_len
             invariant
                 path_len == path@.len(),
-                self.get_query(bundle, task).is_simple_path_to_root(path@, root_idx),
+                self.get_query(bundle@, task.deep_view()).is_simple_path_to_root(path@, root_idx),
 
                 candidate@.len() == i,
                 forall |j| #![trigger candidate@[j]] 0 <= j < i ==>
@@ -167,19 +167,19 @@ impl<'a> Validator<'a> {
         root_issuers: &Vec<usize>,
     ) -> (res: Result<bool, ValidationError>)
         requires
-            self.get_query(bundle, task).is_simple_path(path@),
+            self.get_query(bundle@, task.deep_view()).is_simple_path(path@),
             self.spec_root_issuers(bundle@[path@.last() as int], root_issuers@),
 
         ensures
             res matches Ok(res) ==>
                 res == exists |root_idx: usize|
-                    #[trigger] self.get_query(bundle, task).is_simple_path_to_root(path@, root_idx) &&
-                    self.get_query(bundle, task).path_satisfies_policy(path@, root_idx)
+                    #[trigger] self.get_query(bundle@, task.deep_view()).is_simple_path_to_root(path@, root_idx) &&
+                    self.get_query(bundle@, task.deep_view()).path_satisfies_policy(path@, root_idx)
     {
         reveal(Validator::spec_root_issuers);
 
         let root_issuers_len = root_issuers.len();
-        let ghost query = self.get_query(bundle, task);
+        let ghost query = self.get_query(bundle@, task.deep_view());
 
         #[verifier::loop_isolation(false)]
         for i in 0..root_issuers_len
@@ -275,7 +275,7 @@ impl<'a> Validator<'a> {
 
         ensures
             // Soundness & completeness (modulo ValidationError)
-            res matches Ok(res) ==> res == self.get_query(bundle, task).valid(),
+            res matches Ok(res) ==> res == self.get_query(bundle@, task.deep_view()).valid(),
     {
         let bundle_len = bundle.len();
         let roots_len = self.roots.len();
@@ -293,7 +293,7 @@ impl<'a> Validator<'a> {
             root_issuers.push(self.get_root_issuer(bundle.get(i)));
         }
 
-        let ghost query = self.get_query(bundle, task);
+        let ghost query = self.get_query(bundle@, task.deep_view());
 
         // DFS from bundle[0] to try to reach a root
         // Stack of path prefices to explore
@@ -413,6 +413,23 @@ impl<'a> Validator<'a> {
                 // assert(!query.valid());
                 return Ok(false);
             }
+        }
+    }
+
+    pub fn validate_hostname(&self, bundle: &VecDeep<CertificateValue>, domain: &str) -> (res: Result<bool, ValidationError>)
+        requires bundle@.len() != 0,
+
+        ensures
+            res matches Ok(res) ==> res == self.get_query(bundle@, policy::Task::DomainValidation(domain@)).valid(),
+    {
+        self.validate(bundle, &policy::ExecTask::DomainValidation(domain.to_string()))
+    }
+
+    pub fn get_validation_time(&self) -> u64
+    {
+        match &self.policy {
+            policy::ExecPolicy::Chrome(env) => env.time,
+            policy::ExecPolicy::Firefox(env) => env.time,
         }
     }
 }
