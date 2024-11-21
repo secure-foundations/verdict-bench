@@ -15,5 +15,4 @@ pub trait X509Agent {
 
 pub trait X509Impl {
     fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error>;
-    fn drop(self) -> Result<(), Error>;
 }

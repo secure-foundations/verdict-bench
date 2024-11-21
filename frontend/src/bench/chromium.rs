@@ -109,18 +109,17 @@ impl X509Impl for ChromiumImpl {
             Err(Error::ChromiumBenchError(format!("unexpected output: {}", line)))
         }
     }
+}
 
-    fn drop(mut self) -> Result<(), Error> {
-        if let Some(status) = self.child.try_wait()? {
-            if !status.success() {
-                return Err(Error::ChromiumBenchError(format!("chromium cert bench failed with: {}", status)));
-            }
+impl Drop for ChromiumImpl {
+    fn drop(&mut self) {
+        if let Some(status) = self.child.try_wait().unwrap() {
+            eprintln!("chrome cert bench failed with: {}", status);
         }
 
         // We expect the process to be still running
         // so no need to consume the status here
-        self.child.kill()?;
-        self.child.wait()?;
-        Ok(())
+        self.child.kill().unwrap();
+        self.child.wait().unwrap();
     }
 }
