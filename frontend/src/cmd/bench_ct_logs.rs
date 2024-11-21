@@ -9,6 +9,7 @@ use crate::ct_logs::*;
 use crate::error::*;
 use crate::utils::*;
 use crate::bench::*;
+use crate::validator::Policy;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -90,11 +91,26 @@ fn get_x509_impl(args: &Args) -> Result<Box<dyn X509Impl>, Error> {
                 debug: args.debug,
             }.init(&args.roots, timestamp)?),
 
-        _ => todo!(),
+        BenchAgent::VerdictChrome =>
+            Box::new(VerdictAgent {
+                policy: Policy::ChromeHammurabi,
+                debug: args.debug,
+            }.init(&args.roots, timestamp)?),
+
+        BenchAgent::VerdictFirefox =>
+            Box::new(VerdictAgent {
+                policy: Policy::FirefoxHammurabi,
+                debug: args.debug,
+            }.init(&args.roots, timestamp)?),
     })
 }
 
 pub fn main(args: Args) -> Result<(), Error> {
+    if args.csv_files.is_empty() {
+        eprintln!("no csv files given");
+        return Ok(());
+    }
+
     let mut x509_impl = get_x509_impl(&args)?;
 
     let mut found_hash = false;

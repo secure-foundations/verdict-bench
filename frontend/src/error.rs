@@ -63,6 +63,12 @@ pub enum Error {
 
     #[error("firefox cert bench error: {0}")]
     FirefoxBenchError(String),
+
+    #[error("duration overflow")]
+    DurationOverflow,
+
+    #[error("verdict bench error: {0}")]
+    VerdictBenchError(String),
 }
 
 impl From<X509ParseError> for Error {
