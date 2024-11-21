@@ -616,9 +616,7 @@ async function main(args) {
                 // Parse all certificates
                 // print(leaf_base64)
                 let certs = [certdb.constructX509FromBase64(leaf_base64)];
-                print(leaf_base64)
                 for (let interm of interm_base64) {
-                    print(interm)
                     certs.push(certdb.constructX509FromBase64(interm));
                 }
 
