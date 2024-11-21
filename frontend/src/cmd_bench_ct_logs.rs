@@ -60,6 +60,10 @@ pub struct Args {
     /// Path to libfaketime.so
     #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
     faketime_lib: String,
+
+    /// Repeat validation of each certificate for benchmarking
+    #[clap(short = 'n', long)]
+    repeat: Option<usize>,
 }
 
 trait X509Agent {
@@ -70,7 +74,8 @@ trait X509Agent {
 }
 
 trait X509Impl {
-    fn validate(&mut self, bundle: Vec<String>, domain: String, repeat: usize) -> Result<ValidationResult, Error>;
+    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error>;
+    fn drop(self) -> Result<(), Error>;
 }
 
 #[derive(Debug)]
@@ -83,6 +88,7 @@ struct ValidationResult {
 struct ChromiumAgent {
     repo: String,
     faketime_lib: String,
+    debug: bool,
 }
 
 struct ChromiumImpl {
@@ -104,16 +110,25 @@ impl X509Agent for ChromiumAgent {
 
         // Check `args.faketime_lib` exists
         if !PathBuf::from(&self.faketime_lib).exists() {
-            return Err(Error::LibFakeTimeNotFound);
+            return Err(Error::LibFakeTimeNotFound(self.faketime_lib.clone()));
         }
 
-        let mut child = process::Command::new(bin_path)
-            .arg(roots_path)
+        if !bin_path.exists() {
+            return Err(Error::ChromiumRepoNotFound(bin_path.display().to_string()));
+        }
+
+        let mut cmd = process::Command::new(bin_path);
+        cmd.arg(roots_path)
             .env("LD_PRELOAD", &self.faketime_lib)
-            .env("FAKETIME", &fake_time)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .spawn()?;
+            .env("FAKETIME", &format!("@{}", fake_time))
+            .stdin(process::Stdio::piped())
+            .stdout(process::Stdio::piped());
+
+        if !self.debug {
+            cmd.stderr(process::Stdio::null());
+        };
+
+        let mut child = cmd.spawn()?;
 
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
@@ -123,13 +138,21 @@ impl X509Agent for ChromiumAgent {
 }
 
 impl X509Impl for ChromiumImpl {
-    fn validate(&mut self, bundle: Vec<String>, domain: String, repeat: usize) -> Result<ValidationResult, Error> {
+    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error> {
         if bundle.len() == 0 {
             return Err(Error::EmptyBundle);
         }
 
         if repeat == 0 {
             return Err(Error::ZeroRepeat);
+        }
+
+        if domain.trim().is_empty() {
+            // Chrome would abort if the domain is empty
+            return Ok(ValidationResult {
+                err: Some("empty_domain_name".to_string()),
+                stats: vec![0; repeat],
+            });
         }
 
         writeln!(self.stdin, "repeat: {}", repeat)?;
@@ -146,8 +169,8 @@ impl X509Impl for ChromiumImpl {
             return Err(Error::ChromiumBenchError("failed to read stdout".to_string()));
         }
 
-        if line.starts_with("results:") {
-            let mut res = line["results:".len()..].trim().split_ascii_whitespace();
+        if line.starts_with("result:") {
+            let mut res = line["result:".len()..].trim().split_ascii_whitespace();
             let res_fst = res.next().ok_or(Error::ChromiumBenchError("no results".to_string()))?;
 
             Ok(ValidationResult {
@@ -156,12 +179,25 @@ impl X509Impl for ChromiumImpl {
                 // Parse the rest as a space separated list of integers (time in microseconds)
                 stats: res.map(|s| s.parse().unwrap()).collect(),
             })
-
         } else if line.starts_with("error:") {
             Err(Error::ChromiumBenchError(line["error:".len()..].trim().to_string()))
         } else {
             Err(Error::ChromiumBenchError(format!("unexpected output: {}", line)))
         }
+    }
+
+    fn drop(mut self) -> Result<(), Error> {
+        if let Some(status) = self.child.try_wait()? {
+            if !status.success() {
+                return Err(Error::ChromiumBenchError(format!("chromium cert bench failed with: {}", status)));
+            }
+        }
+
+        // We expect the process to be still running
+        // so no need to consume the status here
+        self.child.kill()?;
+        self.child.wait()?;
+        Ok(())
     }
 }
 
@@ -169,49 +205,83 @@ pub fn main(args: Args) -> Result<(), Error> {
     let chrome: ChromiumAgent = ChromiumAgent {
         repo: args.chromium_repo.clone().ok_or(Error::ChromiumBenchError("missing chromium repo".to_string()))?,
         faketime_lib: args.faketime_lib.clone(),
+        debug: args.validator.debug,
     };
 
-    let mut handle = chrome.init(&args.roots, Utc::now().timestamp() as u64)?;
+    let timestamp = args.validator.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
+    let mut handle = chrome.init(&args.roots, timestamp)?;
 
     let mut found_hash = false;
+    let repeat = args.repeat.unwrap_or(1);
 
-    for path in &args.csv_files {
-        let file = File::open(path)?;
-        let mut reader = ReaderBuilder::new()
-            .has_headers(false)  // If your CSV has headers
-            .from_reader(file);
+    // Open the output file if it exists, otherwise use stdout
+    let mut output_handle: Box<dyn io::Write> = if let Some(out_path) = args.out_csv {
+        Box::new(File::create(out_path)?)
+    } else {
+        Box::new(std::io::stdout())
+    };
+    let mut output_writer =
+        WriterBuilder::new().has_headers(false).from_writer(output_handle);
 
-        for (i, entry) in reader.deserialize().enumerate() {
-            let entry: CTLogEntry = entry?;
+    let mut inner = || -> Result<(), Error> {
+        for path in &args.csv_files {
+            let file = File::open(path)?;
+            let mut reader = ReaderBuilder::new()
+                .has_headers(false)  // If your CSV has headers
+                .from_reader(file);
 
-            if let Some(limit) = args.limit {
-                if i >= limit {
-                    break;
+            for (i, entry) in reader.deserialize().enumerate() {
+                let entry: CTLogEntry = entry?;
+
+                if let Some(limit) = args.limit {
+                    if i >= limit {
+                        break;
+                    }
                 }
-            }
 
-            // If a specific hash is specified, only check certificate with that hash
-            if let Some(hash) = &args.hash {
-                if hash != &entry.hash {
-                    continue;
-                } else {
-                    found_hash = true;
+                // If a specific hash is specified, only check certificate with that hash
+                if let Some(hash) = &args.hash {
+                    if hash != &entry.hash {
+                        continue;
+                    } else {
+                        found_hash = true;
+                    }
                 }
+
+                let mut bundle = vec![entry.cert_base64.to_string()];
+
+                // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
+                // `entry.interm_certs` is a comma-separated list
+                for interm_cert in entry.interm_certs.split(",") {
+                    bundle.extend(read_pem_file_as_base64(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
+                }
+
+                let res = handle.validate(&bundle, &entry.domain, repeat)?;
+
+                // println!("{}: {:?}", entry.hash, res);
+
+                output_writer.serialize(CTLogResult {
+                    hash: entry.hash,
+                    domain: entry.domain,
+                    result: if let Some(err) = res.err {
+                        err
+                    } else {
+                        "true".to_string()
+                    },
+                })?;
+
+                output_writer.flush()?;
             }
-
-            let mut bundle = vec![entry.cert_base64.to_string()];
-
-            // Look up all intermediate certificates <args.interm_dir>/<entry.interm_certs>.pem
-            // `entry.interm_certs` is a comma-separated list
-            for interm_cert in entry.interm_certs.split(",") {
-                bundle.extend(read_pem_file_as_base64(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
-            }
-
-            let res = handle.validate(bundle, entry.domain, 1)?;
-
-            println!("{}: {:?}", entry.hash, res);
         }
+
+        Ok(())
+    };
+
+    if let Err(err) = inner() {
+        eprintln!("failed: {}", err);
     }
+
+    handle.drop()?;
 
     Ok(())
 }

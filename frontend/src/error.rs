@@ -40,8 +40,11 @@ pub enum Error {
     #[error("repeat number must be positive")]
     ZeroRepeat,
 
-    #[error("libfaketime.so not found")]
-    LibFakeTimeNotFound,
+    #[error("libfaketime.so not found at {0}")]
+    LibFakeTimeNotFound(String),
+
+    #[error("chromium not found at {0}")]
+    ChromiumRepoNotFound(String),
 
     #[error("failed to get child process stdin")]
     ChildStdin,
