@@ -13,4 +13,9 @@ pub struct CTLogResult {
     pub hash: String,
     pub domain: String,
     pub result: String,
+
+    /// Samples of running time in microseconds
+    /// TODO: this is currently serialized as a
+    /// comma separated list, which is not ideal
+    pub stats: Vec<u64>,
 }

@@ -46,6 +46,9 @@ pub enum Error {
     #[error("chromium not found at {0}")]
     ChromiumRepoNotFound(String),
 
+    #[error("firefox not found at {0}")]
+    FirefoxRepoNotFound(String),
+
     #[error("failed to get child process stdin")]
     ChildStdin,
 
@@ -57,6 +60,9 @@ pub enum Error {
 
     #[error("chromium cert bench error: {0}")]
     ChromiumBenchError(String),
+
+    #[error("firefox cert bench error: {0}")]
+    FirefoxBenchError(String),
 }
 
 impl From<X509ParseError> for Error {

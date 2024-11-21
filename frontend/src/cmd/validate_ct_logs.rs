@@ -159,6 +159,7 @@ pub fn main(args: Args) -> Result<(), Error>
                 hash: res.hash,
                 domain: res.domain,
                 result: result_str,
+                stats: vec![],
             })?;
             output_writer.flush()?;
 

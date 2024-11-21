@@ -1,26 +1,18 @@
 use std::io::{self, Write};
 use std::fs::File;
-use std::path::PathBuf;
 
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use std::io::{BufRead, BufReader};
-
-use std::process::{self, Child, ChildStdin, ChildStdout};
 
 use crossbeam::channel;
 use clap::Parser;
 use csv::{ReaderBuilder, WriterBuilder};
 
-use chrono::{TimeZone, Utc};
-
-use parser::{parse_x509_cert, decode_base64, VecDeep};
-use chain::validate::Validator;
-
 use crate::ct_logs::*;
 use crate::error::*;
 use crate::utils::*;
+use crate::bench::*;
 use crate::validator;
 
 #[derive(Parser, Debug)]
@@ -53,9 +45,13 @@ pub struct Args {
     #[clap(short = 'l', long)]
     limit: Option<usize>,
 
-    /// Path to the chromium build repo with cert_bench
+    /// Path to the Chromium build repo with cert_bench
     #[clap(long)]
     chromium_repo: Option<String>,
+
+    /// Path to the Firefox build repo
+    #[clap(long)]
+    firefox_repo: Option<String>,
 
     /// Path to libfaketime.so
     #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
@@ -66,150 +62,20 @@ pub struct Args {
     repeat: Option<usize>,
 }
 
-trait X509Agent {
-    type Args;
-    type Impl: X509Impl;
-
-    fn init(&self, roots_path: &str, timestamp: u64) -> Result<Self::Impl, Error>;
-}
-
-trait X509Impl {
-    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error>;
-    fn drop(self) -> Result<(), Error>;
-}
-
-#[derive(Debug)]
-struct ValidationResult {
-    err: Option<String>,
-    /// Durations in microseconds
-    stats: Vec<u64>,
-}
-
-struct ChromiumAgent {
-    repo: String,
-    faketime_lib: String,
-    debug: bool,
-}
-
-struct ChromiumImpl {
-    child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-}
-
-impl X509Agent for ChromiumAgent {
-    type Args = Args;
-    type Impl = ChromiumImpl;
-
-    fn init(&self, roots_path: &str, timestamp: u64) -> Result<Self::Impl, Error> {
-        let mut bin_path = PathBuf::from(&self.repo);
-        bin_path.extend([ "src", "out", "Release", "cert_bench" ]);
-
-        let fake_time = Utc.timestamp_opt(timestamp as i64, 0).unwrap()
-            .format("%Y-%m-%d %H:%M:%S").to_string();
-
-        // Check `args.faketime_lib` exists
-        if !PathBuf::from(&self.faketime_lib).exists() {
-            return Err(Error::LibFakeTimeNotFound(self.faketime_lib.clone()));
-        }
-
-        if !bin_path.exists() {
-            return Err(Error::ChromiumRepoNotFound(bin_path.display().to_string()));
-        }
-
-        let mut cmd = process::Command::new(bin_path);
-        cmd.arg(roots_path)
-            .env("LD_PRELOAD", &self.faketime_lib)
-            .env("FAKETIME", &format!("@{}", fake_time))
-            .stdin(process::Stdio::piped())
-            .stdout(process::Stdio::piped());
-
-        if !self.debug {
-            cmd.stderr(process::Stdio::null());
-        };
-
-        let mut child = cmd.spawn()?;
-
-        let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
-        let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
-
-        Ok(ChromiumImpl { child, stdin, stdout: BufReader::new(stdout) })
-    }
-}
-
-impl X509Impl for ChromiumImpl {
-    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error> {
-        if bundle.len() == 0 {
-            return Err(Error::EmptyBundle);
-        }
-
-        if repeat == 0 {
-            return Err(Error::ZeroRepeat);
-        }
-
-        if domain.trim().is_empty() {
-            // Chrome would abort if the domain is empty
-            return Ok(ValidationResult {
-                err: Some("empty_domain_name".to_string()),
-                stats: vec![0; repeat],
-            });
-        }
-
-        writeln!(self.stdin, "repeat: {}", repeat)?;
-        writeln!(&mut self.stdin, "leaf: {}", bundle[0])?;
-
-        for cert in bundle.iter().skip(1) {
-            writeln!(&mut self.stdin, "interm: {}", cert)?;
-        }
-        writeln!(&mut self.stdin, "domain: {}", domain)?;
-
-        let mut line = String::new();
-
-        if self.stdout.read_line(&mut line)? == 0 {
-            return Err(Error::ChromiumBenchError("failed to read stdout".to_string()));
-        }
-
-        if line.starts_with("result:") {
-            let mut res = line["result:".len()..].trim().split_ascii_whitespace();
-            let res_fst = res.next().ok_or(Error::ChromiumBenchError("no results".to_string()))?;
-
-            Ok(ValidationResult {
-                err: if res_fst == "OK" { None } else { Some(res_fst.to_string()) },
-
-                // Parse the rest as a space separated list of integers (time in microseconds)
-                stats: res.map(|s| s.parse().unwrap()).collect(),
-            })
-        } else if line.starts_with("error:") {
-            Err(Error::ChromiumBenchError(line["error:".len()..].trim().to_string()))
-        } else {
-            Err(Error::ChromiumBenchError(format!("unexpected output: {}", line)))
-        }
-    }
-
-    fn drop(mut self) -> Result<(), Error> {
-        if let Some(status) = self.child.try_wait()? {
-            if !status.success() {
-                return Err(Error::ChromiumBenchError(format!("chromium cert bench failed with: {}", status)));
-            }
-        }
-
-        // We expect the process to be still running
-        // so no need to consume the status here
-        self.child.kill()?;
-        self.child.wait()?;
-        Ok(())
-    }
-}
-
 pub fn main(args: Args) -> Result<(), Error> {
-    let chrome: ChromiumAgent = ChromiumAgent {
-        repo: args.chromium_repo.clone().ok_or(Error::ChromiumBenchError("missing chromium repo".to_string()))?,
-        faketime_lib: args.faketime_lib.clone(),
+    // let chrome = ChromiumAgent {
+    //     repo: args.chromium_repo.clone().ok_or(Error::ChromiumBenchError("missing chromium repo".to_string()))?,
+    //     faketime_lib: args.faketime_lib.clone(),
+    //     debug: args.validator.debug,
+    // };
+
+    let firefox = FirefoxAgent {
+        repo: args.firefox_repo.clone().ok_or(Error::FirefoxBenchError("missing firefox repo".to_string()))?,
         debug: args.validator.debug,
     };
 
     let timestamp = args.validator.override_time.unwrap_or(chrono::Utc::now().timestamp()) as u64;
-    let mut handle = chrome.init(&args.roots, timestamp)?;
+    let mut handle = firefox.init(&args.roots, timestamp)?;
 
     let mut found_hash = false;
     let repeat = args.repeat.unwrap_or(1);
@@ -268,6 +134,7 @@ pub fn main(args: Args) -> Result<(), Error> {
                     } else {
                         "true".to_string()
                     },
+                    stats: res.stats,
                 })?;
 
                 output_writer.flush()?;
