@@ -5,12 +5,22 @@ use std::process::{self, Child, ChildStdin, ChildStdout};
 use super::common::*;
 use crate::error::*;
 
+const RESET_COUNT: usize = 100;
+
 pub struct FirefoxAgent {
     pub repo: String,
     pub debug: bool,
 }
 
 pub struct FirefoxImpl {
+    bin_path: PathBuf,
+    roots_path: String,
+    timestamp: u64,
+    debug: bool,
+
+    /// Number of jobs processed
+    count: usize,
+
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
@@ -28,7 +38,7 @@ impl X509Agent for FirefoxAgent {
             return Err(Error::FirefoxRepoNotFound(bin_path.display().to_string()));
         }
 
-        let mut cmd = process::Command::new(bin_path);
+        let mut cmd = process::Command::new(bin_path.clone());
         cmd.arg(roots_path)
             .arg(timestamp.to_string())
             .stdin(process::Stdio::piped())
@@ -43,7 +53,49 @@ impl X509Agent for FirefoxAgent {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(FirefoxImpl { child, stdin, stdout: BufReader::new(stdout) })
+        Ok(FirefoxImpl {
+            bin_path,
+            roots_path: roots_path.to_string(),
+            timestamp,
+            debug: self.debug,
+
+            count: 0,
+            child, stdin, stdout: BufReader::new(stdout),
+        })
+    }
+}
+
+impl FirefoxImpl {
+    /// Restart the benching process
+    /// NOTE: this is currently a workaround for the degrading
+    /// performance of the test harness overtime due to the
+    /// use of certdb in Firefox
+    fn reset(&mut self) -> Result<(), Error> {
+        let mut cmd = process::Command::new(&self.bin_path);
+        cmd.arg(&self.roots_path)
+            .arg(self.timestamp.to_string())
+            .stdin(process::Stdio::piped())
+            .stdout(process::Stdio::piped());
+
+        if !self.debug {
+            cmd.stderr(process::Stdio::null());
+        };
+
+        let mut child = cmd.spawn()?;
+
+        let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
+        let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
+
+        // Kill the previous process
+        self.child.kill()?;
+        self.child.wait()?;
+
+        // Set the new one
+        self.child = child;
+        self.stdin = stdin;
+        self.stdout = BufReader::new(stdout);
+
+        Ok(())
     }
 }
 
@@ -56,6 +108,12 @@ impl X509Impl for FirefoxImpl {
 
         if repeat == 0 {
             return Err(Error::ZeroRepeat);
+        }
+
+        self.count += 1;
+
+        if self.count >= RESET_COUNT {
+            self.reset()?;
         }
 
         writeln!(self.stdin, "repeat: {}", repeat)?;
