@@ -114,6 +114,7 @@ impl X509Impl for FirefoxImpl {
 
         if self.count >= RESET_COUNT {
             self.reset()?;
+            self.count = 0;
         }
 
         writeln!(self.stdin, "repeat: {}", repeat)?;
@@ -138,7 +139,8 @@ impl X509Impl for FirefoxImpl {
                 err: if res_fst == "OK" { None } else { Some(res_fst.to_string()) },
 
                 // Parse the rest as a space separated list of integers (time in microseconds)
-                stats: res.map(|s| s.parse().unwrap()).collect(),
+                stats: res.map(|s| s.parse().map_err(|_| Error::FirefoxBenchError("result parse error".to_string())))
+                    .collect::<Result<Vec<_>, _>>()?,
             })
         } else if line.starts_with("error:") {
             Err(Error::FirefoxBenchError(line["error:".len()..].trim().to_string()))
