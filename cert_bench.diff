@@ -1,6 +1,55 @@
+diff -r dbd5ee74c531 security/certverifier/CertVerifier.cpp
+--- a/security/certverifier/CertVerifier.cpp	Tue Aug 25 00:54:38 2020 +0000
++++ b/security/certverifier/CertVerifier.cpp	Fri Nov 22 16:36:54 2024 +0000
+@@ -586,16 +586,16 @@
+       // results of setting the default policy to a particular configuration.
+       SHA1Mode sha1ModeConfigurations[] = {
+           SHA1Mode::Forbidden,
+-          SHA1Mode::ImportedRoot,
+-          SHA1Mode::ImportedRootOrBefore2016,
+-          SHA1Mode::Allowed,
++          // SHA1Mode::ImportedRoot,
++          // SHA1Mode::ImportedRootOrBefore2016,
++          // SHA1Mode::Allowed,
+       };
+ 
+       SHA1ModeResult sha1ModeResults[] = {
+           SHA1ModeResult::SucceededWithoutSHA1,
+-          SHA1ModeResult::SucceededWithImportedRoot,
+-          SHA1ModeResult::SucceededWithImportedRootOrSHA1Before2016,
+-          SHA1ModeResult::SucceededWithSHA1,
++          // SHA1ModeResult::SucceededWithImportedRoot,
++          // SHA1ModeResult::SucceededWithImportedRootOrSHA1Before2016,
++          // SHA1ModeResult::SucceededWithSHA1,
+       };
+ 
+       size_t sha1ModeConfigurationsCount =
+@@ -615,7 +615,7 @@
+ 
+       CertPolicyId evPolicy;
+       SECOidTag evPolicyOidTag;
+-      bool foundEVPolicy = GetFirstEVPolicy(*cert, evPolicy, evPolicyOidTag);
++      bool foundEVPolicy = false; // GetFirstEVPolicy(*cert, evPolicy, evPolicyOidTag);
+       for (size_t i = 0;
+            i < sha1ModeConfigurationsCount && rv != Success && foundEVPolicy;
+            i++) {
+@@ -692,10 +692,10 @@
+       }
+ 
+       // Now try non-EV.
+-      unsigned int keySizeOptions[] = {MIN_RSA_BITS, MIN_RSA_BITS_WEAK};
++      unsigned int keySizeOptions[] = {MIN_RSA_BITS}; // , MIN_RSA_BITS_WEAK};
+ 
+-      KeySizeStatus keySizeStatuses[] = {KeySizeStatus::LargeMinimumSucceeded,
+-                                         KeySizeStatus::CompatibilityRisk};
++      KeySizeStatus keySizeStatuses[] = {KeySizeStatus::LargeMinimumSucceeded};
++                                         // KeySizeStatus::CompatibilityRisk};
+ 
+       static_assert(
+           MOZ_ARRAY_LENGTH(keySizeOptions) == MOZ_ARRAY_LENGTH(keySizeStatuses),
 diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
 --- a/security/manager/ssl/nsIX509CertDB.idl	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsIX509CertDB.idl	Fri Nov 22 13:45:19 2024 +0000
++++ b/security/manager/ssl/nsIX509CertDB.idl	Fri Nov 22 16:36:54 2024 +0000
 @@ -301,6 +301,25 @@
                               in uint64_t aTime,
                               in nsICertVerificationCallback aCallback);
@@ -29,7 +78,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
    [must_use]
 diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 --- a/security/manager/ssl/nsNSSCertificateDB.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Fri Nov 22 13:45:19 2024 +0000
++++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Fri Nov 22 16:36:54 2024 +0000
 @@ -15,6 +15,7 @@
  #include "mozilla/Casting.h"
  #include "mozilla/Services.h"
@@ -165,7 +214,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
    NS_ENSURE_TRUE(certVerifier, NS_ERROR_FAILURE);
 diff -r dbd5ee74c531 security/nss/lib/ckfw/builtins/certdata.txt
 --- a/security/nss/lib/ckfw/builtins/certdata.txt	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/nss/lib/ckfw/builtins/certdata.txt	Fri Nov 22 13:45:19 2024 +0000
++++ b/security/nss/lib/ckfw/builtins/certdata.txt	Fri Nov 22 16:36:54 2024 +0000
 @@ -1,4 +1,4 @@
 -# 
 +#
