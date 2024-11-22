@@ -607,42 +607,23 @@ async function main(args) {
             }
 
             let result;
-            let durations = [];
 
-            for (let i = 0; i < repeat_count; i++) {
-                // Measure parsing + validation time
-                let start = Cu.now();
+            result = certdb.benchVerifyCertAtTime(
+                leaf_base64,
+                interm_base64,
+                certificateUsageSSLServer,
+                Ci.nsIX509CertDB.FLAG_LOCAL_ONLY,
+                hostname,
+                timestamp,
+                repeat_count,
+            );
 
-                // Parse all certificates
-                // print(leaf_base64)
-                let certs = [certdb.constructX509FromBase64(leaf_base64)];
-                for (let interm of interm_base64) {
-                    certs.push(certdb.constructX509FromBase64(interm));
-                }
+            err_code = result[0];
+            durations = result.slice(1);
 
-                result = await new Promise((resolve, reject) => {
-                    certdb.asyncVerifyCertAtTime(
-                        certs[0],
-                        certificateUsageSSLServer,
-                        Ci.nsIX509CertDB.FLAG_LOCAL_ONLY,
-                        hostname,
-                        timestamp,
-                        new VerifyResult(resolve),
-                    );
-                });
-                
-                durations.push(Cu.now() - start);
-            
-                // Remove certs
-                for (let cert of certs) {
-                    certdb.deleteCertificate(cert);
-                }
-            }
-
-            dump(`result: ${errorCodeToName(result)}`);
+            dump(`result: ${errorCodeToName(err_code)}`);
             for (const duration of durations) {
-                let duration_micro_sec = Math.round(duration * 1000);
-                dump(` ${duration_micro_sec}`)
+                dump(` ${duration}`)
             }
             dump("\n")
 
