@@ -1,3 +1,18 @@
+diff --git a/base/logging.h b/base/logging.h
+index d967ecb3a9..c7716a2c39 100644
+--- a/base/logging.h
++++ b/base/logging.h
+@@ -398,8 +398,8 @@ const LogSeverity LOG_0 = LOG_ERROR;
+ // As special cases, we can assume that LOG_IS_ON(FATAL) always holds. Also,
+ // LOG_IS_ON(DFATAL) always holds in debug mode. In particular, CHECK()s will
+ // always fire if they fail.
+-#define LOG_IS_ON(severity) \
+-  (::logging::ShouldCreateLogMessage(::logging::LOG_##severity))
++#define LOG_IS_ON(severity) false
++  // (::logging::ShouldCreateLogMessage(::logging::LOG_##severity))
+ 
+ // We don't do any caching tricks with VLOG_IS_ON() like the
+ // google-glog version since it increases binary size.  This means
 diff --git a/net/BUILD.gn b/net/BUILD.gn
 index cba943e73f..2293551141 100644
 --- a/net/BUILD.gn
@@ -22,12 +37,485 @@ index cba943e73f..2293551141 100644
 +    frameworks = [ "Security.framework" ]
 +  }
 +}
+diff --git a/net/cert/cert_verify_proc.cc b/net/cert/cert_verify_proc.cc
+index 6135c24fe8..9b358fe566 100644
+--- a/net/cert/cert_verify_proc.cc
++++ b/net/cert/cert_verify_proc.cc
+@@ -255,26 +255,26 @@ void BestEffortCheckOCSP(const std::string& raw_response,
+ // is assumed to have been validated chaining to a private root,
+ // contains the TLS Feature Extension (https://tools.ietf.org/html/rfc7633) and
+ // has valid OCSP information stapled.
+-void RecordTLSFeatureExtensionWithPrivateRoot(
+-    X509Certificate* cert,
+-    const OCSPVerifyResult& ocsp_result) {
+-  // This checks only for the presence of the TLS Feature Extension, but
+-  // does not check the feature list, and in particular does not verify that
+-  // its value is 'status_request' or 'status_request2'. In practice the
+-  // only use of the TLS feature extension is for OCSP stapling, so
+-  // don't bother to check the value.
+-  bool has_extension = asn1::HasTLSFeatureExtension(
+-      x509_util::CryptoBufferAsStringPiece(cert->cert_buffer()));
+-
+-  UMA_HISTOGRAM_BOOLEAN("Net.Certificate.TLSFeatureExtensionWithPrivateRoot",
+-                        has_extension);
+-  if (!has_extension)
+-    return;
+-
+-  UMA_HISTOGRAM_BOOLEAN(
+-      "Net.Certificate.TLSFeatureExtensionWithPrivateRootHasOCSP",
+-      (ocsp_result.response_status != OCSPVerifyResult::MISSING));
+-}
++// void RecordTLSFeatureExtensionWithPrivateRoot(
++//     X509Certificate* cert,
++//     const OCSPVerifyResult& ocsp_result) {
++//   // This checks only for the presence of the TLS Feature Extension, but
++//   // does not check the feature list, and in particular does not verify that
++//   // its value is 'status_request' or 'status_request2'. In practice the
++//   // only use of the TLS feature extension is for OCSP stapling, so
++//   // don't bother to check the value.
++//   bool has_extension = asn1::HasTLSFeatureExtension(
++//       x509_util::CryptoBufferAsStringPiece(cert->cert_buffer()));
++
++//   UMA_HISTOGRAM_BOOLEAN("Net.Certificate.TLSFeatureExtensionWithPrivateRoot",
++//                         has_extension);
++//   if (!has_extension)
++//     return;
++
++//   UMA_HISTOGRAM_BOOLEAN(
++//       "Net.Certificate.TLSFeatureExtensionWithPrivateRootHasOCSP",
++//       (ocsp_result.response_status != OCSPVerifyResult::MISSING));
++// }
+ 
+ // Records details about the most-specific trust anchor in |hashes|, which is
+ // expected to be ordered with the leaf cert first and the root cert last.
+@@ -294,24 +294,24 @@ void RecordTLSFeatureExtensionWithPrivateRoot(
+ // |spki_hashes| - that is, situations in which the OS methods of detecting
+ // a known root flag a certificate as known, but its hash is not known as part
+ // of the built-in list.
+-void RecordTrustAnchorHistogram(const HashValueVector& spki_hashes,
+-                                bool is_issued_by_known_root) {
+-  int32_t id = 0;
+-  for (const auto& hash : spki_hashes) {
+-    id = GetNetTrustAnchorHistogramIdForSPKI(hash);
+-    if (id != 0)
+-      break;
+-  }
+-  base::UmaHistogramSparse("Net.Certificate.TrustAnchor.Verify", id);
+-
+-  // Record when a known trust anchor is not found within the chain, but the
+-  // certificate is flagged as being from a known root (meaning a fallback to
+-  // OS-based methods of determination).
+-  if (id == 0) {
+-    UMA_HISTOGRAM_BOOLEAN("Net.Certificate.TrustAnchor.VerifyOutOfDate",
+-                          is_issued_by_known_root);
+-  }
+-}
++// void RecordTrustAnchorHistogram(const HashValueVector& spki_hashes,
++//                                 bool is_issued_by_known_root) {
++//   int32_t id = 0;
++//   for (const auto& hash : spki_hashes) {
++//     id = GetNetTrustAnchorHistogramIdForSPKI(hash);
++//     if (id != 0)
++//       break;
++//   }
++//   base::UmaHistogramSparse("Net.Certificate.TrustAnchor.Verify", id);
++
++//   // Record when a known trust anchor is not found within the chain, but the
++//   // certificate is flagged as being from a known root (meaning a fallback to
++//   // OS-based methods of determination).
++//   if (id == 0) {
++//     UMA_HISTOGRAM_BOOLEAN("Net.Certificate.TrustAnchor.VerifyOutOfDate",
++//                           is_issued_by_known_root);
++//   }
++// }
+ 
+ bool AreSHA1IntermediatesAllowed() {
+ #if defined(OS_WIN)
+@@ -453,43 +453,43 @@ WARN_UNUSED_RESULT bool InspectSignatureAlgorithmsInChain(
+   return true;
+ }
+ 
+-base::Value CertVerifyParams(X509Certificate* cert,
+-                             const std::string& hostname,
+-                             const std::string& ocsp_response,
+-                             const std::string& sct_list,
+-                             int flags,
+-                             CRLSet* crl_set,
+-                             const CertificateList& additional_trust_anchors) {
+-  base::Value dict(base::Value::Type::DICTIONARY);
+-  dict.SetKey("certificates", NetLogX509CertificateList(cert));
+-  if (!ocsp_response.empty()) {
+-    dict.SetStringKey("ocsp_response",
+-                      PEMEncode(ocsp_response, "NETLOG OCSP RESPONSE"));
+-  }
+-  if (!sct_list.empty()) {
+-    dict.SetStringKey("sct_list", PEMEncode(sct_list, "NETLOG SCT LIST"));
+-  }
+-  dict.SetKey("host", NetLogStringValue(hostname));
+-  dict.SetIntKey("verify_flags", flags);
+-  dict.SetKey("crlset_sequence", NetLogNumberValue(crl_set->sequence()));
+-  if (crl_set->IsExpired())
+-    dict.SetBoolKey("crlset_is_expired", true);
+-
+-  if (!additional_trust_anchors.empty()) {
+-    base::Value certs(base::Value::Type::LIST);
+-    for (auto& cert : additional_trust_anchors) {
+-      std::string pem_encoded;
+-      if (X509Certificate::GetPEMEncodedFromDER(
+-              x509_util::CryptoBufferAsStringPiece(cert->cert_buffer()),
+-              &pem_encoded)) {
+-        certs.Append(std::move(pem_encoded));
+-      }
+-    }
+-    dict.SetKey("additional_trust_anchors", std::move(certs));
+-  }
+-
+-  return dict;
+-}
++// base::Value CertVerifyParams(X509Certificate* cert,
++//                              const std::string& hostname,
++//                              const std::string& ocsp_response,
++//                              const std::string& sct_list,
++//                              int flags,
++//                              CRLSet* crl_set,
++//                              const CertificateList& additional_trust_anchors) {
++//   base::Value dict(base::Value::Type::DICTIONARY);
++//   dict.SetKey("certificates", NetLogX509CertificateList(cert));
++//   if (!ocsp_response.empty()) {
++//     dict.SetStringKey("ocsp_response",
++//                       PEMEncode(ocsp_response, "NETLOG OCSP RESPONSE"));
++//   }
++//   if (!sct_list.empty()) {
++//     dict.SetStringKey("sct_list", PEMEncode(sct_list, "NETLOG SCT LIST"));
++//   }
++//   dict.SetKey("host", NetLogStringValue(hostname));
++//   dict.SetIntKey("verify_flags", flags);
++//   dict.SetKey("crlset_sequence", NetLogNumberValue(crl_set->sequence()));
++//   if (crl_set->IsExpired())
++//     dict.SetBoolKey("crlset_is_expired", true);
++
++//   if (!additional_trust_anchors.empty()) {
++//     base::Value certs(base::Value::Type::LIST);
++//     for (auto& cert : additional_trust_anchors) {
++//       std::string pem_encoded;
++//       if (X509Certificate::GetPEMEncodedFromDER(
++//               x509_util::CryptoBufferAsStringPiece(cert->cert_buffer()),
++//               &pem_encoded)) {
++//         certs.Append(std::move(pem_encoded));
++//       }
++//     }
++//     dict.SetKey("additional_trust_anchors", std::move(certs));
++//   }
++
++//   return dict;
++// }
+ 
+ }  // namespace
+ 
+@@ -534,10 +534,10 @@ int CertVerifyProc::Verify(X509Certificate* cert,
+                            const CertificateList& additional_trust_anchors,
+                            CertVerifyResult* verify_result,
+                            const NetLogWithSource& net_log) {
+-  net_log.BeginEvent(NetLogEventType::CERT_VERIFY_PROC, [&] {
+-    return CertVerifyParams(cert, hostname, ocsp_response, sct_list, flags,
+-                            crl_set, additional_trust_anchors);
+-  });
++  // net_log.BeginEvent(NetLogEventType::CERT_VERIFY_PROC, [&] {
++  //   return CertVerifyParams(cert, hostname, ocsp_response, sct_list, flags,
++  //                           crl_set, additional_trust_anchors);
++  // });
+   // CertVerifyProc's contract allows ::VerifyInternal() to wait on File I/O
+   // (such as the Windows registry or smart cards on all platforms) or may re-
+   // enter this code via extension hooks (such as smart card UI). To ensure
+@@ -683,19 +683,19 @@ int CertVerifyProc::Verify(X509Certificate* cert,
+       rv = MapCertStatusToNetError(verify_result->cert_status);
+   }
+ 
+-  // Record a histogram for the presence of the TLS feature extension in
+-  // a certificate chaining to a private root.
+-  if (rv == OK && !verify_result->is_issued_by_known_root)
+-    RecordTLSFeatureExtensionWithPrivateRoot(cert, verify_result->ocsp_result);
++  // // Record a histogram for the presence of the TLS feature extension in
++  // // a certificate chaining to a private root.
++  // if (rv == OK && !verify_result->is_issued_by_known_root)
++  //   RecordTLSFeatureExtensionWithPrivateRoot(cert, verify_result->ocsp_result);
+ 
+-  // Record a histogram for per-verification usage of root certs.
+-  if (rv == OK) {
+-    RecordTrustAnchorHistogram(verify_result->public_key_hashes,
+-                               verify_result->is_issued_by_known_root);
+-  }
++  // // Record a histogram for per-verification usage of root certs.
++  // if (rv == OK) {
++  //   RecordTrustAnchorHistogram(verify_result->public_key_hashes,
++  //                              verify_result->is_issued_by_known_root);
++  // }
+ 
+-  net_log.EndEvent(NetLogEventType::CERT_VERIFY_PROC,
+-                   [&] { return verify_result->NetLogParams(rv); });
++  // net_log.EndEvent(NetLogEventType::CERT_VERIFY_PROC,
++  //                  [&] { return verify_result->NetLogParams(rv); });
+   return rv;
+ }
+ 
+diff --git a/net/cert/cert_verify_proc_builtin.cc b/net/cert/cert_verify_proc_builtin.cc
+index 34c9987a29..65fd4ecaec 100644
+--- a/net/cert/cert_verify_proc_builtin.cc
++++ b/net/cert/cert_verify_proc_builtin.cc
+@@ -52,61 +52,61 @@ DEFINE_CERT_ERROR_ID(kPathLacksEVPolicy, "Path does not have an EV policy");
+ 
+ const void* kResultDebugDataKey = &kResultDebugDataKey;
+ 
+-base::Value NetLogCertParams(const CRYPTO_BUFFER* cert_handle,
+-                             const CertErrors& errors) {
+-  base::Value results(base::Value::Type::DICTIONARY);
+-
+-  std::string pem_encoded;
+-  if (X509Certificate::GetPEMEncodedFromDER(
+-          x509_util::CryptoBufferAsStringPiece(cert_handle), &pem_encoded)) {
+-    results.SetStringKey("certificate", pem_encoded);
+-  }
+-
+-  std::string errors_string = errors.ToDebugString();
+-  if (!errors_string.empty())
+-    results.SetStringKey("errors", errors_string);
+-
+-  return results;
+-}
+-
+-base::Value PEMCertListValue(const ParsedCertificateList& certs) {
+-  base::Value value(base::Value::Type::LIST);
+-  for (const auto& cert : certs) {
+-    std::string pem;
+-    X509Certificate::GetPEMEncodedFromDER(cert->der_cert().AsStringPiece(),
+-                                          &pem);
+-    value.Append(std::move(pem));
+-  }
+-  return value;
+-}
+-
+-base::Value NetLogPathBuilderResultPath(
+-    const CertPathBuilderResultPath& result_path) {
+-  base::Value value(base::Value::Type::DICTIONARY);
+-  value.SetBoolKey("is_valid", result_path.IsValid());
+-  value.SetIntKey("last_cert_trust",
+-                  static_cast<int>(result_path.last_cert_trust.type));
+-  value.SetKey("certificates", PEMCertListValue(result_path.certs));
+-  // TODO(crbug.com/634484): netlog user_constrained_policy_set.
+-  std::string errors_string =
+-      result_path.errors.ToDebugString(result_path.certs);
+-  if (!errors_string.empty())
+-    value.SetStringKey("errors", errors_string);
+-  return value;
+-}
+-
+-base::Value NetLogPathBuilderResult(const CertPathBuilder::Result& result) {
+-  base::Value value(base::Value::Type::DICTIONARY);
+-  // TODO(crbug.com/634484): include debug data (or just have things netlog it
+-  // directly).
+-  value.SetBoolKey("has_valid_path", result.HasValidPath());
+-  value.SetIntKey("best_result_index", result.best_result_index);
+-  if (result.exceeded_iteration_limit)
+-    value.SetBoolKey("exceeded_iteration_limit", true);
+-  if (result.exceeded_deadline)
+-    value.SetBoolKey("exceeded_deadline", true);
+-  return value;
+-}
++// base::Value NetLogCertParams(const CRYPTO_BUFFER* cert_handle,
++//                              const CertErrors& errors) {
++//   base::Value results(base::Value::Type::DICTIONARY);
++
++//   std::string pem_encoded;
++//   if (X509Certificate::GetPEMEncodedFromDER(
++//           x509_util::CryptoBufferAsStringPiece(cert_handle), &pem_encoded)) {
++//     results.SetStringKey("certificate", pem_encoded);
++//   }
++
++//   std::string errors_string = errors.ToDebugString();
++//   if (!errors_string.empty())
++//     results.SetStringKey("errors", errors_string);
++
++//   return results;
++// }
++
++// base::Value PEMCertListValue(const ParsedCertificateList& certs) {
++//   base::Value value(base::Value::Type::LIST);
++//   for (const auto& cert : certs) {
++//     std::string pem;
++//     X509Certificate::GetPEMEncodedFromDER(cert->der_cert().AsStringPiece(),
++//                                           &pem);
++//     value.Append(std::move(pem));
++//   }
++//   return value;
++// }
++
++// base::Value NetLogPathBuilderResultPath(
++//     const CertPathBuilderResultPath& result_path) {
++//   base::Value value(base::Value::Type::DICTIONARY);
++//   value.SetBoolKey("is_valid", result_path.IsValid());
++//   value.SetIntKey("last_cert_trust",
++//                   static_cast<int>(result_path.last_cert_trust.type));
++//   value.SetKey("certificates", PEMCertListValue(result_path.certs));
++//   // TODO(crbug.com/634484): netlog user_constrained_policy_set.
++//   std::string errors_string =
++//       result_path.errors.ToDebugString(result_path.certs);
++//   if (!errors_string.empty())
++//     value.SetStringKey("errors", errors_string);
++//   return value;
++// }
++
++// base::Value NetLogPathBuilderResult(const CertPathBuilder::Result& result) {
++//   base::Value value(base::Value::Type::DICTIONARY);
++//   // TODO(crbug.com/634484): include debug data (or just have things netlog it
++//   // directly).
++//   value.SetBoolKey("has_valid_path", result.HasValidPath());
++//   value.SetIntKey("best_result_index", result.best_result_index);
++//   if (result.exceeded_iteration_limit)
++//     value.SetBoolKey("exceeded_iteration_limit", true);
++//   if (result.exceeded_deadline)
++//     value.SetBoolKey("exceeded_deadline", true);
++//   return value;
++// }
+ 
+ RevocationPolicy NoRevocationChecking() {
+   RevocationPolicy policy;
+@@ -136,12 +136,12 @@ void GetEVPolicyOids(const EVRootCAMetadata* ev_metadata,
+ // Returns true if |cert| could be an EV certificate, based on its policies
+ // extension. A return of false means it definitely is not an EV certificate,
+ // whereas a return of true means it could be EV.
+-bool IsEVCandidate(const EVRootCAMetadata* ev_metadata,
+-                   const ParsedCertificate* cert) {
+-  std::set<der::Input> oids;
+-  GetEVPolicyOids(ev_metadata, cert, &oids);
+-  return !oids.empty();
+-}
++// bool IsEVCandidate(const EVRootCAMetadata* ev_metadata,
++//                    const ParsedCertificate* cert) {
++//   std::set<der::Input> oids;
++//   GetEVPolicyOids(ev_metadata, cert, &oids);
++//   return !oids.empty();
++// }
+ 
+ // Enum for whether path building is attempting to verify a certificate as EV or
+ // as DV.
+@@ -398,9 +398,9 @@ void AddIntermediatesToIssuerSource(X509Certificate* x509_cert,
+         ParseCertificateFromBuffer(intermediate.get(), &errors);
+     // TODO(crbug.com/634484): this duplicates the logging of the input chain
+     // maybe should only log if there is a parse error/warning?
+-    net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_INPUT_CERT, [&] {
+-      return NetLogCertParams(intermediate.get(), errors);
+-    });
++    // net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_INPUT_CERT, [&] {
++    //   return NetLogCertParams(intermediate.get(), errors);
++    // });
+     if (cert)
+       intermediates->AddCert(std::move(cert));
+   }
+@@ -694,9 +694,9 @@ int CertVerifyProcBuiltin::VerifyInternal(
+         ParseCertificateFromBuffer(input_cert->cert_buffer(), &parsing_errors);
+     // TODO(crbug.com/634484): this duplicates the logging of the input chain
+     // maybe should only log if there is a parse error/warning?
+-    net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_TARGET_CERT, [&] {
+-      return NetLogCertParams(input_cert->cert_buffer(), parsing_errors);
+-    });
++    // net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_TARGET_CERT, [&] {
++    //   return NetLogCertParams(input_cert->cert_buffer(), parsing_errors);
++    // });
+     if (!target) {
+       verify_result->cert_status |= CERT_STATUS_INVALID;
+       return ERR_CERT_INVALID;
+@@ -720,10 +720,10 @@ int CertVerifyProcBuiltin::VerifyInternal(
+     // TODO(crbug.com/634484): this duplicates the logging of the
+     // additional_trust_anchors maybe should only log if there is a parse
+     // error/warning?
+-    net_log.AddEvent(
+-        NetLogEventType::CERT_VERIFY_PROC_ADDITIONAL_TRUST_ANCHOR, [&] {
+-          return NetLogCertParams(x509_cert->cert_buffer(), parsing_errors);
+-        });
++    // net_log.AddEvent(
++    //     NetLogEventType::CERT_VERIFY_PROC_ADDITIONAL_TRUST_ANCHOR, [&] {
++    //       return NetLogCertParams(x509_cert->cert_buffer(), parsing_errors);
++    //     });
+   }
+ 
+   // Get the global dependencies.
+@@ -743,8 +743,8 @@ int CertVerifyProcBuiltin::VerifyInternal(
+ 
+   // First try EV validation. Can skip this if the leaf certificate has no
+   // chance of verifying as EV (lacks an EV policy).
+-  if (IsEVCandidate(ev_metadata, target.get()))
+-    attempts.emplace_back(VerificationType::kEV);
++  // if (IsEVCandidate(ev_metadata, target.get()))
++  //   attempts.emplace_back(VerificationType::kEV);
+ 
+   // Next try DV validation.
+   attempts.emplace_back(VerificationType::kDV);
+@@ -758,15 +758,15 @@ int CertVerifyProcBuiltin::VerifyInternal(
+        ++cur_attempt_index) {
+     const auto& cur_attempt = attempts[cur_attempt_index];
+     verification_type = cur_attempt.verification_type;
+-    net_log.BeginEvent(
+-        NetLogEventType::CERT_VERIFY_PROC_PATH_BUILD_ATTEMPT, [&] {
+-          base::DictionaryValue results;
+-          if (verification_type == VerificationType::kEV)
+-            results.SetBoolKey("is_ev_attempt", true);
+-          results.SetIntKey("digest_policy",
+-                            static_cast<int>(cur_attempt.digest_policy));
+-          return results;
+-        });
++    // net_log.BeginEvent(
++    //     NetLogEventType::CERT_VERIFY_PROC_PATH_BUILD_ATTEMPT, [&] {
++    //       base::DictionaryValue results;
++    //       if (verification_type == VerificationType::kEV)
++    //         results.SetBoolKey("is_ev_attempt", true);
++    //       results.SetIntKey("digest_policy",
++    //                         static_cast<int>(cur_attempt.digest_policy));
++    //       return results;
++    //     });
+ 
+     // If a previous attempt used up most/all of the deadline, extend the
+     // deadline a little bit to give this verification attempt a chance at
+@@ -783,13 +783,13 @@ int CertVerifyProcBuiltin::VerifyInternal(
+ 
+     // TODO(crbug.com/634484): Log these in path_builder.cc so they include
+     // correct timing information.
+-    for (const auto& path : result.paths) {
+-      net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_PATH_BUILT,
+-                       [&] { return NetLogPathBuilderResultPath(*path); });
+-    }
++    // for (const auto& path : result.paths) {
++    //   net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_PATH_BUILT,
++    //                    [&] { return NetLogPathBuilderResultPath(*path); });
++    // }
+ 
+-    net_log.EndEvent(NetLogEventType::CERT_VERIFY_PROC_PATH_BUILD_ATTEMPT,
+-                     [&] { return NetLogPathBuilderResult(result); });
++    // net_log.EndEvent(NetLogEventType::CERT_VERIFY_PROC_PATH_BUILD_ATTEMPT,
++    //                  [&] { return NetLogPathBuilderResult(result); });
+ 
+     if (result.HasValidPath())
+       break;
+@@ -832,10 +832,10 @@ int CertVerifyProcBuiltin::VerifyInternal(
+   int error = AssignVerifyResult(
+       input_cert, hostname, result, verification_type,
+       checked_revocation_for_some_path, ssl_trust_store.get(), verify_result);
+-  if (error == OK) {
+-    LogNameNormalizationMetrics(".Builtin", verify_result->verified_cert.get(),
+-                                verify_result->is_issued_by_known_root);
+-  }
++  // if (error == OK) {
++  //   LogNameNormalizationMetrics(".Builtin", verify_result->verified_cert.get(),
++  //                               verify_result->is_issued_by_known_root);
++  // }
+   return error;
+ }
+ 
 diff --git a/net/tools/cert_bench/cert_bench.cc b/net/tools/cert_bench/cert_bench.cc
 new file mode 100644
-index 0000000000..bf2795b238
+index 0000000000..87743f006e
 --- /dev/null
 +++ b/net/tools/cert_bench/cert_bench.cc
-@@ -0,0 +1,304 @@
+@@ -0,0 +1,308 @@
 +#include <iostream>
 +
 +#include "base/base64.h"
@@ -208,6 +696,12 @@ index 0000000000..bf2795b238
 +
 +    int flags = 0; // CertVerifyProc::VERIFY_REV_CHECKING_ENABLED
 +
++    // scoped_refptr<CertVerifyProc> proc = CreateCertVerifyProcBuiltin(
++    //     nullptr, // no network
++    //     // std::make_unique<OneTimeSystemTrustStoreProvider>(std::move(trust_store))
++    //     SystemTrustStoreProvider::CreateDefaultForSSL(),
++    // );
++
 +    while (std::getline(std::cin, line)) {
 +        // Three types of input lines:
 +        // 1. "leaf: <base64>": set leaf cert
@@ -216,8 +710,6 @@ index 0000000000..bf2795b238
 +        // 4. "repeat: <n>": set repeat to n
 +        //
 +        // The input is expected to be in the format of (12*3)*
-+
-+        // Check if line starts with "leaf: "
 +
 +        std::string leaf_prefix = "leaf: ";
 +        std::string interm_prefix = "interm: ";
@@ -323,7 +815,7 @@ index 0000000000..bf2795b238
 +                std::cout << " " << durations[i];
 +            }
 +            std::cout << std::endl;
-+            
++
 +            leaf.clear();
 +            interm.clear();
 +        } else {
