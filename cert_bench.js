@@ -1,7 +1,7 @@
 /**
  * Originally by https://github.com/mozkeeler
  * (https://gist.github.com/mozkeeler/a08d4c6910a23447e6f363df1e563738)
- * 
+ *
  * Modified to include some benchmarking code
  */
 
@@ -442,7 +442,7 @@ function readFile(file) {
 
 function loadPEM(path) {
     let pem = readFile(pathToFile(path));
-    
+
     const header = /-----BEGIN CERTIFICATE-----/;
     const footer = /-----END CERTIFICATE-----/;
     let lines = pem.split(/[\r\n]/);
@@ -491,27 +491,7 @@ function errorCodeToName(code) {
     return ERROR_CODES.get(code) || code;
 }
 
-class VerifyResult {
-    constructor(resolve) {
-        this.resolve = resolve;
-    }
-
-    verifyCertFinished(aPRErrorCode) {
-        this.resolve(aPRErrorCode);
-    }
-}
-
-function spinMainThreadUntil(predicate) {
-    let threadManager = Cc["@mozilla.org/thread-manager;1"]
-        .getService(Ci.nsIThreadManager);
-    let mainThread = threadManager.currentThread;
-
-    while (!predicate()) {
-        mainThread.processNextEvent(true);
-    }
-}
-
-async function main(args) {
+function main(args) {
     if (args.length != 2) {
         throw "Usage: verify.js <roots.pem> <time>";
     }
@@ -653,6 +633,4 @@ async function main(args) {
     return 0;
 }
 
-let done = false;
-main(arguments).finally(() => { done = true; })
-spinMainThreadUntil(() => done);
+main(arguments);
