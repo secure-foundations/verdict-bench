@@ -1,6 +1,6 @@
 diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
 --- a/security/manager/ssl/nsIX509CertDB.idl	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsIX509CertDB.idl	Fri Nov 22 04:46:53 2024 +0000
++++ b/security/manager/ssl/nsIX509CertDB.idl	Fri Nov 22 13:45:19 2024 +0000
 @@ -301,6 +301,25 @@
                               in uint64_t aTime,
                               in nsICertVerificationCallback aCallback);
@@ -29,7 +29,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
    [must_use]
 diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 --- a/security/manager/ssl/nsNSSCertificateDB.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Fri Nov 22 04:46:53 2024 +0000
++++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Fri Nov 22 13:45:19 2024 +0000
 @@ -15,6 +15,7 @@
  #include "mozilla/Casting.h"
  #include "mozilla/Services.h"
@@ -72,7 +72,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
                              mVerifiedCertList, &mHasEVPolicy, &mPRErrorCode);
    }
  
-@@ -1318,6 +1321,85 @@
+@@ -1318,6 +1321,90 @@
  }
  
  NS_IMETHODIMP
@@ -99,20 +99,20 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 +    uint64_t aRepeat,
 +    nsTArray<int64_t>& _retval
 +) {
++  nsAutoCString certDER;
++  nsresult rv = Base64Decode(aLeaf, certDER);
++  if (NS_FAILED(rv)) {
++    return rv;
++  }
++
++  nsIX509Cert* leaf;
++  rv = ConstructX509FromSpan(AsBytes(Span(certDER)), &leaf);
++  if (NS_FAILED(rv)) {
++    return rv;
++  }
++
 +  for (uint64_t i = 0; i < aRepeat; i++) {
 +    auto start = TimeStamp::Now();
-+
-+    nsAutoCString certDER;
-+    nsresult rv = Base64Decode(aLeaf, certDER);
-+    if (NS_FAILED(rv)) {
-+      return rv;
-+    }
-+
-+    nsIX509Cert* leaf;
-+    rv = ConstructX509FromSpan(AsBytes(Span(certDER)), &leaf);
-+    if (NS_FAILED(rv)) {
-+      return rv;
-+    }
 +
 +    int32_t mPRErrorCode;
 +    nsTArray<RefPtr<nsIX509Cert>> mVerifiedCertList;
@@ -151,6 +151,11 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 +    _retval.AppendElement(duration.ToMicroseconds());
 +  }
 +
++  rv = DeleteCertificate(leaf);
++  if (NS_FAILED(rv)) {
++    return rv;
++  }
++
 +  return NS_OK;
 +}
 +
@@ -160,7 +165,13 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
    NS_ENSURE_TRUE(certVerifier, NS_ERROR_FAILURE);
 diff -r dbd5ee74c531 security/nss/lib/ckfw/builtins/certdata.txt
 --- a/security/nss/lib/ckfw/builtins/certdata.txt	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/nss/lib/ckfw/builtins/certdata.txt	Fri Nov 22 04:46:53 2024 +0000
++++ b/security/nss/lib/ckfw/builtins/certdata.txt	Fri Nov 22 13:45:19 2024 +0000
+@@ -1,4 +1,4 @@
+-# 
++#
+ # This Source Code Form is subject to the terms of the Mozilla Public
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 @@ -70,22910 +70,3 @@
  CKA_PRIVATE CK_BBOOL CK_FALSE
  CKA_MODIFIABLE CK_BBOOL CK_FALSE
