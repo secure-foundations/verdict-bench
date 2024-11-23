@@ -14,6 +14,12 @@ pub use super::firefox::{
     valid_chain as firefox_valid_chain,
     exec_valid_chain as exec_firefox_valid_chain,
 };
+pub use super::openssl::{
+    Environment as OpenSSLEnvironment,
+    ExecEnvironment as ExecOpenSSLEnvironment,
+    valid_chain as openssl_valid_chain,
+    exec_valid_chain as exec_openssl_valid_chain,
+};
 
 verus! {
 
@@ -46,6 +52,11 @@ pub struct AuthorityKeyIdentifier {
     pub critical: bool,
     pub key_id: Option<SpecString>,
     pub serial: Option<SpecString>,
+}
+
+pub struct SubjectKeyIdentifier {
+    pub critical: bool,
+    pub key_id: SpecString,
 }
 
 pub enum ExtendedKeyUsageType {
@@ -125,7 +136,7 @@ pub struct Certificate {
     pub subject_uid: Option<SpecString>,
 
     pub ext_authority_key_id: Option<AuthorityKeyIdentifier>,
-    pub ext_subject_key_id: Option<SpecString>,
+    pub ext_subject_key_id: Option<SubjectKeyIdentifier>,
     pub ext_extended_key_usage: Option<ExtendedKeyUsage>,
     pub ext_basic_constraints: Option<BasicConstraints>,
     pub ext_key_usage: Option<KeyUsage>,
@@ -137,19 +148,28 @@ pub struct Certificate {
     pub all_exts: Option<Seq<Extension>>,
 }
 
+pub enum Purpose {
+    ServerAuth,
+}
+
 pub enum Task {
     DomainValidation(SpecString),
-    ChainValidation,
+    ChainValidation(Purpose),
 }
 
 use ExecChromeEnvironment as ChromeEnvironment;
-use ExecFirefoxEnvironment as FirefoxEnvironment;
 use exec_chrome_valid_chain as chrome_valid_chain;
+
+use ExecFirefoxEnvironment as FirefoxEnvironment;
 use exec_firefox_valid_chain as firefox_valid_chain;
+
+use ExecOpenSSLEnvironment as OpenSSLEnvironment;
+use exec_openssl_valid_chain as openssl_valid_chain;
 
 pub enum Policy {
     Chrome(ChromeEnvironment),
     Firefox(FirefoxEnvironment),
+    OpenSSL(OpenSSLEnvironment),
 }
 
 pub enum PolicyResult {
@@ -162,6 +182,7 @@ pub open spec fn valid_chain(policy: &Policy, chain: &Seq<Certificate>, task: &T
     match policy {
         Policy::Chrome(env) => chrome_valid_chain(env, chain, task),
         Policy::Firefox(env) => firefox_valid_chain(env, chain, task),
+        Policy::OpenSSL(env) => openssl_valid_chain(env, chain, task),
     }
 }
 
@@ -191,7 +212,7 @@ pub open spec fn check_auth_key_id(issuer: &Certificate, subject: &Certificate) 
         Some(auth_key_id) => {
             // Subject's AKID matches issuer's SKID if both exist
             &&& match (&issuer.ext_subject_key_id, &auth_key_id.key_id) {
-                (Some(skid), Some(akid)) => skid == akid,
+                (Some(skid), Some(akid)) => &skid.key_id == akid,
                 _ => true,
             }
 

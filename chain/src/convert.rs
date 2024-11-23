@@ -40,16 +40,8 @@ impl policy::Certificate {
             let Some(not_before) = Self::spec_time_to_timestamp(c.cert.validity.not_before);
             let Some(subject_key) = policy::SubjectKey::spec_from(c.cert.subject_key);
 
-            let Some(ext_subject_key_id) = if let Some(ext) = Self::spec_get_extension(c, spec_oid!(SUBJECT_KEY_IDENT)) {
-                if_let! {
-                    let SpecExtensionParamValue::SubjectKeyIdentifier(skid) = ext.param;
-                    Some(Some(hash::spec_to_hex_upper(skid)))
-                }
-            } else {
-                Some(None)
-            };
-
             let Some(ext_authority_key_id) = spec_get_extension!(c, AUTH_KEY_IDENT, policy::AuthorityKeyIdentifier::spec_from);
+            let Some(ext_subject_key_id) = spec_get_extension!(c, SUBJECT_KEY_IDENT, policy::SubjectKeyIdentifier::spec_from);
             let Some(ext_extended_key_usage) = spec_get_extension!(c, EXTENDED_KEY_USAGE, policy::ExtendedKeyUsage::spec_from);
             let Some(ext_basic_constraints) = spec_get_extension!(c, BASIC_CONSTRAINTS, policy::BasicConstraints::spec_from);
             let Some(ext_key_usage) = spec_get_extension!(c, KEY_USAGE, policy::KeyUsage::spec_from);
@@ -130,11 +122,7 @@ impl policy::Certificate {
         };
 
         let ext_subject_key_id = if let Some(ext) = Self::get_extension(c, &oid!(SUBJECT_KEY_IDENT)) {
-            if let ExtensionParamValue::SubjectKeyIdentifier(skid) = &ext.param {
-                Some(hash::to_hex_upper(skid))
-            } else {
-                return Err(ValidationError::UnexpectedExtParam);
-            }
+            Some(policy::SubjectKeyIdentifier::from(ext)?)
         } else {
             None
         };
@@ -392,14 +380,14 @@ impl policy::Certificate {
 impl policy::AuthorityKeyIdentifier {
     pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::AuthorityKeyIdentifier> {
         if_let! {
-            let SpecExtensionParamValue::AuthorityKeyIdentifier(aki) = ext.param;
+            let SpecExtensionParamValue::AuthorityKeyIdentifier(akid) = ext.param;
             Some(policy::AuthorityKeyIdentifier {
                 critical: ext.critical,
-                key_id: match aki.key_id {
+                key_id: match akid.key_id {
                     OptionDeep::Some(key_id) => Some(hash::spec_to_hex_upper(key_id)),
                     OptionDeep::None => None,
                 },
-                serial: match aki.auth_cert_serial {
+                serial: match akid.auth_cert_serial {
                     OptionDeep::Some(serial) => Some(hash::spec_to_hex_upper(serial)),
                     OptionDeep::None => None,
                 },
@@ -411,17 +399,43 @@ impl policy::AuthorityKeyIdentifier {
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
-        if let ExtensionParamValue::AuthorityKeyIdentifier(aki) = &ext.param {
+        if let ExtensionParamValue::AuthorityKeyIdentifier(akid) = &ext.param {
             Ok(policy::ExecAuthorityKeyIdentifier {
                 critical: ext.critical,
-                key_id: match aki.key_id {
+                key_id: match akid.key_id {
                     OptionDeep::Some(key_id) => Some(hash::to_hex_upper(key_id)),
                     OptionDeep::None => None,
                 },
-                serial: match &aki.auth_cert_serial {
+                serial: match &akid.auth_cert_serial {
                     OptionDeep::Some(serial) => Some(hash::to_hex_upper(serial.bytes())),
                     OptionDeep::None => None,
                 },
+            })
+        } else {
+            Err(ValidationError::UnexpectedExtParam)
+        }
+    }
+}
+
+impl policy::SubjectKeyIdentifier {
+    pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::SubjectKeyIdentifier> {
+        if_let! {
+            let SpecExtensionParamValue::SubjectKeyIdentifier(skid) = ext.param;
+            Some(policy::SubjectKeyIdentifier {
+                critical: ext.critical,
+                key_id: hash::spec_to_hex_upper(skid),
+            })
+        }
+    }
+
+    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecSubjectKeyIdentifier, ValidationError>)
+        ensures
+            res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
+    {
+        if let ExtensionParamValue::SubjectKeyIdentifier(skid) = &ext.param {
+            Ok(policy::ExecSubjectKeyIdentifier {
+                critical: ext.critical,
+                key_id: hash::to_hex_upper(skid),
             })
         } else {
             Err(ValidationError::UnexpectedExtParam)

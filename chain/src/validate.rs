@@ -430,6 +430,7 @@ impl<'a> Validator<'a> {
         match &self.policy {
             policy::ExecPolicy::Chrome(env) => env.time,
             policy::ExecPolicy::Firefox(env) => env.time,
+            policy::ExecPolicy::OpenSSL(env) => env.time,
         }
     }
 }
@@ -478,6 +479,13 @@ impl policy::ExecPolicy {
 
             anssi_trusted: Self::strs_to_strings(&["B9BEA7860A962EA3611DAB97AB6DA3E21C1068B97D55575ED0E11279C11C8932"]),
             anssi_domains: Self::strs_to_strings(&["*.fr", "*.gp", "*.gf", "*.mq", "*.re", "*.yt", "*.pm", "*.bl", "*.mf", "*.wf", "*.pf", "*.nc", "*.tf"]),
+        })
+    }
+
+    // OpenSSL policy
+    pub fn openssl(time: u64) -> policy::ExecPolicy {
+        policy::ExecPolicy::OpenSSL(policy::ExecOpenSSLEnvironment {
+            time,
         })
     }
 }
