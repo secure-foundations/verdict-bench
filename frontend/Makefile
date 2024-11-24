@@ -6,7 +6,7 @@ VERUS_DEPS = parser polyfill vest chain rspec_lib
 TEST_TARGETS =
 VERUS_FLAGS = --no-lifetime
 
-TEST_TARGETS = test-policy-chrome test-policy-firefox
+TEST_TARGETS = test-policy-chrome-hammurabi test-policy-firefox-hammurabi test-policy-open-ssl
 TEST_TIME = 1725029869
 
 include ../dep.mk
@@ -19,7 +19,11 @@ test-policy-%: target/debug/frontend
 	@set -e; \
 	for domain in $(DOMAINS); do \
 		pem_file=tests/chains/$${domain%%.*}.pem; \
-		cmd="target/debug/frontend validate $*-hammurabi tests/roots.pem $$pem_file $$domain -t $(TEST_TIME) -s"; \
+		if [ "$*" = "open-ssl" ]; then \
+			cmd="target/debug/frontend validate $* tests/roots.pem $$pem_file -t $(TEST_TIME) -s"; \
+		else \
+			cmd="target/debug/frontend validate $* tests/roots.pem $$pem_file $$domain -t $(TEST_TIME) -s"; \
+		fi; \
 		echo $$cmd; \
 		printf "[$*] $$domain: "; \
 		$$cmd; \

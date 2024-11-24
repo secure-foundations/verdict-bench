@@ -57,6 +57,7 @@ impl X509Agent for VerdictAgent {
                 let policy = match policy {
                     Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
                     Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
+                    Policy::OpenSSL => policy::ExecPolicy::openssl(timestamp),
                 };
 
                 let validator = Validator::new(policy, VecDeep::from_vec(roots));

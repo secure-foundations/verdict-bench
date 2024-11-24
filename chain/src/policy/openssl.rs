@@ -87,7 +87,7 @@ pub open spec fn check_basic_constraints(cert: &Certificate) -> bool
 {
     &cert.ext_basic_constraints matches Some(bc) ==> {
         &&& bc.path_len matches Some(path_len) ==> {
-            &&& !bc.is_ca
+            &&& bc.is_ca
             &&& &cert.ext_key_usage matches Some(key_usage)
             &&& key_usage.key_cert_sign
         }
@@ -103,6 +103,42 @@ pub open spec fn check_key_usage(cert: &Certificate) -> bool
     } else {
         &cert.ext_key_usage matches Some(usage) ==> !usage.key_cert_sign
     }
+}
+
+// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L615-L618
+pub open spec fn check_san(cert: &Certificate) -> bool
+{
+    &cert.ext_subject_alt_name matches Some(san) ==> san.names.len() != 0
+}
+
+pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) -> bool
+{
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L622-L627
+    &&& &cert.ext_authority_key_id matches Some(akid) ==> !akid.critical
+    &&& &cert.ext_subject_key_id matches Some(skid) ==> !skid.critical
+
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L628-L642
+    &&& if cert.version >= 2 {
+        &&& !is_root ==> (&cert.ext_authority_key_id matches Some(akid) && akid.key_id matches Some(..))
+        &&& (&cert.ext_basic_constraints matches Some(bc) && bc.is_ca) ==> &cert.ext_subject_key_id matches Some(..)
+    } else {
+        cert.all_exts matches None
+    }
+}
+
+pub open spec fn check_name_constraints_helper(cert: &Certificate, nc: &NameConstraints) -> bool
+{
+    // TODO
+    true
+}
+
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L711
+pub open spec fn check_name_constraints(chain: &Seq<Certificate>) -> bool
+{
+    forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
+        (&chain[i as int].ext_name_constraints matches Some(nc) ==>
+        forall |j: usize| 0 <= j < i ==>
+            check_name_constraints_helper(#[trigger] &chain[j as int], &nc))
 }
 
 /// Common checks for certificates, this includes checks in
@@ -126,25 +162,14 @@ pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_lea
 
     // TODO: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L602-L614
 
-    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L615-L618
-    &&& &cert.ext_subject_alt_name matches Some(san) ==> san.names.len() != 0
+    &&& check_san(cert)
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L619-L621
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
 
-    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L622-L627
-    &&& &cert.ext_authority_key_id matches Some(akid) ==> !akid.critical
-    &&& &cert.ext_subject_key_id matches Some(skid) ==> !skid.critical
-
-    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L628-L642
-    &&& if cert.version >= 3 {
-        &&& !is_root ==> (&cert.ext_authority_key_id matches Some(akid) && akid.key_id matches Some(..))
-        &&& (&cert.ext_basic_constraints matches Some(bc) && bc.is_ca) ==> &cert.ext_subject_key_id matches Some(..)
-    } else {
-        cert.all_exts matches None
-    }
-
     // TODO: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L645-L647
+
+    &&& check_auth_subject_key_id(cert, is_root)
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L648-L651
     &&& !is_leaf ==>
@@ -184,6 +209,7 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
                 &&& valid_leaf(env, leaf)
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
                 &&& valid_root(env, root, leaf, (chain.len() - 2) as usize)
+                &&& check_name_constraints(chain)
             } {
                 PolicyResult::Valid
             } else {

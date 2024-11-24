@@ -148,6 +148,7 @@ pub struct Certificate {
     pub all_exts: Option<Seq<Extension>>,
 }
 
+#[derive(Copy, Clone)]
 pub enum Purpose {
     ServerAuth,
 }

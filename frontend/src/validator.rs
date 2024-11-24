@@ -26,6 +26,7 @@ pub struct Args {
 pub enum Policy {
     ChromeHammurabi,
     FirefoxHammurabi,
+    OpenSSL,
 }
 
 pub fn new_validator<'a>(args: &Args, roots: Vec<x509::CertificateValue<'a>>) -> Result<Validator<'a>, Error> {
@@ -33,6 +34,7 @@ pub fn new_validator<'a>(args: &Args, roots: Vec<x509::CertificateValue<'a>>) ->
     let policy = match args.policy {
         Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
         Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
+        Policy::OpenSSL => policy::ExecPolicy::openssl(timestamp),
     };
 
     Ok(Validator::new(policy, VecDeep::from_vec(roots)))

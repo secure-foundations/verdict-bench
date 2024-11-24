@@ -425,6 +425,15 @@ impl<'a> Validator<'a> {
         self.validate(bundle, &policy::ExecTask::DomainValidation(domain.to_string()))
     }
 
+    pub fn validate_purpose(&self, bundle: &VecDeep<CertificateValue>, purpose: policy::ExecPurpose) -> (res: Result<bool, ValidationError>)
+        requires bundle@.len() != 0,
+
+        ensures
+            res matches Ok(res) ==> res == self.get_query(bundle@, policy::Task::ChainValidation(purpose.deep_view())).valid(),
+    {
+        self.validate(bundle, &policy::ExecTask::ChainValidation(purpose))
+    }
+
     pub fn get_validation_time(&self) -> u64
     {
         match &self.policy {

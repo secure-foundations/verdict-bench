@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use chain::policy;
 use clap::Parser;
 
 use parser::{parse_x509_cert, VecDeep};
@@ -20,7 +21,8 @@ pub struct Args {
     chain: String,
 
     /// The target domain to be validated
-    domain: String,
+    /// If not specified, the task will be Task::ChainValidation(Purpose::ServerAuth)
+    domain: Option<String>,
 
     /// Generate timing stats in wall-clock time
     #[clap(short = 's', long, default_value_t = false)]
@@ -59,11 +61,15 @@ pub fn main(args: Args) -> Result<(), Error> {
             parse_x509_cert(cert_bytes)
         }).collect::<Result<Vec<_>, _>>()?);
 
-        if args.validator.debug && i == 0 {
-            print_debug_info(&validator.roots, &chain, &args.domain, validator.get_validation_time());
-        }
+        if let Some(domain) = &args.domain {
+            if args.validator.debug && i == 0 {
+                print_debug_info(&validator.roots, &chain, domain, validator.get_validation_time());
+            }
 
-        res = validator.validate_hostname(&chain, &args.domain.clone())?;
+            res = validator.validate_hostname(&chain, domain)?;
+        } else {
+            res = validator.validate_purpose(&chain, policy::ExecPurpose::ServerAuth)?;
+        }
 
         durations.push(begin.elapsed().as_micros());
     }
