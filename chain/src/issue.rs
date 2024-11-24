@@ -228,7 +228,7 @@ pub fn same_attr(a: &AttributeTypeAndValueValue, b: &AttributeTypeAndValueValue)
 }
 
 /// Exec version of spec_normalize_string
-fn normalize_string(s: &str) -> (res: String)
+pub fn normalize_string(s: &str) -> (res: String)
     ensures res@ =~= spec_normalize_string(s@)
 {
     let mut seen_nw = false;

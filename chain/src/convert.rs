@@ -66,6 +66,7 @@ impl policy::Certificate {
                 not_after: not_after as u64,
                 not_before: not_before as u64,
 
+                issuer_name: policy::DirectoryName::spec_from(c.cert.issuer),
                 subject_name: policy::DirectoryName::spec_from(c.cert.subject),
                 subject_key,
 
@@ -180,6 +181,7 @@ impl policy::Certificate {
             not_after: not_after as u64,
             not_before: not_before as u64,
 
+            issuer_name: policy::DirectoryName::from(&c.get().cert.get().issuer),
             subject_name: policy::DirectoryName::from(&c.get().cert.get().subject),
             subject_key,
 

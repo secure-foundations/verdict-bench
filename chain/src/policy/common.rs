@@ -1,6 +1,7 @@
 use vstd::prelude::*;
 use rspec::rspec;
 use rspec_lib::*;
+use crate::issue;
 
 pub use super::chrome::{
     Environment as ChromeEnvironment,
@@ -129,6 +130,7 @@ pub struct Certificate {
     pub not_after: u64,
     pub not_before: u64,
 
+    pub issuer_name: Seq<Seq<DirectoryName>>,
     pub subject_name: Seq<Seq<DirectoryName>>,
     pub subject_key: SubjectKey,
 
@@ -227,25 +229,38 @@ pub open spec fn check_auth_key_id(issuer: &Certificate, subject: &Certificate) 
     }
 }
 
-pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName) -> bool {
+use exec_normalize_string as normalize_string;
+
+/// We offer a switch `normalize` since:
+/// - Chrome does string normalization (folding the ASCII space and lower casing (ASCII-only))
+///   - https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_name_match.cc#L70
+/// - Firefox does not do string normalization
+///   - https://searchfox.org/mozilla-central/source/security/nss/lib/mozpkix/lib/pkixnames.cpp#1345
+/// - OpenSSL considers more characters as white space (https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/ctype.c#L21),
+///   whereas Chrome only considers a single ASCII space character ' '
+pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName, normalize: bool) -> bool {
     exists |i: usize| 0 <= i < rdn.len() && {
         &&& #[trigger] &rdn[i as int].oid == &name.oid
-        &&& &rdn[i as int].value == &name.value
+        &&& if normalize {
+            &normalize_string(&rdn[i as int].value) == &normalize_string(&name.value)
+        } else {
+            &rdn[i as int].value == &name.value
+        }
     }
 }
 
 /// Check if for any item in rdn2, there is a corresponding item in rdn1 with the same OID
 /// and same value
-pub open spec fn is_subtree_rdn(rdn1: &Seq<DirectoryName>, rdn2: &Seq<DirectoryName>) -> bool {
+pub open spec fn is_subtree_rdn(rdn1: &Seq<DirectoryName>, rdn2: &Seq<DirectoryName>, normalize: bool) -> bool {
     &&& rdn1.len() <= rdn2.len()
-    &&& forall |i: usize| 0 <= i < rdn1.len() ==> rdn_has_name(&rdn2, #[trigger] &rdn1[i as int])
+    &&& forall |i: usize| 0 <= i < rdn1.len() ==> rdn_has_name(&rdn2, #[trigger] &rdn1[i as int], normalize)
 }
 
 /// Check if name1 is a subset set of name2
 /// See: https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/verify_name_match.cc#L261C6-L261C29
-pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<DirectoryName>>) -> bool {
+pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<DirectoryName>>, normalize: bool) -> bool {
     &&& name1.len() <= name2.len()
-    &&& forall |i: usize| 0 <= i < name1.len() ==> is_subtree_rdn(#[trigger] &name1[i as int], &name2[i as int])
+    &&& forall |i: usize| 0 <= i < name1.len() ==> is_subtree_rdn(#[trigger] &name1[i as int], &name2[i as int], normalize)
 }
 
 /// Similar to `match_name`, but used for checking name constraints
@@ -287,6 +302,16 @@ impl Clone for ExecDirectoryName {
             value: self.value.clone(),
         }
     }
+}
+
+pub open spec fn normalize_string(s: &SpecString) -> SpecString {
+    issue::spec_normalize_string(*s)
+}
+
+pub fn exec_normalize_string(s: &String) -> (res: String)
+    ensures res.deep_view() == normalize_string(&s.deep_view())
+{
+    issue::normalize_string(s.as_str())
 }
 
 } // verus!

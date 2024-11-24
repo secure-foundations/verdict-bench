@@ -293,13 +293,13 @@ pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints:
             exists |j: usize| 0 <= j < constraints.permitted.len() && {
                 &&& #[trigger] &constraints.permitted[j as int]
                         matches GeneralName::DirectoryName(permitted_name)
-                &&& is_subtree_of(&permitted_name, &leaf.subject_name)
+                &&& is_subtree_of(&permitted_name, &leaf.subject_name, true)
             }
 
     // Not explicitly excluded
     &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
             (#[trigger] &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name) ==>
-                !is_subtree_of(&excluded_name, &leaf.subject_name))
+                !is_subtree_of(&excluded_name, &leaf.subject_name, true))
 }
 
 /// Check a leaf certificate against the name constraints in a parent certificate

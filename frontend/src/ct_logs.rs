@@ -19,3 +19,11 @@ pub struct CTLogResult {
     /// comma separated list, which is not ideal
     pub stats: Vec<u64>,
 }
+
+/// Workaround for an issue in rust-csv: https://github.com/BurntSushi/rust-csv/issues/113
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CTLogResultWithoutStats {
+    pub hash: String,
+    pub domain: String,
+    pub result: String,
+}

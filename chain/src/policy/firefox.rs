@@ -326,14 +326,14 @@ pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints:
     &&& directory_name_enabled ==>
             exists |j: usize| 0 <= j < constraints.permitted.len() && {
                 &&& #[trigger] &constraints.permitted[j as int] matches GeneralName::DirectoryName(permitted_name)
-                &&& is_subtree_of(&permitted_name, &leaf.subject_name)
+                &&& is_subtree_of(&permitted_name, &leaf.subject_name, false)
             }
 
     // Not explicitly excluded
     &&& forall |j: usize| #![trigger &constraints.excluded[j as int]]
             0 <= j < constraints.excluded.len() ==> {
                 &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name)
-                ==> !is_subtree_of(&excluded_name, &leaf.subject_name)
+                ==> !is_subtree_of(&excluded_name, &leaf.subject_name, false)
             }
 }
 

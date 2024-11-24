@@ -28,26 +28,32 @@ use exec_match_name as match_name;
 use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
+use exec_clone_directory_name as clone_directory_name;
+use exec_clone_string as clone_string;
 
 pub struct Environment {
     pub time: u64,
 }
 
 // Some global assumptions/settings
+// - Purpose is set to X509_PURPOSE_SSL_SERVER
 // - X509_V_FLAG_X509_STRICT is true
 // - X509_V_FLAG_POLICY_CHECK is false
 // - X509_V_FLAG_CRL_CHECK is false
+// - X509_V_FLAG_SUITEB_128_LOS is false
+// - X509_V_FLAG_ALLOW_PROXY_CERTS is false
 // - OPENSSL_NO_RFC3779 is false at compile time (this is for IP and AS ids)
-// - EXFLAG_PROXY is false; no proxy certificates
+// - self-issued intermediate CAs are not yet supported
+// - EXFLAG_PROXY is false
+// - ctx->param->auth_level = 0
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L3633
-/// Assuming ctx->param->auth_level = 0,
-/// which requires the number of estimated security bits >= 80
+/// ctx->param->auth_level = 0 requires the number of estimated security bits >= 80
 /// (https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L3599)
 pub open spec fn check_cert_key_level(cert: &Certificate) -> bool
 {
     match cert.subject_key {
-        // https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/rsa/rsa_lib.c#L322
+        // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/rsa/rsa_lib.c#L322
         // 1024 => 80 security bits
         SubjectKey::RSA { mod_length } => mod_length >= 1024,
 
@@ -63,7 +69,7 @@ pub open spec fn check_cert_time(env: &Environment, cert: &Certificate) -> bool
     &&& cert.not_after > env.time
 }
 
-/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L653
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L653
 /// 0: not CA
 /// 1: CA
 /// 2: all other cases
@@ -126,10 +132,92 @@ pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) ->
     }
 }
 
-pub open spec fn check_name_constraints_helper(cert: &Certificate, nc: &NameConstraints) -> bool
+/// Check if a NameConstraints has a directory name constraint in the permitted list
+pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
+    exists |i: usize| 0 <= i < constraints.permitted.len() &&
+        #[trigger] &constraints.permitted[i as int] matches GeneralName::DirectoryName(_)
+}
+
+/// nc_dns: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L629
+pub open spec fn match_dns_name(pattern: &SpecString, name: &SpecString) -> bool {
+    ||| pattern.len() == 0
+    ||| {
+        &&& name.len() > pattern.len()
+        &&& name.char_at(name.len() - pattern.len() - 1) == '.' || pattern.char_at(0) == '.'
+        &&& &name.skip(name.len() - pattern.len()) == pattern
+    }
+    ||| name.len() == pattern.len() && &str_lower(pattern) == &str_lower(name)
+}
+
+/// nc_match_single: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L570
+/// NOTE: we only support DNSName and DirectoryName for now
+pub open spec fn is_general_subtree_of(name1: &GeneralName, name2: &GeneralName) -> bool {
+    match (name1, name2) {
+        (GeneralName::DNSName(name1), GeneralName::DNSName(name2)) => match_dns_name(name1, name2),
+        (GeneralName::DirectoryName(name1), GeneralName::DirectoryName(name2)) => is_subtree_of(name1, name2, true),
+        _ => false,
+    }
+}
+
+/// Check if `nc.permitted` has the same general name type as `name`
+pub open spec fn has_general_name_constraint(name: &GeneralName, nc: &NameConstraints) -> bool {
+    exists |i: usize| 0 <= i < nc.permitted.len() && {
+        match (name, #[trigger] &nc.permitted[i as int]) {
+            (GeneralName::DNSName(..), GeneralName::DNSName(..)) => true,
+            (GeneralName::DirectoryName(..), GeneralName::DirectoryName(..)) => true,
+            _ => false,
+        }
+    }
+}
+
+/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L501
+pub open spec fn nc_match(name: &GeneralName, nc: &NameConstraints) -> bool
 {
-    // TODO
-    true
+    let permitted_enabled = has_general_name_constraint(name, nc);
+
+    &&& permitted_enabled ==>
+            exists |j: usize| 0 <= j < nc.permitted.len() &&
+                is_general_subtree_of(#[trigger] &nc.permitted[j as int], &name)
+
+    // Not explicitly excluded
+    &&& forall |j: usize| 0 <= j < nc.excluded.len() ==>
+            !is_general_subtree_of(#[trigger] &nc.excluded[j as int], &name)
+}
+
+/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L331-L336
+pub open spec fn check_san_constraints(san: &SubjectAltName, nc: &NameConstraints) -> bool
+{
+    forall |i: usize| 0 <= i < san.names.len() ==>
+        nc_match(#[trigger] &san.names[i as int], &nc)
+}
+
+/// NAME_CONSTRAINTS_check_CN
+/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L438C5-L438C30
+pub open spec fn check_common_name_constraints(cert: &Certificate, nc: &NameConstraints) -> bool
+{
+    forall |i: usize| #![trigger cert.subject_name[i as int]] 0 <= i < cert.subject_name.len() ==>
+    forall |j: usize| #![trigger cert.subject_name[i as int][j as int]] 0 <= j < cert.subject_name[i as int].len() ==> {
+        let name = &cert.subject_name[i as int][j as int];
+
+        &name.oid == "2.5.4.3"@ // CN
+        ==> nc_match(&GeneralName::DNSName(clone_string(&name.value)), &nc)
+    }
+}
+
+/// This check is a best-effort encoding of the two functions in OpenSSL:
+/// - Name normalization: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x_name.c#L310
+/// - Comparison (directly done via memcmp): https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L615
+/// NOTE that for normalization,
+pub open spec fn check_name_constraints_helper(cert: &Certificate, nc: &NameConstraints, is_leaf: bool) -> bool
+{
+    // NOTE: no support for these
+    // - DoS guard https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L290-L296
+    // - Email name https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L310-L327
+    // - nc_minmax_valid
+
+    &&& nc_match(&GeneralName::DirectoryName(clone_directory_name(&cert.subject_name)), nc)
+    &&& &cert.ext_subject_alt_name matches Some(san) ==> check_san_constraints(san, nc)
+    &&& is_leaf ==> check_common_name_constraints(cert, nc)
 }
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L711
@@ -138,14 +226,36 @@ pub open spec fn check_name_constraints(chain: &Seq<Certificate>) -> bool
     forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
         (&chain[i as int].ext_name_constraints matches Some(nc) ==>
         forall |j: usize| 0 <= j < i ==>
-            check_name_constraints_helper(#[trigger] &chain[j as int], &nc))
+            check_name_constraints_helper(#[trigger] &chain[j as int], &nc, j == 0))
+}
+
+/// Check for purpose == X509_PURPOSE_SSL_SERVER, i.e. special case of the following calls
+/// - check_purpose: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L462
+/// - X509_check_purpose: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L86
+/// - check_purpose_ssl_server: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L736
+/// Assuming X509_check_trust returns X509_TRUST_UNTRUSTED
+/// XKU_SGC is not supported
+pub open spec fn check_purpose(cert: &Certificate, is_leaf: bool) -> bool
+{
+    &&& &cert.ext_extended_key_usage matches Some(eku) ==>
+        exists |i: usize| 0 <= i < eku.usages.len() &&
+            (#[trigger] &eku.usages[i as int] matches ExtendedKeyUsageType::ServerAuth)
+
+    &&& if is_leaf {
+        // https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L733
+        &cert.ext_key_usage matches Some(ku) ==>
+            ku.digital_signature || ku.key_encipherment || ku.key_agreement
+    } else {
+        // https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L702
+        check_ca(cert) == 1
+    }
 }
 
 /// Common checks for certificates, this includes checks in
 /// - check_extensions: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
 pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize) -> bool
 {
-    // TODO: unhandled critical extensions
+    // NOTE: unhandled critical extensions not checked
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L543-L545
 
     &&& check_cert_key_level(cert)
@@ -160,14 +270,23 @@ pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_lea
         check_ca(cert) == 1
     }
 
-    // TODO: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L602-L614
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L602-L614
+    &&& cert.issuer_name.len() != 0
+    &&& cert.subject_name.len() == 0 ==> {
+        &&& &cert.ext_subject_alt_name matches Some(san)
+        &&& san.names.len() != 0
+        &&& san.critical
+        &&& &cert.ext_basic_constraints matches Some(bc) ==> !bc.is_ca
+        &&& &cert.ext_key_usage matches Some(ku) ==> !ku.key_cert_sign
+    }
 
     &&& check_san(cert)
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L619-L621
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
 
-    // TODO: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L645-L647
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L645-L647
+    &&& check_purpose(cert, is_leaf)
 
     &&& check_auth_subject_key_id(cert, is_root)
 
@@ -175,24 +294,18 @@ pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_lea
     &&& !is_leaf ==>
         (&cert.ext_basic_constraints matches Some(bc) ==>
         (bc.path_len matches Some(path_len) ==> depth as i64 <= path_len))
-
-    // TODO: handle intermediate self-issued cert?
-    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L652
 }
 
 pub open spec fn valid_leaf(env: &Environment, cert: &Certificate) -> bool {
-    &&& valid_cert_common(env, cert, true, false, 0)
-    // TODO
+    valid_cert_common(env, cert, true, false, 0)
 }
 
 pub open spec fn valid_intermediate(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
-    &&& valid_cert_common(env, cert, false, false, depth)
-    // TODO
+    valid_cert_common(env, cert, false, false, depth)
 }
 
 pub open spec fn valid_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
-    &&& valid_cert_common(env, cert, false, true, depth)
-    // TODO
+    valid_cert_common(env, cert, false, true, depth)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
@@ -221,6 +334,27 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
     }
 }
 
+}
+
+pub open spec fn clone_directory_name(name: &Seq<Seq<DirectoryName>>) -> Seq<Seq<DirectoryName>> {
+    *name
+}
+
+#[verifier::external_body]
+fn exec_clone_directory_name(name: &Vec<Vec<ExecDirectoryName>>) -> (res: Vec<Vec<ExecDirectoryName>>)
+    ensures res.deep_view() == name.deep_view()
+{
+    name.clone()
+}
+
+pub open spec fn clone_string(name: &SpecString) -> SpecString {
+    *name
+}
+
+fn exec_clone_string(name: &String) -> (res: String)
+    ensures res == *name
+{
+    name.clone()
 }
 
 }
