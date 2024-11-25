@@ -8,7 +8,7 @@ use csv::{ReaderBuilder, WriterBuilder};
 use crate::ct_logs::*;
 use crate::error::*;
 use crate::utils::*;
-use crate::bench::*;
+use crate::harness::*;
 use crate::validator::Policy;
 
 #[derive(Parser, Debug)]
@@ -41,9 +41,9 @@ pub struct Args {
     #[clap(short = 'l', long)]
     limit: Option<usize>,
 
-    /// Path to the Chromium build repo with cert_bench
+    /// Path to the Chrome build repo with cert_bench
     #[clap(long)]
-    chromium_repo: Option<String>,
+    chrome_repo: Option<String>,
 
     /// Path to the Firefox build repo
     #[clap(long)]
@@ -54,54 +54,54 @@ pub struct Args {
     faketime_lib: String,
 
     /// Repeat validation of each certificate for benchmarking
-    #[clap(short = 'n', long)]
-    repeat: Option<usize>,
+    #[clap(short = 'n', long, default_value = "1")]
+    repeat: usize,
 
     /// Override the current time with the given timestamp
     #[clap(short = 't', long)]
-    pub override_time: Option<i64>,
+    override_time: Option<i64>,
 
     /// Enable debug mode
     #[arg(long, default_value_t = false)]
-    pub debug: bool,
+    debug: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum BenchAgent {
     VerdictChrome,
     VerdictFirefox,
-    Chromium,
+    Chrome,
     Firefox,
 }
 
-fn get_x509_impl(args: &Args) -> Result<Box<dyn X509Impl>, Error> {
-    let timestamp = args.override_time.unwrap_or(Utc::now().timestamp()) as u64;
-
+fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
     Ok(match args.agent {
-        BenchAgent::Chromium =>
-            Box::new(ChromiumAgent {
-                repo: args.chromium_repo.clone().ok_or(Error::ChromiumBenchError("chromium repo not specified".to_string()))?,
+        BenchAgent::Chrome =>
+            Box::new(ChromeAgent {
+                repo: args.chrome_repo.clone()
+                    .ok_or(Error::ChromeBenchError("chrome repo not specified".to_string()))?,
                 faketime_lib: args.faketime_lib.clone(),
                 debug: args.debug,
-            }.init(&args.roots, timestamp)?),
+            }),
 
         BenchAgent::Firefox =>
             Box::new(FirefoxAgent {
-                repo: args.firefox_repo.clone().ok_or(Error::FirefoxBenchError("firefox repo not specified".to_string()))?,
+                repo: args.firefox_repo.clone()
+                    .ok_or(Error::FirefoxBenchError("firefox repo not specified".to_string()))?,
                 debug: args.debug,
-            }.init(&args.roots, timestamp)?),
+            }),
 
         BenchAgent::VerdictChrome =>
             Box::new(VerdictAgent {
                 policy: Policy::ChromeHammurabi,
                 debug: args.debug,
-            }.init(&args.roots, timestamp)?),
+            }),
 
         BenchAgent::VerdictFirefox =>
             Box::new(VerdictAgent {
                 policy: Policy::FirefoxHammurabi,
                 debug: args.debug,
-            }.init(&args.roots, timestamp)?),
+            }),
     })
 }
 
@@ -111,10 +111,11 @@ pub fn main(args: Args) -> Result<(), Error> {
         return Ok(());
     }
 
-    let mut x509_impl = get_x509_impl(&args)?;
+    let timestamp = args.override_time.unwrap_or(Utc::now().timestamp()) as u64;
+    let harness: Box<dyn Harness> = get_harness(&args)?;
+    let mut instance = harness.spawn(&args.roots, timestamp)?;
 
     let mut found_hash = false;
-    let repeat = args.repeat.unwrap_or(1);
 
     // Open the output file if it exists, otherwise use stdout
     let mut output_handle: Box<dyn io::Write> = if let Some(out_path) = args.out_csv {
@@ -158,7 +159,7 @@ pub fn main(args: Args) -> Result<(), Error> {
                     bundle.extend(read_pem_file_as_base64(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
                 }
 
-                let res = x509_impl.validate(&bundle, &entry.domain, repeat)?;
+                let res = instance.validate(&bundle, &ExecTask::DomainValidation(entry.domain.to_string()), args.repeat)?;
 
                 // println!("{}: {:?}", entry.hash, res);
 

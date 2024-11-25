@@ -5,6 +5,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use chain::policy::ExecTask;
 use clap::Parser;
 use csv::{ReaderBuilder, WriterBuilder};
 
@@ -76,7 +77,7 @@ fn validate_ct_logs_job(
         VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?);
 
     if args.validator.debug {
-        print_debug_info(&validator.roots, &chain, &entry.domain, validator.get_validation_time());
+        print_debug_info(&validator.roots, &chain, &ExecTask::DomainValidation(entry.domain.to_string()), validator.get_validation_time());
     }
 
     let res = validator.validate_hostname(&chain, &entry.domain)?;

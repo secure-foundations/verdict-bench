@@ -23,7 +23,7 @@ pub struct VerdictAgent {
 
 struct Job {
     bundle: Vec<String>,
-    domain: String,
+    task: ExecTask,
     repeat: usize,
 }
 
@@ -33,17 +33,15 @@ pub struct VerdictImpl {
     handle: Option<JoinHandle<Result<(), Error>>>,
 }
 
-impl X509Agent for VerdictAgent {
-    type Impl = VerdictImpl;
-
-    fn init(&self, roots_path: &str, timestamp: u64) -> Result<Self::Impl, Error> {
+impl Harness for VerdictAgent {
+    fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let roots_bytes = read_pem_file_as_bytes(roots_path)?;
         let policy = self.policy.clone();
 
         let (tx_job, rx_job) = channel::unbounded();
         let (tx_res, rx_res) = channel::unbounded();
 
-        Ok(VerdictImpl {
+        Ok(Box::new(VerdictImpl {
             tx_job: Some(tx_job),
             rx_res: Some(rx_res),
             handle: Some(thread::spawn(move || -> Result<(), Error> {
@@ -62,7 +60,7 @@ impl X509Agent for VerdictAgent {
 
                 let validator = Validator::new(policy, VecDeep::from_vec(roots));
 
-                while let Ok(Job { bundle, domain, repeat }) = rx_job.recv() {
+                while let Ok(Job { bundle, task, repeat }) = rx_job.recv() {
                     let mut durations: Vec<_> = Vec::with_capacity(repeat);
                     let mut res = false;
 
@@ -78,7 +76,7 @@ impl X509Agent for VerdictAgent {
 
                         let chain = VecDeep::from_vec(chain);
 
-                        res = validator.validate_hostname(&chain, &domain)?;
+                        res = validator.validate(&chain, &task)?;
 
                         durations.push(start.elapsed().as_micros()
                             .try_into().map_err(|_| Error::DurationOverflow)?);
@@ -92,17 +90,17 @@ impl X509Agent for VerdictAgent {
 
                 Ok(())
             })),
-        })
+        }))
     }
 }
 
-impl X509Impl for VerdictImpl {
-    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error> {
+impl Instance for VerdictImpl {
+    fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
         self.tx_job.as_ref().ok_or(
             Error::VerdictBenchError("tx_job has already been dropped".to_string())
         )?.send(Job {
             bundle: bundle.clone(),
-            domain: domain.to_string(),
+            task: task.clone(),
             repeat,
         })?;
 

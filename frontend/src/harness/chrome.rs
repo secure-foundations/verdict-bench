@@ -7,23 +7,21 @@ use chrono::{TimeZone, Utc};
 use super::common::*;
 use crate::error::*;
 
-pub struct ChromiumAgent {
+pub struct ChromeAgent {
     pub repo: String,
     pub faketime_lib: String,
     pub debug: bool,
 }
 
-pub struct ChromiumImpl {
+pub struct ChromeImpl {
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
 }
 
-impl X509Agent for ChromiumAgent {
-    type Impl = ChromiumImpl;
-
+impl Harness for ChromeAgent {
     /// Spawns a child process to run cert_bench
-    fn init(&self, roots_path: &str, timestamp: u64) -> Result<Self::Impl, Error> {
+    fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut bin_path = PathBuf::from(&self.repo);
         bin_path.extend([ "src", "out", "Release", "cert_bench" ]);
 
@@ -36,7 +34,7 @@ impl X509Agent for ChromiumAgent {
         }
 
         if !bin_path.exists() {
-            return Err(Error::ChromiumRepoNotFound(bin_path.display().to_string()));
+            return Err(Error::ChromeRepoNotFound(bin_path.display().to_string()));
         }
 
         let mut cmd = process::Command::new(bin_path);
@@ -56,13 +54,13 @@ impl X509Agent for ChromiumAgent {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(ChromiumImpl { child, stdin, stdout: BufReader::new(stdout) })
+        Ok(Box::new(ChromeImpl { child, stdin, stdout: BufReader::new(stdout) }))
     }
 }
 
-impl X509Impl for ChromiumImpl {
+impl Instance for ChromeImpl {
     /// Send one validation job, and then read the results from stdout
-    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error> {
+    fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
         if bundle.len() == 0 {
             return Err(Error::EmptyBundle);
         }
@@ -70,6 +68,11 @@ impl X509Impl for ChromiumImpl {
         if repeat == 0 {
             return Err(Error::ZeroRepeat);
         }
+
+        let domain = match task {
+            ExecTask::DomainValidation(domain) => domain,
+            _ => return Err(Error::UnsupportedTask),
+        };
 
         if domain.trim().is_empty() {
             // Chrome would abort if the domain is empty
@@ -90,12 +93,12 @@ impl X509Impl for ChromiumImpl {
         let mut line = String::new();
 
         if self.stdout.read_line(&mut line)? == 0 {
-            return Err(Error::ChromiumBenchError("failed to read stdout".to_string()));
+            return Err(Error::ChromeBenchError("failed to read stdout".to_string()));
         }
 
         if line.starts_with("result:") {
             let mut res = line["result:".len()..].trim().split_ascii_whitespace();
-            let res_fst = res.next().ok_or(Error::ChromiumBenchError("no results".to_string()))?;
+            let res_fst = res.next().ok_or(Error::ChromeBenchError("no results".to_string()))?;
 
             Ok(ValidationResult {
                 err: if res_fst == "OK" { None } else { Some(res_fst.to_string()) },
@@ -104,14 +107,14 @@ impl X509Impl for ChromiumImpl {
                 stats: res.map(|s| s.parse().unwrap()).collect(),
             })
         } else if line.starts_with("error:") {
-            Err(Error::ChromiumBenchError(line["error:".len()..].trim().to_string()))
+            Err(Error::ChromeBenchError(line["error:".len()..].trim().to_string()))
         } else {
-            Err(Error::ChromiumBenchError(format!("unexpected output: {}", line)))
+            Err(Error::ChromeBenchError(format!("unexpected output: {}", line)))
         }
     }
 }
 
-impl Drop for ChromiumImpl {
+impl Drop for ChromeImpl {
     fn drop(&mut self) {
         if let Some(status) = self.child.try_wait().unwrap() {
             eprintln!("chrome cert bench failed with: {}", status);

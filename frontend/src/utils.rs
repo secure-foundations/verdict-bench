@@ -1,3 +1,4 @@
+use chain::policy::ExecTask;
 use chrono::{DateTime, Utc};
 
 use std::fs::File;
@@ -70,8 +71,8 @@ pub fn read_pem_as_base64<B: BufRead>(reader: B) -> impl Iterator<Item = Result<
     })
 }
 
-pub fn print_debug_info(roots: &VecDeep<x509::CertificateValue>, chain: &VecDeep<x509::CertificateValue>, domain: &str, now: u64) {
-    eprintln!("=================== query info ===================");
+pub fn print_debug_info(roots: &VecDeep<x509::CertificateValue>, chain: &VecDeep<x509::CertificateValue>, task: &ExecTask, now: u64) {
+    eprintln!("=================== task info ===================");
     // Print some general information about the certs
     eprintln!("{} root certificate(s)", roots.len());
     eprintln!("{} certificate(s) in the chain", chain.len());
@@ -118,7 +119,8 @@ pub fn print_debug_info(roots: &VecDeep<x509::CertificateValue>, chain: &VecDeep
         print_cert(roots.get(*i));
     }
 
-    eprintln!("domain to validate: {}", domain);
+    eprintln!("task: {:?}", task);
+
     eprintln!("timestamp: {} ({})", now, match DateTime::<Utc>::from_timestamp(now as i64, 0) {
         Some(dt) => dt.to_string(),
         None => "invalid".to_string(),
@@ -134,5 +136,5 @@ pub fn print_debug_info(roots: &VecDeep<x509::CertificateValue>, chain: &VecDeep
         eprintln!("  {:?}", policy::Certificate::from(roots.get(*i)));
     }
 
-    eprintln!("=================== end query info ===================");
+    eprintln!("=================== end task info ===================");
 }

@@ -314,4 +314,15 @@ pub fn exec_normalize_string(s: &String) -> (res: String)
     issue::normalize_string(s.as_str())
 }
 
+impl Clone for ExecTask {
+    fn clone(&self) -> (res: Self)
+        ensures res.deep_view() == self.deep_view()
+    {
+        match self {
+            ExecTask::DomainValidation(domain) => ExecTask::DomainValidation(domain.clone()),
+            ExecTask::ChainValidation(purpose) => ExecTask::ChainValidation(*purpose),
+        }
+    }
+}
+
 } // verus!

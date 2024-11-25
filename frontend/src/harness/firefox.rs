@@ -26,11 +26,9 @@ pub struct FirefoxImpl {
     stdout: BufReader<ChildStdout>,
 }
 
-impl X509Agent for FirefoxAgent {
-    type Impl = FirefoxImpl;
-
+impl Harness for FirefoxAgent {
     /// Spawns a child process to run cert_bench
-    fn init(&self, roots_path: &str, timestamp: u64) -> Result<Self::Impl, Error> {
+    fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut bin_path = PathBuf::from(&self.repo);
         bin_path.extend([ "cert_bench.sh" ]);
 
@@ -53,7 +51,7 @@ impl X509Agent for FirefoxAgent {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(FirefoxImpl {
+        Ok(Box::new(FirefoxImpl {
             bin_path,
             roots_path: roots_path.to_string(),
             timestamp,
@@ -61,7 +59,7 @@ impl X509Agent for FirefoxAgent {
 
             count: 0,
             child, stdin, stdout: BufReader::new(stdout),
-        })
+        }))
     }
 }
 
@@ -99,9 +97,9 @@ impl FirefoxImpl {
     }
 }
 
-impl X509Impl for FirefoxImpl {
+impl Instance for FirefoxImpl {
     /// Send one validation job, and then read the results from stdout
-    fn validate(&mut self, bundle: &Vec<String>, domain: &str, repeat: usize) -> Result<ValidationResult, Error> {
+    fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
         if bundle.len() == 0 {
             return Err(Error::EmptyBundle);
         }
@@ -109,6 +107,11 @@ impl X509Impl for FirefoxImpl {
         if repeat == 0 {
             return Err(Error::ZeroRepeat);
         }
+
+        let domain = match task {
+            ExecTask::DomainValidation(domain) => domain,
+            _ => return Err(Error::UnsupportedTask),
+        };
 
         self.count += 1;
 

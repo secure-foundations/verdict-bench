@@ -2,7 +2,7 @@ mod error;
 mod utils;
 mod ct_logs;
 mod validator;
-mod bench;
+mod harness;
 mod cmd;
 
 use std::process::ExitCode;

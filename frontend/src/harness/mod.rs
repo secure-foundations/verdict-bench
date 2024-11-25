@@ -1,11 +1,11 @@
 #![allow(unused_imports)]
 
 mod common;
-mod chromium;
+mod chrome;
 mod firefox;
 mod verdict;
 
 pub use common::*;
-pub use chromium::*;
+pub use chrome::*;
 pub use firefox::*;
 pub use verdict::*;

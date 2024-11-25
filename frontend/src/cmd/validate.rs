@@ -1,6 +1,7 @@
 use std::time::Instant;
 
-use chain::policy;
+use chain::policy::ExecPurpose;
+use chain::policy::ExecTask;
 use clap::Parser;
 
 use parser::{parse_x509_cert, VecDeep};
@@ -53,6 +54,12 @@ pub fn main(args: Args) -> Result<(), Error> {
     let mut durations = Vec::with_capacity(repeat);
     let mut res = false;
 
+    let task = if let Some(domain) = &args.domain {
+        ExecTask::DomainValidation(domain.to_string())
+    } else {
+        ExecTask::ChainValidation(ExecPurpose::ServerAuth)
+    };
+
     // Repeat <repeat> times
     for i in 0..repeat {
         let begin = Instant::now();
@@ -61,15 +68,11 @@ pub fn main(args: Args) -> Result<(), Error> {
             parse_x509_cert(cert_bytes)
         }).collect::<Result<Vec<_>, _>>()?);
 
-        if let Some(domain) = &args.domain {
-            if args.validator.debug && i == 0 {
-                print_debug_info(&validator.roots, &chain, domain, validator.get_validation_time());
-            }
-
-            res = validator.validate_hostname(&chain, domain)?;
-        } else {
-            res = validator.validate_purpose(&chain, policy::ExecPurpose::ServerAuth)?;
+        if args.validator.debug && i == 0 {
+            print_debug_info(&validator.roots, &chain, &task, validator.get_validation_time());
         }
+
+        res = validator.validate(&chain, &task)?;
 
         durations.push(begin.elapsed().as_micros());
     }

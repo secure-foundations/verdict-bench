@@ -43,8 +43,8 @@ pub enum Error {
     #[error("libfaketime.so not found at {0}")]
     LibFakeTimeNotFound(String),
 
-    #[error("chromium not found at {0}")]
-    ChromiumRepoNotFound(String),
+    #[error("chrome not found at {0}")]
+    ChromeRepoNotFound(String),
 
     #[error("firefox not found at {0}")]
     FirefoxRepoNotFound(String),
@@ -58,8 +58,8 @@ pub enum Error {
     #[error("empty certificate bundle")]
     EmptyBundle,
 
-    #[error("chromium cert bench error: {0}")]
-    ChromiumBenchError(String),
+    #[error("chrome cert bench error: {0}")]
+    ChromeBenchError(String),
 
     #[error("firefox cert bench error: {0}")]
     FirefoxBenchError(String),
@@ -69,6 +69,9 @@ pub enum Error {
 
     #[error("verdict bench error: {0}")]
     VerdictBenchError(String),
+
+    #[error("task unsupported by harness")]
+    UnsupportedTask,
 }
 
 impl From<X509ParseError> for Error {
