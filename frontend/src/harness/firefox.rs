@@ -5,7 +5,7 @@ use std::process::{self, Child, ChildStdin, ChildStdout};
 use super::common::*;
 use crate::error::*;
 
-const RESET_COUNT: usize = 100;
+const RESET_COUNT: usize = 30;
 
 pub struct FirefoxHarness {
     pub repo: String,
