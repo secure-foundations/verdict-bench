@@ -5,22 +5,12 @@ use std::process::{self, Child, ChildStdin, ChildStdout};
 use super::common::*;
 use crate::error::*;
 
-const RESET_COUNT: usize = 30;
-
 pub struct FirefoxHarness {
     pub repo: String,
     pub debug: bool,
 }
 
 pub struct FirefoxInstance {
-    bin_path: PathBuf,
-    roots_path: String,
-    timestamp: u64,
-    debug: bool,
-
-    /// Number of jobs processed
-    count: usize,
-
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
@@ -51,49 +41,7 @@ impl Harness for FirefoxHarness {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(Box::new(FirefoxInstance {
-            bin_path,
-            roots_path: roots_path.to_string(),
-            timestamp,
-            debug: self.debug,
-
-            count: 0,
-            child, stdin, stdout: BufReader::new(stdout),
-        }))
-    }
-}
-
-impl FirefoxInstance {
-    /// Restart the benching process
-    /// NOTE: this is currently a workaround for the degrading
-    /// performance of the test harness overtime due to the
-    /// use of certdb in Firefox
-    fn reset(&mut self) -> Result<(), Error> {
-        let mut cmd = process::Command::new(&self.bin_path);
-        cmd.arg(&self.roots_path)
-            .arg(self.timestamp.to_string())
-            .stdin(process::Stdio::piped())
-            .stdout(process::Stdio::piped());
-
-        if !self.debug {
-            cmd.stderr(process::Stdio::null());
-        };
-
-        let mut child = cmd.spawn()?;
-
-        let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
-        let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
-
-        // Kill the previous process
-        self.child.kill()?;
-        self.child.wait()?;
-
-        // Set the new one
-        self.child = child;
-        self.stdin = stdin;
-        self.stdout = BufReader::new(stdout);
-
-        Ok(())
+        Ok(Box::new(FirefoxInstance { child, stdin, stdout: BufReader::new(stdout) }))
     }
 }
 
@@ -113,20 +61,13 @@ impl Instance for FirefoxInstance {
             _ => return Err(Error::UnsupportedTask),
         };
 
-        self.count += 1;
-
-        if self.count >= RESET_COUNT {
-            self.reset()?;
-            self.count = 0;
-        }
-
         writeln!(self.stdin, "repeat: {}", repeat)?;
-        writeln!(&mut self.stdin, "leaf: {}", bundle[0])?;
+        writeln!(self.stdin, "leaf: {}", bundle[0])?;
 
         for cert in bundle.iter().skip(1) {
             writeln!(&mut self.stdin, "interm: {}", cert)?;
         }
-        writeln!(&mut self.stdin, "domain: {}", domain)?;
+        writeln!(self.stdin, "domain: {}", domain)?;
 
         let mut line = String::new();
 
