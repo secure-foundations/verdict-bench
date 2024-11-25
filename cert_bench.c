@@ -240,6 +240,8 @@ int main(int argc, char *argv[]) {
                 free(cert_base64[i]);
             }
             cur_num_certs = 0;
+
+            fflush(stdout);
         } else if (rem = check_prefix(line, "repeat: ")) {
             int64_t num = strtol(rem, NULL, 10);
 
