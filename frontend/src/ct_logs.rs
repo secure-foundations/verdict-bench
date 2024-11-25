@@ -12,7 +12,8 @@ pub struct CTLogEntry {
 pub struct CTLogResult {
     pub hash: String,
     pub domain: String,
-    pub result: String,
+    pub valid: bool,
+    pub err: String,
 
     /// Samples of running time in microseconds
     /// TODO: this is currently serialized as a
@@ -22,7 +23,7 @@ pub struct CTLogResult {
 
 /// Workaround for an issue in rust-csv: https://github.com/BurntSushi/rust-csv/issues/113
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CTLogResultWithoutStats {
+pub struct CTLogResultLegacy {
     pub hash: String,
     pub domain: String,
     pub result: String,

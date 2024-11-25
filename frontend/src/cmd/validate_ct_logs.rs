@@ -156,11 +156,10 @@ pub fn main(args: Args) -> Result<(), Error>
                 Err(err) => format!("fail: {}", err),
             };
 
-            output_writer.serialize(CTLogResult {
+            output_writer.serialize(CTLogResultLegacy {
                 hash: res.hash,
                 domain: res.domain,
                 result: result_str,
-                stats: vec![],
             })?;
             output_writer.flush()?;
 

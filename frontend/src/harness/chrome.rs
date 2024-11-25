@@ -7,19 +7,19 @@ use chrono::{TimeZone, Utc};
 use super::common::*;
 use crate::error::*;
 
-pub struct ChromeAgent {
+pub struct ChromeHarness {
     pub repo: String,
     pub faketime_lib: String,
     pub debug: bool,
 }
 
-pub struct ChromeImpl {
+pub struct ChromeInstance {
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
 }
 
-impl Harness for ChromeAgent {
+impl Harness for ChromeHarness {
     /// Spawns a child process to run cert_bench
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut bin_path = PathBuf::from(&self.repo);
@@ -54,11 +54,11 @@ impl Harness for ChromeAgent {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(Box::new(ChromeImpl { child, stdin, stdout: BufReader::new(stdout) }))
+        Ok(Box::new(ChromeInstance { child, stdin, stdout: BufReader::new(stdout) }))
     }
 }
 
-impl Instance for ChromeImpl {
+impl Instance for ChromeInstance {
     /// Send one validation job, and then read the results from stdout
     fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
         if bundle.len() == 0 {
@@ -77,7 +77,8 @@ impl Instance for ChromeImpl {
         if domain.trim().is_empty() {
             // Chrome would abort if the domain is empty
             return Ok(ValidationResult {
-                err: Some("empty_domain_name".to_string()),
+                valid: false,
+                err: "empty domain name".to_string(),
                 stats: vec![0; repeat],
             });
         }
@@ -101,7 +102,8 @@ impl Instance for ChromeImpl {
             let res_fst = res.next().ok_or(Error::ChromeBenchError("no results".to_string()))?;
 
             Ok(ValidationResult {
-                err: if res_fst == "OK" { None } else { Some(res_fst.to_string()) },
+                valid: res_fst == "OK",
+                err: if res_fst == "OK" { "".to_string() } else { res_fst.to_string() },
 
                 // Parse the rest as a space separated list of integers (time in microseconds)
                 stats: res.map(|s| s.parse().unwrap()).collect(),
@@ -114,7 +116,7 @@ impl Instance for ChromeImpl {
     }
 }
 
-impl Drop for ChromeImpl {
+impl Drop for ChromeInstance {
     fn drop(&mut self) {
         if let Some(status) = self.child.try_wait().unwrap() {
             eprintln!("chrome cert bench failed with: {}", status);

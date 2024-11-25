@@ -7,12 +7,12 @@ use crate::error::*;
 
 const RESET_COUNT: usize = 100;
 
-pub struct FirefoxAgent {
+pub struct FirefoxHarness {
     pub repo: String,
     pub debug: bool,
 }
 
-pub struct FirefoxImpl {
+pub struct FirefoxInstance {
     bin_path: PathBuf,
     roots_path: String,
     timestamp: u64,
@@ -26,7 +26,7 @@ pub struct FirefoxImpl {
     stdout: BufReader<ChildStdout>,
 }
 
-impl Harness for FirefoxAgent {
+impl Harness for FirefoxHarness {
     /// Spawns a child process to run cert_bench
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut bin_path = PathBuf::from(&self.repo);
@@ -51,7 +51,7 @@ impl Harness for FirefoxAgent {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(Box::new(FirefoxImpl {
+        Ok(Box::new(FirefoxInstance {
             bin_path,
             roots_path: roots_path.to_string(),
             timestamp,
@@ -63,7 +63,7 @@ impl Harness for FirefoxAgent {
     }
 }
 
-impl FirefoxImpl {
+impl FirefoxInstance {
     /// Restart the benching process
     /// NOTE: this is currently a workaround for the degrading
     /// performance of the test harness overtime due to the
@@ -97,7 +97,7 @@ impl FirefoxImpl {
     }
 }
 
-impl Instance for FirefoxImpl {
+impl Instance for FirefoxInstance {
     /// Send one validation job, and then read the results from stdout
     fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
         if bundle.len() == 0 {
@@ -139,7 +139,8 @@ impl Instance for FirefoxImpl {
             let res_fst = res.next().ok_or(Error::FirefoxBenchError("no results".to_string()))?;
 
             Ok(ValidationResult {
-                err: if res_fst == "OK" { None } else { Some(res_fst.to_string()) },
+                valid: res_fst == "OK",
+                err: if res_fst == "OK" { "".to_string() } else { res_fst.to_string() },
 
                 // Parse the rest as a space separated list of integers (time in microseconds)
                 stats: res.map(|s| s.parse().map_err(|_| Error::FirefoxBenchError("result parse error".to_string())))
@@ -153,7 +154,7 @@ impl Instance for FirefoxImpl {
     }
 }
 
-impl Drop for FirefoxImpl {
+impl Drop for FirefoxInstance {
     fn drop(&mut self) {
         if let Some(status) = self.child.try_wait().unwrap() {
             eprintln!("firefox cert bench failed with: {}", status);

@@ -58,11 +58,11 @@ pub fn main(args: Args) -> Result<(), Error>
 
     // Read CSV file1 into a HashMap
     let file1 = File::open(&args.file1)?;
-    let mut file1_results: HashMap<String, (CTLogResultWithoutStats, DiffClass)> =
+    let mut file1_results: HashMap<String, (CTLogResultLegacy, DiffClass)> =
         ReaderBuilder::new()
             .has_headers(false)
             .from_reader(file1)
-            .deserialize::<CTLogResultWithoutStats>()
+            .deserialize::<CTLogResultLegacy>()
             .map(|res| {
                 let res = res?;
                 let class = DiffClass::get(&classes, &res.result);
@@ -87,7 +87,7 @@ pub fn main(args: Args) -> Result<(), Error>
     // For each result entry in file2, check if the corresponding one exists in file1
     // Otherwise report
     for result in file2_reader.deserialize() {
-        let result: CTLogResultWithoutStats = result?;
+        let result: CTLogResultLegacy = result?;
 
         if let Some((file1_result, file1_class)) = file1_results.get(&result.hash) {
             let file2_class = DiffClass::get(&classes, &result.result);
