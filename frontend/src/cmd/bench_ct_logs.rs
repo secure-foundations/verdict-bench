@@ -10,6 +10,7 @@ use crossbeam::channel;
 use crossbeam::channel::Receiver;
 use crossbeam::channel::Sender;
 use csv::{ReaderBuilder, WriterBuilder};
+use chain::policy::ExecPurpose;
 
 use crate::ct_logs::*;
 use crate::error::*;
@@ -74,15 +75,20 @@ pub struct Args {
     /// Enable debug mode
     #[arg(long, default_value_t = false)]
     debug: bool,
+
+    /// Do chain validation only without domain
+    #[arg(long, default_value_t = false)]
+    no_domain: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum BenchHarness {
-    VerdictChrome,
-    VerdictFirefox,
     Chrome,
     Firefox,
     OpenSSL,
+    VerdictChrome,
+    VerdictFirefox,
+    VerdictOpenSSL,
 }
 
 fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
@@ -120,6 +126,12 @@ fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
                 policy: Policy::FirefoxHammurabi,
                 debug: args.debug,
             }),
+
+        BenchHarness::VerdictOpenSSL =>
+            Box::new(VerdictHarness {
+                policy: Policy::OpenSSL,
+                debug: args.debug,
+            }),
     })
 }
 
@@ -135,7 +147,11 @@ fn worker(args: &Args, mut instance: Box<dyn Instance>, rx_job: Receiver<CTLogEn
             bundle.extend(read_pem_file_as_base64(&format!("{}/{}.pem", &args.interm_dir, interm_cert))?);
         }
 
-        let res = instance.validate(&bundle, &ExecTask::DomainValidation(entry.domain.to_string()), args.repeat)?;
+        let res = if args.no_domain {
+            instance.validate(&bundle, &ExecTask::ChainValidation(ExecPurpose::ServerAuth), args.repeat)?
+        } else {
+            instance.validate(&bundle, &ExecTask::DomainValidation(entry.domain.to_string()), args.repeat)?
+        };
 
         // Send back a CTLogResult
         tx_res.send(CTLogResult {
