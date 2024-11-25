@@ -199,27 +199,21 @@ macro_rules! arm {
     };
 }
 
+macro_rules! param_type {
+    ($name:expr $(, $param:expr)* $(,)?) => {
+        Type::Path(TypePath {
+            qself: None,
+            path: path![seg!($name $(, $param)*)],
+        })
+    };
+}
+
 fn exec_type_name(name: &str) -> String {
     format!("Exec{}", name)
 }
 
 fn exec_fn_name(name: &str) -> String {
     format!("exec_{}", name)
-}
-
-/// Convert a &str into a simple type
-fn new_simple_type(s: &str) -> Type {
-    Type::Path(TypePath {
-        qself: None,
-        path: path![seg!(s)],
-    })
-}
-
-fn new_simple_type_with_param(s: &str, param: Type) -> Type {
-    Type::Path(TypePath {
-        qself: None,
-        path: path![seg!(s, param)],
-    })
 }
 
 /// Wrap an expr in reference
@@ -340,15 +334,15 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
             // If this is a type defined in the context of rspec
             // we directly use the name of the exec version of the type
             if ctx.structs.contains_key(&name) || ctx.enums.contains_key(&name) {
-                return Ok(new_simple_type(&exec_type_name(&name)));
+                return Ok(param_type!(&exec_type_name(&name)));
             }
 
             if let Some(extern_name) = ctx.externs.get(&name) {
-                return Ok(new_simple_type(extern_name));
+                return Ok(param_type!(extern_name));
             }
 
             match name.as_str() {
-                "SpecString" => Ok(new_simple_type("String")),
+                "SpecString" => Ok(param_type!("String")),
 
                 // Integer/float types can stay the same
                 "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128" | "usize" | "isize" |
@@ -356,18 +350,25 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
                     Ok(ty.clone()),
 
                 // TODO: do we want this?
-                // "int" => Ok(new_simple_type("i64")),
+                // "int" => Ok(param_type!("i64")),
 
                 // Option<T> => Option<exec(T)>
                 "Option" => {
                     let param = get_simple_type_param(ty, 0)?;
-                    Ok(new_simple_type_with_param("Option", compile_type(ctx, &param)?))
+                    Ok(param_type!("Option", compile_type(ctx, &param)?))
                 }
 
                 // Seq<T> => Vec<exec(T)>
                 "Seq" => {
                     let param = get_simple_type_param(ty, 0)?;
-                    Ok(new_simple_type_with_param("Vec", compile_type(ctx, &param)?))
+                    Ok(param_type!("Vec", compile_type(ctx, &param)?))
+                }
+
+                // Result<T, E> => Result<exec(T), exec(E)>
+                "Result" => {
+                    let param1 = get_simple_type_param(ty, 0)?;
+                    let param2 = get_simple_type_param(ty, 1)?;
+                    Ok(param_type!("Result", compile_type(ctx, &param1)?, compile_type(ctx, &param2)?))
                 }
 
                 _ => Err(Error::new_spanned(ty, "unsupported/unknown simple type")),

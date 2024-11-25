@@ -26,15 +26,26 @@ verus! {
 
 rspec! {
 
+use ExecChromeEnvironment as ChromeEnvironment;
+use exec_chrome_valid_chain as chrome_valid_chain;
+
+use ExecFirefoxEnvironment as FirefoxEnvironment;
+use exec_firefox_valid_chain as firefox_valid_chain;
+
+use ExecOpenSSLEnvironment as OpenSSLEnvironment;
+use exec_openssl_valid_chain as openssl_valid_chain;
+
 /// Corresponds to `AttributeTypeAndValue` in X.509
-pub struct DirectoryName {
+pub struct Attribute {
     pub oid: SpecString,
     pub value: SpecString,
 }
 
+pub struct DistinguishedName(pub Seq<Seq<Attribute>>);
+
 pub enum GeneralName {
     DNSName(SpecString),
-    DirectoryName(Seq<Seq<DirectoryName>>),
+    DirectoryName(DistinguishedName),
 }
 
 pub enum SubjectKey {
@@ -130,8 +141,8 @@ pub struct Certificate {
     pub not_after: u64,
     pub not_before: u64,
 
-    pub issuer_name: Seq<Seq<DirectoryName>>,
-    pub subject_name: Seq<Seq<DirectoryName>>,
+    pub issuer_name: DistinguishedName,
+    pub subject_name: DistinguishedName,
     pub subject_key: SubjectKey,
 
     pub issuer_uid: Option<SpecString>,
@@ -160,28 +171,17 @@ pub enum Task {
     ChainValidation(Purpose),
 }
 
-use ExecChromeEnvironment as ChromeEnvironment;
-use exec_chrome_valid_chain as chrome_valid_chain;
-
-use ExecFirefoxEnvironment as FirefoxEnvironment;
-use exec_firefox_valid_chain as firefox_valid_chain;
-
-use ExecOpenSSLEnvironment as OpenSSLEnvironment;
-use exec_openssl_valid_chain as openssl_valid_chain;
-
 pub enum Policy {
     Chrome(ChromeEnvironment),
     Firefox(FirefoxEnvironment),
     OpenSSL(OpenSSLEnvironment),
 }
 
-pub enum PolicyResult {
-    Valid,
-    Invalid,
+pub enum PolicyError {
     UnsupportedTask,
 }
 
-pub open spec fn valid_chain(policy: &Policy, chain: &Seq<Certificate>, task: &Task) -> PolicyResult {
+pub open spec fn valid_chain(policy: &Policy, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError> {
     match policy {
         Policy::Chrome(env) => chrome_valid_chain(env, chain, task),
         Policy::Firefox(env) => firefox_valid_chain(env, chain, task),
@@ -238,7 +238,7 @@ use exec_normalize_string as normalize_string;
 ///   - https://searchfox.org/mozilla-central/source/security/nss/lib/mozpkix/lib/pkixnames.cpp#1345
 /// - OpenSSL considers more characters as white space (https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/ctype.c#L21),
 ///   whereas Chrome only considers a single ASCII space character ' '
-pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName, normalize: bool) -> bool {
+pub open spec fn rdn_has_name(rdn: &Seq<Attribute>, name: &Attribute, normalize: bool) -> bool {
     exists |i: usize| 0 <= i < rdn.len() && {
         &&& #[trigger] &rdn[i as int].oid == &name.oid
         &&& if normalize {
@@ -251,16 +251,16 @@ pub open spec fn rdn_has_name(rdn: &Seq<DirectoryName>, name: &DirectoryName, no
 
 /// Check if for any item in rdn2, there is a corresponding item in rdn1 with the same OID
 /// and same value
-pub open spec fn is_subtree_rdn(rdn1: &Seq<DirectoryName>, rdn2: &Seq<DirectoryName>, normalize: bool) -> bool {
+pub open spec fn is_subtree_rdn(rdn1: &Seq<Attribute>, rdn2: &Seq<Attribute>, normalize: bool) -> bool {
     &&& rdn1.len() <= rdn2.len()
     &&& forall |i: usize| 0 <= i < rdn1.len() ==> rdn_has_name(&rdn2, #[trigger] &rdn1[i as int], normalize)
 }
 
 /// Check if name1 is a subset set of name2
 /// See: https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/verify_name_match.cc#L261C6-L261C29
-pub open spec fn is_subtree_of(name1: &Seq<Seq<DirectoryName>>, name2: &Seq<Seq<DirectoryName>>, normalize: bool) -> bool {
-    &&& name1.len() <= name2.len()
-    &&& forall |i: usize| 0 <= i < name1.len() ==> is_subtree_rdn(#[trigger] &name1[i as int], &name2[i as int], normalize)
+pub open spec fn is_subtree_of(name1: &DistinguishedName, name2: &DistinguishedName, normalize: bool) -> bool {
+    &&& name1.0.len() <= name2.0.len()
+    &&& forall |i: usize| 0 <= i < name1.0.len() ==> is_subtree_rdn(#[trigger] &name1.0[i as int], &name2.0[i as int], normalize)
 }
 
 /// Similar to `match_name`, but used for checking name constraints
@@ -293,11 +293,11 @@ pub fn exec_str_lower(s: &String) -> (res: String)
     s.to_lowercase()
 }
 
-impl Clone for ExecDirectoryName {
+impl Clone for ExecAttribute {
     fn clone(&self) -> (res: Self)
         ensures res.deep_view() == self.deep_view()
     {
-        ExecDirectoryName {
+        ExecAttribute {
             oid: self.oid.clone(),
             value: self.value.clone(),
         }

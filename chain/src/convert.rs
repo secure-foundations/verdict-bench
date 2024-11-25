@@ -66,8 +66,8 @@ impl policy::Certificate {
                 not_after: not_after as u64,
                 not_before: not_before as u64,
 
-                issuer_name: policy::DirectoryName::spec_from(c.cert.issuer),
-                subject_name: policy::DirectoryName::spec_from(c.cert.subject),
+                issuer_name: policy::DistinguishedName::spec_from(c.cert.issuer),
+                subject_name: policy::DistinguishedName::spec_from(c.cert.subject),
                 subject_key,
 
                 issuer_uid: if let OptionDeep::Some(uid) = c.cert.issuer_uid {
@@ -181,8 +181,8 @@ impl policy::Certificate {
             not_after: not_after as u64,
             not_before: not_before as u64,
 
-            issuer_name: policy::DirectoryName::from(&c.get().cert.get().issuer),
-            subject_name: policy::DirectoryName::from(&c.get().cert.get().subject),
+            issuer_name: policy::DistinguishedName::from(&c.get().cert.get().issuer),
+            subject_name: policy::DistinguishedName::from(&c.get().cert.get().subject),
             subject_key,
 
             issuer_uid: if let OptionDeep::Some(uid) = &c.get().cert.get().issuer_uid {
@@ -732,7 +732,7 @@ impl policy::GeneralName {
             SpecGeneralNameValue::DNS(s) =>
                 Some(policy::GeneralName::DNSName(s)),
             SpecGeneralNameValue::Directory(dir_names) =>
-                Some(policy::GeneralName::DirectoryName(policy::DirectoryName::spec_from(dir_names))),
+                Some(policy::GeneralName::DirectoryName(policy::DistinguishedName::spec_from(dir_names))),
             _ => None,
         }
     }
@@ -745,7 +745,7 @@ impl policy::GeneralName {
             GeneralNameValue::DNS(s) =>
                 Some(policy::ExecGeneralName::DNSName((*s).to_string())),
             GeneralNameValue::Directory(dir_names) =>
-                Some(policy::ExecGeneralName::DirectoryName(policy::DirectoryName::from(dir_names))),
+                Some(policy::ExecGeneralName::DirectoryName(policy::DistinguishedName::from(dir_names))),
             _ => None,
         }
     }
@@ -907,19 +907,23 @@ impl policy::SubjectKey {
 }
 
 /// Directory Name (`Name` in X.509) is essentially `Seq<Seq<{ type, value }>>`
-impl policy::DirectoryName {
-    pub closed spec fn spec_from(name: SpecNameValue) -> Seq<Seq<policy::DirectoryName>>
+impl policy::DistinguishedName {
+    pub closed spec fn spec_from(name: SpecNameValue) -> policy::DistinguishedName {
+        policy::DistinguishedName(Self::spec_from_helper(name))
+    }
+
+    pub closed spec fn spec_from_helper(name: SpecNameValue) -> Seq<Seq<policy::Attribute>>
         decreases name.len()
     {
         if name.len() == 0 {
             seq![]
         } else {
-            seq![Self::spec_rdn_to_dir_names(name.first())] + Self::spec_from(name.drop_first())
+            seq![Self::spec_from_rdn(name.first())] + Self::spec_from_helper(name.drop_first())
         }
     }
 
     /// Exec version of spec_from
-    pub fn from(name: &NameValue) -> (res: Vec<Vec<policy::ExecDirectoryName>>)
+    pub fn from(name: &NameValue) -> (res: policy::ExecDistinguishedName)
         ensures res.deep_view() == Self::spec_from(name@),
     {
         let mut dir_names = Vec::new();
@@ -930,33 +934,33 @@ impl policy::DirectoryName {
         for i in 0..len
             invariant
                 len == name@.len(),
-                Self::spec_from(name@) =~= dir_names.deep_view() + Self::spec_from(name@.skip(i as int)),
+                Self::spec_from_helper(name@) =~= dir_names.deep_view() + Self::spec_from_helper(name@.skip(i as int)),
         {
-            dir_names.push(Self::rdn_to_dir_names(name.get(i)));
+            dir_names.push(Self::from_rdn(name.get(i)));
             assert(name@.skip(i + 1) == name@.skip(i as int).drop_first());
         }
 
-        dir_names
+        policy::ExecDistinguishedName(dir_names)
     }
 
-    /// Convert each attribute of RDN to a DirectoryName, ignoring unsupported ones
-    pub closed spec fn spec_rdn_to_dir_names(rdn: SpecRDNValue) -> Seq<policy::DirectoryName>
+    /// Convert each attribute of RDN to a DistinguishedName, ignoring unsupported ones
+    pub closed spec fn spec_from_rdn(rdn: SpecRDNValue) -> Seq<policy::Attribute>
         decreases rdn.len()
     {
         if rdn.len() == 0 {
             seq![]
         } else {
-            if let Some(dir_name) = Self::spec_attr_to_dir_name(rdn.first()) {
-                seq![dir_name] + Self::spec_rdn_to_dir_names(rdn.drop_first())
+            if let Some(dir_name) = Self::spec_from_attr(rdn.first()) {
+                seq![dir_name] + Self::spec_from_rdn(rdn.drop_first())
             } else {
-                Self::spec_rdn_to_dir_names(rdn.drop_first())
+                Self::spec_from_rdn(rdn.drop_first())
             }
         }
     }
 
-    /// Exec version of spec_rdn_to_dir_names
-    pub fn rdn_to_dir_names<'a, 'b>(rdn: &'b RDNValue<'a>) -> (res: Vec<policy::ExecDirectoryName>)
-        ensures res.deep_view() == Self::spec_rdn_to_dir_names(rdn@),
+    /// Exec version of spec_from_rdn
+    pub fn from_rdn<'a, 'b>(rdn: &'b RDNValue<'a>) -> (res: Vec<policy::ExecAttribute>)
+        ensures res.deep_view() == Self::spec_from_rdn(rdn@),
     {
         let mut names = Vec::new();
         let len = rdn.len();
@@ -966,9 +970,9 @@ impl policy::DirectoryName {
         for i in 0..len
             invariant
                 len == rdn@.len(),
-                Self::spec_rdn_to_dir_names(rdn@) =~= names.deep_view() + Self::spec_rdn_to_dir_names(rdn@.skip(i as int)),
+                Self::spec_from_rdn(rdn@) =~= names.deep_view() + Self::spec_from_rdn(rdn@.skip(i as int)),
         {
-            if let Some(dir_name) = Self::attr_to_dir_name(rdn.get(i)) {
+            if let Some(dir_name) = Self::from_attr(rdn.get(i)) {
                 names.push(dir_name);
             }
 
@@ -978,22 +982,22 @@ impl policy::DirectoryName {
         names
     }
 
-    pub closed spec fn spec_attr_to_dir_name(attr: SpecAttributeTypeAndValueValue) -> Option<policy::DirectoryName> {
+    pub closed spec fn spec_from_attr(attr: SpecAttributeTypeAndValueValue) -> Option<policy::Attribute> {
         if_let! {
             let Some(value) = Self::spec_dir_string_to_string(attr.value);
 
-            Some(policy::DirectoryName {
+            Some(policy::Attribute {
                 oid: policy::Certificate::spec_oid_to_string(attr.typ),
                 value,
             })
         }
     }
 
-    /// Exec version of spec_attr_to_dir_name
-    pub fn attr_to_dir_name<'a, 'b>(attr: &'b AttributeTypeAndValueValue<'a>) -> (res: Option<policy::ExecDirectoryName>)
-        ensures res.deep_view() == Self::spec_attr_to_dir_name(attr@),
+    /// Exec version of spec_from_attr
+    pub fn from_attr<'a, 'b>(attr: &'b AttributeTypeAndValueValue<'a>) -> (res: Option<policy::ExecAttribute>)
+        ensures res.deep_view() == Self::spec_from_attr(attr@),
     {
-        Some(policy::ExecDirectoryName {
+        Some(policy::ExecAttribute {
             oid: policy::Certificate::oid_to_string(&attr.typ),
             value: Self::dir_string_to_string(&attr.value)?.to_string(),
         })
@@ -1001,7 +1005,7 @@ impl policy::DirectoryName {
 
     /// Convert a dir string to string
     /// NOTE: DirectoryString refers to a overloaded string type in X.509
-    /// DirectoryName refers to the string attached with an OID used in subject name
+    /// DistinguishedName refers to the string attached with an OID used in subject name
     /// TODO: support more dir strings
     pub closed spec fn spec_dir_string_to_string(dir: SpecDirectoryStringValue) -> Option<Seq<char>>
     {

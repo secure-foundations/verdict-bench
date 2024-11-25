@@ -8,7 +8,7 @@ verus! {
 
 rspec! {
 
-use ExecDirectoryName as DirectoryName;
+use ExecAttribute as Attribute;
 use ExecGeneralName as GeneralName;
 use ExecSubjectKey as SubjectKey;
 use ExecExtendedKeyUsageType as ExtendedKeyUsageType;
@@ -21,14 +21,14 @@ use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 use ExecPurpose as Purpose;
 use ExecTask as Task;
-use ExecPolicyResult as PolicyResult;
+use ExecPolicyError as PolicyError;
 
 use exec_str_lower as str_lower;
 use exec_match_name as match_name;
 use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
-use exec_clone_directory_name as clone_directory_name;
+use exec_clone_dn as clone_dn;
 use exec_clone_string as clone_string;
 
 pub struct Environment {
@@ -195,9 +195,9 @@ pub open spec fn check_san_constraints(san: &SubjectAltName, nc: &NameConstraint
 /// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L438C5-L438C30
 pub open spec fn check_common_name_constraints(cert: &Certificate, nc: &NameConstraints) -> bool
 {
-    forall |i: usize| #![trigger cert.subject_name[i as int]] 0 <= i < cert.subject_name.len() ==>
-    forall |j: usize| #![trigger cert.subject_name[i as int][j as int]] 0 <= j < cert.subject_name[i as int].len() ==> {
-        let name = &cert.subject_name[i as int][j as int];
+    forall |i: usize| #![trigger cert.subject_name.0[i as int]] 0 <= i < cert.subject_name.0.len() ==>
+    forall |j: usize| #![trigger cert.subject_name.0[i as int][j as int]] 0 <= j < cert.subject_name.0[i as int].len() ==> {
+        let name = &cert.subject_name.0[i as int][j as int];
 
         &name.oid == "2.5.4.3"@ // CN
         ==> nc_match(&GeneralName::DNSName(clone_string(&name.value)), &nc)
@@ -215,7 +215,7 @@ pub open spec fn check_name_constraints_helper(cert: &Certificate, nc: &NameCons
     // - Email name https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L310-L327
     // - nc_minmax_valid
 
-    &&& nc_match(&GeneralName::DirectoryName(clone_directory_name(&cert.subject_name)), nc)
+    &&& nc_match(&GeneralName::DirectoryName(clone_dn(&cert.subject_name)), nc)
     &&& &cert.ext_subject_alt_name matches Some(san) ==> check_san_constraints(san, nc)
     &&& is_leaf ==> check_common_name_constraints(cert, nc)
 }
@@ -271,8 +271,8 @@ pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_lea
     }
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L602-L614
-    &&& cert.issuer_name.len() != 0
-    &&& cert.subject_name.len() == 0 ==> {
+    &&& cert.issuer_name.0.len() != 0
+    &&& cert.subject_name.0.len() == 0 ==> {
         &&& &cert.ext_subject_alt_name matches Some(san)
         &&& san.names.len() != 0
         &&& san.critical
@@ -310,11 +310,11 @@ pub open spec fn valid_root(env: &Environment, cert: &Certificate, leaf: &Certif
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: &Task) -> PolicyResult
+pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
 {
     match task {
-        Task::ChainValidation(Purpose::ServerAuth) => {
-            if chain.len() >= 2 && {
+        Task::ChainValidation(Purpose::ServerAuth) =>
+            Ok(chain.len() >= 2 && {
                 let leaf = &chain[0];
                 let root = &chain[chain.len() - 1];
 
@@ -323,28 +323,23 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
                 &&& valid_root(env, root, leaf, (chain.len() - 2) as usize)
                 &&& check_name_constraints(chain)
-            } {
-                PolicyResult::Valid
-            } else {
-                PolicyResult::Invalid
-            }
-        }
+            }),
 
-        _ => PolicyResult::UnsupportedTask,
+        _ => Err(PolicyError::UnsupportedTask),
     }
 }
 
 }
 
-pub open spec fn clone_directory_name(name: &Seq<Seq<DirectoryName>>) -> Seq<Seq<DirectoryName>> {
+pub open spec fn clone_dn(name: &DistinguishedName) -> DistinguishedName {
     *name
 }
 
 #[verifier::external_body]
-fn exec_clone_directory_name(name: &Vec<Vec<ExecDirectoryName>>) -> (res: Vec<Vec<ExecDirectoryName>>)
+fn exec_clone_dn(name: &ExecDistinguishedName) -> (res: ExecDistinguishedName)
     ensures res.deep_view() == name.deep_view()
 {
-    name.clone()
+    ExecDistinguishedName(name.0.clone())
 }
 
 pub open spec fn clone_string(name: &SpecString) -> SpecString {

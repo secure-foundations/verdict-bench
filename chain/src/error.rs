@@ -1,4 +1,5 @@
 use vstd::prelude::*;
+use crate::policy::ExecPolicyError;
 
 verus! {
 
@@ -10,7 +11,7 @@ pub enum ValidationError {
     TimeParseError,
     RSAPubKeyParseError,
     UnexpectedExtParam,
-    UnsupportedTask,
+    PolicyError(ExecPolicyError),
 }
 
 }

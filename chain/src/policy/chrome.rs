@@ -8,7 +8,7 @@ verus! {
 
 rspec! {
 
-use ExecDirectoryName as DirectoryName;
+use ExecAttribute as Attribute;
 use ExecGeneralName as GeneralName;
 use ExecSubjectKey as SubjectKey;
 use ExecExtendedKeyUsageType as ExtendedKeyUsageType;
@@ -20,7 +20,7 @@ use ExecNameConstraints as NameConstraints;
 use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 use ExecTask as Task;
-use ExecPolicyResult as PolicyResult;
+use ExecPolicyError as PolicyError;
 
 use exec_str_lower as str_lower;
 use exec_match_name as match_name;
@@ -355,13 +355,13 @@ pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf:
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: &Task) -> PolicyResult
+pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
 {
     match task {
         Task::DomainValidation(domain) => {
             let domain = str_lower(domain);
 
-            if chain.len() >= 2 && {
+            Ok(chain.len() >= 2 && {
                 let leaf = &chain[0];
                 let root = &chain[chain.len() - 1];
 
@@ -369,13 +369,9 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
                 &&& cert_verified_leaf(env, leaf, &domain)
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
                 &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, &domain)
-            } {
-                PolicyResult::Valid
-            } else {
-                PolicyResult::Invalid
-            }
+            })
         }
-        _ => PolicyResult::UnsupportedTask,
+        _ => Err(PolicyError::UnsupportedTask),
     }
 }
 
@@ -383,7 +379,7 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
 
 /// A subset of RFC rules
 proof fn rfc_properties(env: &Environment, chain: &Seq<Certificate>, task: &Task)
-    requires valid_chain(env, chain, task) == PolicyResult::Valid
+    requires valid_chain(env, chain, task) == Ok::<_, PolicyError>(true)
     ensures
         // A validated chain should not contain expired certificates
         forall |i: usize| #![trigger chain[i as int]] 0 <= i < chain.len() ==>

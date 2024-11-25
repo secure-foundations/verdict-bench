@@ -1,4 +1,4 @@
-/// The high-level spec and impl of chain validation
+/// High-level specs and impls of chain building and validation
 
 use vstd::prelude::*;
 
@@ -47,7 +47,7 @@ impl Query {
     pub open spec fn path_satisfies_policy(self, path: Seq<usize>, root_idx: usize) -> bool {
         let candidate = path.map_values(|i| self.bundle[i as int]) + seq![self.roots[root_idx as int]];
         let abstract_candidate = candidate.map_values(|cert| policy::Certificate::spec_from(cert).unwrap());
-        policy::valid_chain(&self.policy, &abstract_candidate, &self.task) == policy::PolicyResult::Valid
+        policy::valid_chain(&self.policy, &abstract_candidate, &self.task) == Ok::<_, policy::PolicyError>(true)
     }
 
     pub open spec fn valid(self) -> bool {
@@ -149,9 +149,8 @@ impl<'a> Validator<'a> {
                 .map_values(|cert| policy::Certificate::spec_from(cert).unwrap()));
 
         match policy::exec_valid_chain(&self.policy, &candidate, task) {
-            policy::ExecPolicyResult::Valid => Ok(true),
-            policy::ExecPolicyResult::Invalid => Ok(false),
-            policy::ExecPolicyResult::UnsupportedTask => Err(ValidationError::UnsupportedTask),
+            Ok(res) => Ok(res),
+            Err(err) => Err(ValidationError::PolicyError(err)),
         }
     }
 
