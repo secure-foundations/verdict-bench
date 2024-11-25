@@ -49,6 +49,9 @@ pub enum Error {
     #[error("firefox not found at {0}")]
     FirefoxRepoNotFound(String),
 
+    #[error("openssl cert bench not found at {0}")]
+    OpenSSLRepoNotFound(String),
+
     #[error("failed to get child process stdin")]
     ChildStdin,
 
@@ -63,6 +66,9 @@ pub enum Error {
 
     #[error("firefox cert bench error: {0}")]
     FirefoxBenchError(String),
+
+    #[error("openssl cert bench error: {0}")]
+    OpenSSLBenchError(String),
 
     #[error("duration overflow")]
     DurationOverflow,

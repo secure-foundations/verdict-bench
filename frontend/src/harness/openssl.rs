@@ -2,46 +2,37 @@ use std::path::PathBuf;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{self, Child, ChildStdin, ChildStdout};
 
+use chain::policy::ExecPurpose;
 use chrono::{TimeZone, Utc};
 
 use super::common::*;
 use crate::error::*;
 
-pub struct ChromeHarness {
+pub struct OpenSSLHarness {
     pub repo: String,
-    pub faketime_lib: String,
     pub debug: bool,
 }
 
-pub struct ChromeInstance {
+pub struct OpenSSLInstance {
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
 }
 
-impl Harness for ChromeHarness {
+impl Harness for OpenSSLHarness {
     /// Spawns a child process to run cert_bench
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut bin_path = PathBuf::from(&self.repo);
-        bin_path.extend([ "src", "out", "Release", "cert_bench" ]);
-
-        let fake_time = Utc.timestamp_opt(timestamp as i64, 0).unwrap()
-            .format("%Y-%m-%d %H:%M:%S").to_string();
-
-        // Check `args.faketime_lib` exists
-        if !PathBuf::from(&self.faketime_lib).exists() {
-            return Err(Error::LibFakeTimeNotFound(self.faketime_lib.clone()));
-        }
+        bin_path.push("cert_bench");
 
         if !bin_path.exists() {
-            return Err(Error::ChromeRepoNotFound(bin_path.display().to_string()));
+            return Err(Error::OpenSSLRepoNotFound(bin_path.display().to_string()));
         }
 
         let mut cmd = process::Command::new(bin_path);
         cmd.arg(roots_path)
             // Use libfaketime to change the validation time
-            .env("LD_PRELOAD", &self.faketime_lib)
-            .env("FAKETIME", &format!("@{}", fake_time))
+            .arg(timestamp.to_string())
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped());
 
@@ -54,11 +45,11 @@ impl Harness for ChromeHarness {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
 
-        Ok(Box::new(ChromeInstance { child, stdin, stdout: BufReader::new(stdout) }))
+        Ok(Box::new(OpenSSLInstance { child, stdin, stdout: BufReader::new(stdout) }))
     }
 }
 
-impl Instance for ChromeInstance {
+impl Instance for OpenSSLInstance {
     /// Send one validation job, and then read the results from stdout
     fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
         if bundle.len() == 0 {
@@ -69,18 +60,8 @@ impl Instance for ChromeInstance {
             return Err(Error::ZeroRepeat);
         }
 
-        let domain = match task {
-            ExecTask::DomainValidation(domain) => domain,
-            _ => return Err(Error::UnsupportedTask),
-        };
-
-        if domain.trim().is_empty() {
-            // Chrome would abort if the domain is empty
-            return Ok(ValidationResult {
-                valid: false,
-                err: "empty domain name".to_string(),
-                stats: vec![0; repeat],
-            });
+        if let ExecTask::ChainValidation(ExecPurpose::ServerAuth) = task {} else {
+            return Err(Error::UnsupportedTask);
         }
 
         writeln!(self.stdin, "repeat: {}", repeat)?;
@@ -89,17 +70,17 @@ impl Instance for ChromeInstance {
         for cert in bundle.iter().skip(1) {
             writeln!(self.stdin, "interm: {}", cert)?;
         }
-        writeln!(self.stdin, "domain: {}", domain)?;
+        writeln!(self.stdin, "validate")?;
 
         let mut line = String::new();
 
         if self.stdout.read_line(&mut line)? == 0 {
-            return Err(Error::ChromeBenchError("failed to read stdout".to_string()));
+            return Err(Error::OpenSSLBenchError("failed to read stdout".to_string()));
         }
 
         if line.starts_with("result:") {
             let mut res = line["result:".len()..].trim().split_ascii_whitespace();
-            let res_fst = res.next().ok_or(Error::ChromeBenchError("no results".to_string()))?;
+            let res_fst = res.next().ok_or(Error::OpenSSLBenchError("no results".to_string()))?;
 
             Ok(ValidationResult {
                 valid: res_fst == "OK",
@@ -109,17 +90,17 @@ impl Instance for ChromeInstance {
                 stats: res.map(|s| s.parse().unwrap()).collect(),
             })
         } else if line.starts_with("error:") {
-            Err(Error::ChromeBenchError(line["error:".len()..].trim().to_string()))
+            Err(Error::OpenSSLBenchError(line["error:".len()..].trim().to_string()))
         } else {
-            Err(Error::ChromeBenchError(format!("unexpected output: {}", line)))
+            Err(Error::OpenSSLBenchError(format!("unexpected output: {}", line)))
         }
     }
 }
 
-impl Drop for ChromeInstance {
+impl Drop for OpenSSLInstance {
     fn drop(&mut self) {
         if let Some(status) = self.child.try_wait().unwrap() {
-            eprintln!("chrome cert bench failed with: {}", status);
+            eprintln!("openssl cert bench failed with: {}", status);
         }
 
         // We expect the process to be still running
