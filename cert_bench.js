@@ -609,6 +609,7 @@ function main(args) {
 
             leaf_base64 = null;
             interm = [];
+            interm_base64 = [];
         } else if (line.startsWith(repeat_prefix)) {
             line = line.slice(repeat_prefix.length);
             repeat_count = parseInt(line);

@@ -1,6 +1,6 @@
 diff -r dbd5ee74c531 security/certverifier/CertVerifier.cpp
 --- a/security/certverifier/CertVerifier.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/certverifier/CertVerifier.cpp	Fri Nov 22 16:36:54 2024 +0000
++++ b/security/certverifier/CertVerifier.cpp	Mon Nov 25 21:47:36 2024 +0000
 @@ -586,16 +586,16 @@
        // results of setting the default policy to a particular configuration.
        SHA1Mode sha1ModeConfigurations[] = {
@@ -49,7 +49,7 @@ diff -r dbd5ee74c531 security/certverifier/CertVerifier.cpp
            MOZ_ARRAY_LENGTH(keySizeOptions) == MOZ_ARRAY_LENGTH(keySizeStatuses),
 diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
 --- a/security/manager/ssl/nsIX509CertDB.idl	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsIX509CertDB.idl	Fri Nov 22 16:36:54 2024 +0000
++++ b/security/manager/ssl/nsIX509CertDB.idl	Mon Nov 25 21:47:36 2024 +0000
 @@ -301,6 +301,25 @@
                               in uint64_t aTime,
                               in nsICertVerificationCallback aCallback);
@@ -78,7 +78,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
    [must_use]
 diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 --- a/security/manager/ssl/nsNSSCertificateDB.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Fri Nov 22 16:36:54 2024 +0000
++++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Mon Nov 25 21:47:36 2024 +0000
 @@ -15,6 +15,7 @@
  #include "mozilla/Casting.h"
  #include "mozilla/Services.h"
@@ -121,7 +121,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
                              mVerifiedCertList, &mHasEVPolicy, &mPRErrorCode);
    }
  
-@@ -1318,6 +1321,90 @@
+@@ -1318,6 +1321,128 @@
  }
  
  NS_IMETHODIMP
@@ -148,24 +148,37 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 +    uint64_t aRepeat,
 +    nsTArray<int64_t>& _retval
 +) {
-+  nsAutoCString certDER;
-+  nsresult rv = Base64Decode(aLeaf, certDER);
-+  if (NS_FAILED(rv)) {
-+    return rv;
-+  }
-+
-+  nsIX509Cert* leaf;
-+  rv = ConstructX509FromSpan(AsBytes(Span(certDER)), &leaf);
-+  if (NS_FAILED(rv)) {
-+    return rv;
-+  }
-+
 +  for (uint64_t i = 0; i < aRepeat; i++) {
 +    auto start = TimeStamp::Now();
 +
++    nsAutoCString certDER;
++    nsresult rv = Base64Decode(aLeaf, certDER);
++    if (NS_FAILED(rv)) {
++      return rv;
++    }
++
++    // nsIX509Cert* leaf;
++    // rv = ConstructX509FromSpan(AsBytes(Span(certDER)), &leaf);
++    // if (NS_FAILED(rv)) {
++    //   return rv;
++    // }
++
++    // Parse the leaf certificate
++    SECItem certData;
++    auto aInputSpan = AsBytes(Span(certDER));
++    certData.type = siDERCertBuffer;
++    certData.data = const_cast<unsigned char*>(
++        reinterpret_cast<const unsigned char*>(aInputSpan.Elements()));
++    certData.len = aInputSpan.Length();
++
++    UniqueCERTCertificate leaf(CERT_NewTempCertificate(CERT_GetDefaultCertDB(), &certData, nullptr, false, true));
++    if (!leaf)
++      return (PORT_GetError() == SEC_ERROR_NO_MEMORY) ? NS_ERROR_OUT_OF_MEMORY
++                                                      : NS_ERROR_FAILURE;
++
 +    int32_t mPRErrorCode;
-+    nsTArray<RefPtr<nsIX509Cert>> mVerifiedCertList;
-+    bool mHasEVPolicy;
++    // nsTArray<RefPtr<nsIX509Cert>> mVerifiedCertList;
++    // bool mHasEVPolicy;
 +
 +    nsTArray<nsTArray<uint8_t>> parsedInts;
 +
@@ -182,14 +195,39 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 +      parsedInts.AppendElement(std::move(converted));
 +    }
 +
-+    rv = VerifyCertAtTime(
-+        leaf, aUsage, aFlags, aHostname,
-+        mozilla::pkix::TimeFromEpochInSeconds(aTime),
-+        Some(std::move(parsedInts)),
-+        mVerifiedCertList, &mHasEVPolicy, &mPRErrorCode);
-+    if (NS_FAILED(rv)) {
-+      return rv;
-+    }
++    RefPtr<SharedCertVerifier> certVerifier(GetDefaultCertVerifier());
++    UniqueCERTCertList resultChain;
++    SECOidTag evOidPolicy;
++    NS_ENSURE_TRUE(certVerifier, NS_ERROR_FAILURE);
++
++    // UniqueCERTCertificate nssCert(leaf->GetCert());
++    // if (!nssCert) {
++    //   return NS_ERROR_INVALID_ARG;
++    // }
++
++    mozilla::pkix::Result result = certVerifier->VerifySSLServerCert(
++      leaf,
++      mozilla::pkix::TimeFromEpochInSeconds(aTime),
++      nullptr,  // Assume no context
++      aHostname, resultChain, aFlags,
++      Some(std::move(parsedInts)),
++      Nothing(),  // stapledOCSPResponse
++      Nothing(),  // sctsFromTLSExtension
++      Nothing(),  // dcInfo
++      OriginAttributes(),
++      false,  // don't save intermediates
++      &evOidPolicy);
++
++    mPRErrorCode = mozilla::pkix::MapResultToPRErrorCode(result);
++
++    // rv = VerifyCertAtTime(
++    //     leaf, aUsage, aFlags, aHostname,
++    //     mozilla::pkix::TimeFromEpochInSeconds(aTime),
++    //     Some(std::move(parsedInts)),
++    //     mVerifiedCertList, &mHasEVPolicy, &mPRErrorCode);
++    // if (NS_FAILED(rv)) {
++    //   return rv;
++    // }
 +
 +    auto duration = TimeStamp::Now() - start;
 +
@@ -200,10 +238,10 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 +    _retval.AppendElement(duration.ToMicroseconds());
 +  }
 +
-+  rv = DeleteCertificate(leaf);
-+  if (NS_FAILED(rv)) {
-+    return rv;
-+  }
++  // rv = DeleteCertificate(leaf);
++  // if (NS_FAILED(rv)) {
++  //   return rv;
++  // }
 +
 +  return NS_OK;
 +}
@@ -214,7 +252,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
    NS_ENSURE_TRUE(certVerifier, NS_ERROR_FAILURE);
 diff -r dbd5ee74c531 security/nss/lib/ckfw/builtins/certdata.txt
 --- a/security/nss/lib/ckfw/builtins/certdata.txt	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/nss/lib/ckfw/builtins/certdata.txt	Fri Nov 22 16:36:54 2024 +0000
++++ b/security/nss/lib/ckfw/builtins/certdata.txt	Mon Nov 25 21:47:36 2024 +0000
 @@ -1,4 +1,4 @@
 -# 
 +#
