@@ -2,6 +2,7 @@ from helpers import *
 from pathlib import Path
 from hashlib import *
 
+import os
 import subprocess
 
 ## with morpheous formally verified oracle
@@ -10,8 +11,9 @@ def verifySign(signature, sign_algo, msg, pk, i):
         print("Singnature algorithm {} is insecure in certificate {}".format(sign_oid_map_insecure[sign_algo], i))
         return "false"
 
-    home_dir = str(Path.home())
-    morpheous_loc = home_dir + "/.armor/morpheus-bin"
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    # home_dir = str(Path.home())
+    morpheous_loc = script_dir + "/morpheus-bin"
     #hacl_loc = home_dir + "/.armor/hash-hacl-star-bin"
 
     if sign_algo in sign_oid_map:

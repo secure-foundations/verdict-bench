@@ -6,3 +6,5 @@
 *.spec
 bin/
 build/
+
+armor-bin
