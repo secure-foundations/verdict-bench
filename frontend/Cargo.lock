@@ -606,6 +606,7 @@ dependencies = [
  "regex",
  "rspec-lib",
  "serde",
+ "tempfile",
  "thiserror",
  "vstd",
 ]

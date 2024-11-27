@@ -3,7 +3,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::process::{self, Child, ChildStdin, ChildStdout};
 
 use chain::policy::ExecPurpose;
-use chrono::{TimeZone, Utc};
 
 use super::common::*;
 use crate::error::*;

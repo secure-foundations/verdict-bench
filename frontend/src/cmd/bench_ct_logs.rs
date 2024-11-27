@@ -60,6 +60,10 @@ pub struct Args {
     #[clap(long)]
     openssl_repo: Option<String>,
 
+    /// Path to the ARMOR repo
+    #[clap(long)]
+    armor_repo: Option<String>,
+
     /// Path to libfaketime.so
     #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
     faketime_lib: String,
@@ -86,6 +90,7 @@ pub enum BenchHarness {
     Chrome,
     Firefox,
     OpenSSL,
+    Armor,
     VerdictChrome,
     VerdictFirefox,
     VerdictOpenSSL,
@@ -112,6 +117,14 @@ fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
             Box::new(OpenSSLHarness {
                 repo: args.openssl_repo.clone()
                     .ok_or(Error::OpenSSLBenchError("openssl repo not specified".to_string()))?,
+                debug: args.debug,
+            }),
+
+        BenchHarness::Armor =>
+            Box::new(ArmorHarness {
+                repo: args.armor_repo.clone()
+                    .ok_or(Error::ArmorBenchError("armor repo not specified".to_string()))?,
+                faketime_lib: args.faketime_lib.clone(),
                 debug: args.debug,
             }),
 

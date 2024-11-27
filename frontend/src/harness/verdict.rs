@@ -44,7 +44,7 @@ impl VerdictInstance {
         let validator = Validator::new(policy, VecDeep::from_vec(roots));
 
         while let Ok(Job { bundle, task, repeat }) = rx_job.recv() {
-            let mut durations: Vec<_> = Vec::with_capacity(repeat);
+            let mut durations = Vec::with_capacity(repeat);
             let mut res: Result<bool, Error> = Ok(false);
 
             // Errors in chain parsing should not be raised to terminate the entire worker

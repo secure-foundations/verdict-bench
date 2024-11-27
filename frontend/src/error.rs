@@ -52,6 +52,9 @@ pub enum Error {
     #[error("openssl cert bench not found at {0}")]
     OpenSSLRepoNotFound(String),
 
+    #[error("armor driver not found at {0}")]
+    ArmorRepoNotFound(String),
+
     #[error("failed to get child process stdin")]
     ChildStdin,
 
@@ -70,6 +73,9 @@ pub enum Error {
     #[error("openssl cert bench error: {0}")]
     OpenSSLBenchError(String),
 
+    #[error("armor cert bench error: {0}")]
+    ArmorBenchError(String),
+
     #[error("duration overflow")]
     DurationOverflow,
 
@@ -78,6 +84,12 @@ pub enum Error {
 
     #[error("task unsupported by harness")]
     UnsupportedTask,
+
+    #[error("failed to decode UTF-8: {0}")]
+    UTF8Error(#[from] std::str::Utf8Error),
+
+    #[error("failed to decode UTF-8: {0}")]
+    StringUTF8Error(#[from] std::string::FromUtf8Error),
 }
 
 impl From<X509ParseError> for Error {

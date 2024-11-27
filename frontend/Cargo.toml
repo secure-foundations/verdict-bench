@@ -19,3 +19,4 @@ crossbeam = "0.8.4"
 cpu-time = "1.0.0"
 heappy = { git = "https://github.com/mkmik/heappy", branch = "main" }
 rspec-lib = { path = "../rspec_lib" }
+tempfile = "3.14.0"
