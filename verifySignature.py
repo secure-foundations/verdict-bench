@@ -8,7 +8,7 @@ import subprocess
 ## with morpheous formally verified oracle
 def verifySign(signature, sign_algo, msg, pk, i):
     if sign_algo in sign_oid_map_insecure:
-        print("Singnature algorithm {} is insecure in certificate {}".format(sign_oid_map_insecure[sign_algo], i))
+        print("Singnature algorithm {} is insecure in certificate {}".format(sign_oid_map_insecure[sign_algo], i), file=sys.stderr)
         return "false"
 
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -88,7 +88,7 @@ def verifySign(signature, sign_algo, msg, pk, i):
             except:
                 return "false"
     else:
-        print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(int_to_hex(sign_algo).upper(), i))
+        print("Singnature algorithm {} is not supported - verification bypassed in certificate {}".format(int_to_hex(sign_algo).upper(), i), file=sys.stderr)
         return "true"
 
 def verifySignatures():
@@ -97,6 +97,6 @@ def verifySignatures():
         res = verifySign(signatures[i], sign_oids[i], tbs_bytes[i], pks[i + 1], i)
 
         if res == "false":
-            print("Failed to verify signature of certificate {}".format(i))
+            print("Failed to verify signature of certificate {}".format(i), file=sys.stderr)
             break
     return res

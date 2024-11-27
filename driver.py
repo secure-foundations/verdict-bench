@@ -75,6 +75,9 @@ def main():
             else:
                 cmd = ['{}/armor-bin --purpose {} {} {} > {}'.format(script_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
 
+        # print(cmd[0])
+        # exit()
+
         aeres_res = subprocess.getoutput(cmd)
         print(aeres_res)
 
@@ -82,21 +85,21 @@ def main():
                 or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
                 or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain") \
                 or aeres_res.__contains__("incomplete read") or aeres_res.__contains__("not found"):
-            print("AERES syntactic or semantic checks: failed")
+            print("AERES syntactic or semantic checks: failed", file=sys.stderr)
             os.remove(filename_aeres_output)
             return False
         else:
-            print("AERES syntactic and semantic checks: passed")
+            print("AERES syntactic and semantic checks: passed", file=sys.stderr)
 
         readData(filename_aeres_output)
         os.remove(filename_aeres_output)
 
         sign_verify_res = verifySignatures()
         if sign_verify_res == "false":
-            print("Signature verification: failed")
+            print("Signature verification: failed", file=sys.stderr)
             return False
         else:
-            print("Signature verification: passed")
+            print("Signature verification: passed", file=sys.stderr)
 
         return True
 
