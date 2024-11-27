@@ -12,7 +12,7 @@ ARMOR_MAIN=Armor/Main.agda
 ARMOR_MAIN_HS=$(ARMOR_BUILD)/Code/Armor/Main.hs
 
 STACK_GHC_EXE=stack --compiler ghc-8.8.4 exec ghc --
-STACK_GHC_OPTIONS=-O -Werror -fwarn-incomplete-patterns
+STACK_GHC_OPTIONS=-O -Werror -fwarn-incomplete-patterns # -prof -fprof-auto
 
 .PHONY: all
 all: $(ARMOR_MAIN_HS)
@@ -22,7 +22,7 @@ libraries:
 	echo `pwd`/../$(AGDA_STDLIB) > $(LIBRARIES)
 
 .PHONY: haskell
-$(ARMOR_MAIN_HS): libraries
+$(ARMOR_MAIN_HS): libraries $(ARMOR_MAIN)
 	$(AGDA) --ghc-dont-call-ghc -c $(ARMOR_MAIN)
 
 .PHONY: default

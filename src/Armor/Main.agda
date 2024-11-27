@@ -19,8 +19,10 @@ open import Armor.Foreign.ByteString
 import      Armor.Foreign.Time as FFI
 open import Armor.Prelude
 import      Data.Nat.Properties as Nat
-open import Data.Nat.Show renaming (show to showℕ) 
+open import Data.Nat.Show renaming (show to showℕ)
 import      IO
+
+-- open import System.Clock as Clock
 
 module Armor.Main where
 
@@ -70,7 +72,7 @@ parseCerts fn input =
       Armor.IO.putStrLnErr (foldl String._++_ "" log₁)
       IO.>> Armor.IO.exitFailure
     (mkLogged log₁ (yes (success prefix read read≡ chain suf@(_ ∷ _) ps≡))) →
-      Armor.IO.putStrLnErr 
+      Armor.IO.putStrLnErr
         (fn String.++ ": incomplete read\n"
          String.++ "-- only read " String.++ (showℕ (IList.lengthIList _ chain))
          String.++ " certificate(s), but " String.++ (showℕ (length suf)) String.++ " byte(s) remain")
@@ -115,22 +117,44 @@ parseCerts fn input =
 --   helper nil = []
 --   helper (cons (mkIListCons h t bs≡)) = (_ , h) ∷ helper t
 
+-- open import Data.Unit as Unit using (⊤) renaming (⊤ to ⊤₀)
+
+-- ⊤ : ∀ {ℓ} → Set ℓ
+-- ⊤ {ℓ} = Unit.⊤
+
+-- repeatIO : ∀ {ℓ A} → ℕ → IO.IO {ℓ} A → IO.IO {ℓ} unit
+-- repeatIO zero action = pure tt
+-- repeatIO (suc n) action = action IO.>> repeatIO n action
+
+import Data.List.Categorical
+
 main : IO.Main
 main = IO.run $
   Armor.IO.getArgs IO.>>= λ args →
   case
-    processCmdArgs args (record { certname = nothing ; rootname = nothing ; isDER = false ; purpose = nothing })
+    processCmdArgs args (record { certname = nothing ; rootname = nothing ; isDER = false ; purpose = nothing ; repeat = 1 })
   of λ where
     (inj₁ msg) →
       Armor.IO.putStrLnErr ("-- " String.++ msg)
       IO.>> Armor.IO.exitFailure
     (inj₂ cmd) →
-      readCert (CmdArg.isDER cmd) (CmdArg.certname cmd)
-      IO.>>= λ cert─ → case (CmdArg.rootname cmd) of λ where
-        nothing → runCertChecksLeaf (CmdArg.purpose cmd) (IList.toList _ (proj₂ cert─))
+      case (CmdArg.rootname cmd) of λ where
+        nothing →
+          readCert (CmdArg.isDER cmd) (CmdArg.certname cmd)
+          IO.>>= λ cert─ → runCertChecksLeaf (CmdArg.purpose cmd) (IList.toList _ (proj₂ cert─))
         (just rootName) →
-          readPEM rootName
-          IO.>>= λ root─ → runCertChecks (CmdArg.purpose cmd) (IList.toList _ (proj₂ root─)) (IList.toList _ (proj₂ cert─))
+          Armor.IO.getCurrentTimeMicroseconds IO.>>= λ start →
+          readPEM rootName IO.>>= λ root─ →
+          Armor.IO.getCurrentTimeMicroseconds IO.>>= λ end →
+          Armor.IO.putStrLnErr ("roots parsed: " String.++ (showℕ (end - start)))
+          IO.>>
+          Armor.IO.getCurrentTimeMicroseconds IO.>>= λ start →
+          readCert (CmdArg.isDER cmd) (CmdArg.certname cmd)
+          IO.>>= λ cert─ → runCertChecks (CmdArg.purpose cmd) (IList.toList _ (proj₂ root─)) (IList.toList _ (proj₂ cert─))
+          -- IO.>>
+          -- Armor.IO.getCurrentTimeMicroseconds IO.>>= λ end →
+          -- Armor.IO.putStrLnErr ("validation took: " String.++ (showℕ (end - start)))
+          -- IO.>> Armor.IO.exitSuccess
   where
   record CmdArgTmp : Set where
     pattern
@@ -138,6 +162,7 @@ main = IO.run $
       certname rootname : Maybe String
       isDER : Bool -- default false
       purpose : Maybe KeyPurpose
+      repeat : ℕ
 
   record CmdArg : Set where
     field
@@ -145,9 +170,15 @@ main = IO.run $
       rootname : Maybe String
       isDER : Bool
       purpose : Maybe KeyPurpose
+      repeat : ℕ
 
   processCmdArgs : List String → CmdArgTmp → String ⊎ CmdArg
   processCmdArgs ("--DER" ∷ args) cmd = processCmdArgs args (record cmd { isDER = true })
+  processCmdArgs ("--repeat" ∷ repeat ∷ args) cmd =
+    case Armor.IO.stringToNat repeat of λ where
+      (just repeat) → processCmdArgs args (record cmd { repeat = repeat })
+      nothing → inj₁ "unable to parse repeat number"
+
   processCmdArgs ("--purpose" ∷ purpose ∷ args) cmd =
     case readPurpose purpose of λ where
       (inj₁ msg) → inj₁ msg
@@ -163,8 +194,8 @@ main = IO.run $
       (yes purp∈) → inj₂ (proj₂ (lookup purpMap (Any.index purp∈)))
   processCmdArgs (certName ∷ []) cmd = processCmdArgs [] (record cmd { certname = just certName })
   processCmdArgs (certName ∷ rootName ∷ []) cmd = processCmdArgs [] (record cmd { certname = just certName ; rootname = just rootName })
-  processCmdArgs [] record { certname = just certName ; rootname = rootName ; isDER = isDER ; purpose = purpose } =
-    inj₂ (record { certname = certName ; rootname = rootName ; isDER = isDER ; purpose = purpose })
+  processCmdArgs [] record { certname = just certName ; rootname = rootName ; isDER = isDER ; purpose = purpose ; repeat = repeat } =
+    inj₂ (record { certname = certName ; rootname = rootName ; isDER = isDER ; purpose = purpose ; repeat = repeat })
   processCmdArgs [] cmd = inj₁ "not enough arguments"
   processCmdArgs args _ = inj₁ "unrecognized arguments"
 
@@ -231,7 +262,7 @@ main = IO.run $
     Armor.IO.putStrLnErr (m String.++ ": failed") IO.>>
     Armor.IO.exitFailure
   ... | yes p =
-    Armor.IO.putStrLnErr (m String.++ ": passed") IO.>>
+    -- Armor.IO.putStrLnErr (m String.++ ": passed") IO.>>
     IO.return tt
 
   runChainCheck : ∀ {@0 bs} → {trustedRoot candidates : List (Exists─ _ Cert)} → String
@@ -245,12 +276,12 @@ main = IO.run $
     Armor.IO.putStrLnErr (m String.++ ": failed") IO.>>
     Armor.IO.exitFailure
   ... | yes p =
-    Armor.IO.putStrLnErr (m String.++ ": passed") IO.>>
+    -- Armor.IO.putStrLnErr (m String.++ ": passed") IO.>>
     IO.return tt
 
   runSingleCertChecks : ∀ {@0 bs} → Maybe KeyPurpose → Cert bs → ℕ → _
   runSingleCertChecks kp cert n =
-    Armor.IO.putStrLnErr ("=== Checking " String.++ (showℕ n)) IO.>>
+    -- Armor.IO.putStrLnErr ("=== Checking " String.++ (showℕ n)) IO.>>
      runCheck cert "R1" r1 IO.>>
      runCheck cert "R2" r2 IO.>>
      runCheck cert "R3" r3 IO.>>
@@ -269,7 +300,7 @@ main = IO.run $
      -- runCheck cert "R16" r16 IO.>>
      (if ⌊ n ≟ 1 ⌋ then (runCheck cert "R18" (r18 kp)) else (IO.return tt)) IO.>>
      Armor.IO.getCurrentTime IO.>>= λ now →
-     Armor.IO.putStrLnErr (FFI.showTime now) IO.>>= λ _ →
+     -- Armor.IO.putStrLnErr (FFI.showTime now) IO.>>= λ _ →
      case GeneralizedTime.fromForeignUTC now of λ where
        (no ¬p) →
          Armor.IO.putStrLnErr "R17: failed to read time from system" IO.>>
@@ -303,7 +334,7 @@ main = IO.run $
 
   helper₂ : ∀ {@0 bs} {trustedRoot candidates : List (Exists─ _ Cert)} → Maybe KeyPurpose → (issuee : Cert bs)
     → List (Chain trustedRoot candidates issuee) → _
-  helper₂ kp issuee [] = Armor.IO.putStrLnErr "Error: no valid chain found" 
+  helper₂ kp issuee [] = Armor.IO.putStrLnErr "Error: no valid chain found"
   helper₂ kp issuee (chain ∷ otherChains) =
     helper₁ kp issuee chain IO.>>= λ where
       false →  helper₂ kp issuee otherChains
