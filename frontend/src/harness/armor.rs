@@ -26,7 +26,6 @@ pub struct ArmorInstance {
 }
 
 impl Harness for ArmorHarness {
-    /// Spawns a child process to run cert_bench
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut driver_path = PathBuf::from(&self.repo);
         driver_path.extend([ "src", "armor-driver", "driver.py" ]);
@@ -72,9 +71,8 @@ impl Instance for ArmorInstance {
             writeln!(chain_file, "-----END CERTIFICATE-----")?;
         }
         chain_file.flush()?;
-        // chain_file.close()?;
 
-        // time faketime "$(date -d @1725029869 '+%Y-%m-%d %H:%M:%S')" \
+        // time faketime "$(date -d @<timestamp> '+%Y-%m-%d %H:%M:%S')" \
         // python3 src/armor-driver/driver.py \
         //     --chain <chain.pem> \
         //     --trust_store <roots.pem> \
@@ -89,8 +87,8 @@ impl Instance for ArmorInstance {
             .arg("--trust_store").arg(std::fs::canonicalize(&self.roots_path)?)
             .arg("--purpose").arg("serverAuth");
 
-        let mut output = "invalid repeat".to_string();
         let mut durations = Vec::with_capacity(repeat);
+        let mut result = false;
 
         // Repeat ARMOR execution
         for i in 0..repeat {
@@ -100,28 +98,41 @@ impl Instance for ArmorInstance {
             if self.harness.debug && i == 0 {
                 std::io::stderr().write_all(&cmd_output.stderr)?;
             }
-            output = String::from_utf8(cmd_output.stdout)?;
+            let output = String::from_utf8(cmd_output.stdout)?;
 
-            durations.push(start.elapsed().as_micros()
-                .try_into().map_err(|_| Error::DurationOverflow)?);
+            let total: u64 = start.elapsed().as_micros()
+                .try_into().map_err(|_| Error::DurationOverflow)?;
+
+            let mut roots_parsing_time = 0;
+            let mut found_result = false;
+
+            // Try to read result and roots parsing time
+            for line in output.lines() {
+                if line.trim() == "success" {
+                    found_result = true;
+                    result = true;
+                } else if line.trim() == "failed" {
+                    found_result = true;
+                    result = false;
+                } else if line.starts_with("roots parsed: ") {
+                    roots_parsing_time = line["roots parsed: ".len()..].parse::<u64>()
+                        .map_err(|_| Error::ArmorBenchError("failed to parse roots parsing time".to_string()))?;
+                }
+            }
+
+            if roots_parsing_time == 0 || !found_result {
+                return Err(Error::ArmorBenchError("failed to find results in the output".to_string()));
+            }
+
+            durations.push(total - roots_parsing_time);
         }
 
         chain_file.close()?;
 
-        if output.trim() == "success" {
-            Ok(ValidationResult {
-                valid: true,
-                err: "".to_string(),
-                stats: durations,
-            })
-        } else if output.trim() == "failed" {
-            Ok(ValidationResult {
-                valid: true,
-                err: "".to_string(),
-                stats: durations,
-            })
-        } else {
-            Err(Error::ArmorBenchError(format!("unknown result: {}", output)))
-        }
+        Ok(ValidationResult {
+            valid: result,
+            err: "".to_string(),
+            stats: durations,
+        })
     }
 }
