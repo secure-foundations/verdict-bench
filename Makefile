@@ -15,6 +15,7 @@ release: build-env
 		-v $(CURRENT_DIR):/build/local \
 		$(DOCKER_IMAGE_TAG) \
 		make src/out/Release/$(TARGET)
+	sudo chown -R $(USER) src/out
 
 .PHONY: debug
 debug: build-env
@@ -22,6 +23,7 @@ debug: build-env
 		-v $(CURRENT_DIR):/build/local \
 		$(DOCKER_IMAGE_TAG) \
 		make src/out/Debug/$(TARGET)
+	sudo chown -R $(USER) src/out
 
 .PHONY: build-env
 build-env:
@@ -32,6 +34,13 @@ enter:
 	$(DOCKER) run -it --init \
 		-v $(CURRENT_DIR):/build/local \
 		$(DOCKER_IMAGE_TAG)
+
+.PHONY: clean
+clean:
+	$(DOCKER) run -it --init \
+		-v $(CURRENT_DIR):/build/local \
+		$(DOCKER_IMAGE_TAG) \
+		make inner-clean
 
 ##### Targets below are executed within Docker #####
 
@@ -57,14 +66,12 @@ src/.fetched:
 		echo "### fetched chromium@${CHROMIUM_COMMIT}"; \
 	fi
 
-src/out/%/build.ninja: src/.fetched
-	[ -f "src/out/$*/build.ninja" ] || (cd src && gn gen out/$*)
-	chown -R 777 src/out
-
-src/out/Debug/%: force src/out/Debug/build.ninja
+src/out/Debug/%: force
+	[ -f "src/out/Debug/build.ninja" ] || (cd src && gn gen out/Debug)
 	cd src && autoninja -C out/Debug $*
 
-src/out/Release/%: force src/out/Release/build.ninja
+src/out/Release/%: force
+	[ -f "src/out/Release/build.ninja" ] || (cd src && gn gen out/Release --args="is_debug=false")
 	cd src && autoninja -C out/Release $*
 
 .PHONY: force
