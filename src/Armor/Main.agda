@@ -39,14 +39,14 @@ usage = "usage: 'aeres CERTCHAIN TRUSTEDSTORE"
 --   return (map (λ where (n , n<256) → Fin.fromℕ< n<256) (All.toList bs))
 
 -- TODO: bindings for returning error codes?
-parseDERCerts : (fileName : String) (contents : List UInt8) → IO.IO (Exists─ _ (Success UInt8 CertList))
+parseDERCerts : (fileName : String) (contents : List UInt8) → IO.IO (Maybe (Exists─ _ (Success UInt8 CertList)))
 parseDERCerts fn contents =
   case runParser parseCertList contents of λ where
     (mkLogged log₂ (no  _)) →
       Armor.IO.putStrLnErr
         (fn String.++ " (decoded): failed to parse bytestring as X.509" String.++ "\n"
          String.++ (foldl String._++_ "-- " log₂))
-      IO.>> Armor.IO.exitFailure
+      IO.>> IO.return nothing
     (mkLogged log₂ (yes (success prefix read read≡ chainX509 suf@(_ ∷ _) ps≡))) →
       Armor.IO.putStrLnErr
         (fn String.++ " (decoded): incomplete read\n"
@@ -57,20 +57,20 @@ parseDERCerts fn contents =
       IO.>> ((case runParser parseCert suf of λ where
         (mkLogged log₃ (yes _)) →
           Armor.IO.putStrLnErr (fn String.++ " (decoded): parse remainder success (SHOULD NOT HAPPEN)")
-          IO.>> Armor.IO.exitFailure
+          IO.>> IO.return nothing
         (mkLogged log₃ (no _)) →
           Armor.IO.putStrLnErr (fn String.++ " (decoded): "
             String.++ show (map toℕ (take 10 suf))
             String.++ foldl String._++_ "" log₃)
-          IO.>> Armor.IO.exitFailure))
-    (mkLogged log₂ (yes schain)) → IO.return (_ , schain)
+          IO.>> IO.return nothing))
+    (mkLogged log₂ (yes schain)) → IO.return (just (_ , schain))
 
-parseCerts : (fileName : String) (contents : List Char) → IO.IO (Exists─ _ (Success UInt8 CertList))
+parseCerts : (fileName : String) (contents : List Char) → IO.IO (Maybe (Exists─ _ (Success UInt8 CertList)))
 parseCerts fn input =
   case proj₁ (LogDec.runMaximalParser Char PEM.parseCertList input) of λ where
     (mkLogged log₁ (no ¬p)) →
       Armor.IO.putStrLnErr (foldl String._++_ "" log₁)
-      IO.>> Armor.IO.exitFailure
+      IO.>> IO.return nothing
     (mkLogged log₁ (yes (success prefix read read≡ chain suf@(_ ∷ _) ps≡))) →
       Armor.IO.putStrLnErr
         (fn String.++ ": incomplete read\n"
@@ -80,17 +80,17 @@ parseCerts fn input =
       IO.>> (case proj₁ (LogDec.runMaximalParser Char PEM.parseCert suf) of λ where
         (mkLogged log₂ (yes _)) →
           Armor.IO.putStrLnErr "-- parse remainder success (SHOULD NOT HAPPEN!)"
-          IO.>> Armor.IO.exitFailure
+          IO.>> IO.return nothing
         (mkLogged log₂ (no  _)) →
           Armor.IO.putStrLnErr (foldl String._++_ "-- " log₂)
-          IO.>> Armor.IO.exitFailure)
+          IO.>> IO.return nothing)
     (mkLogged log₁ (yes (success prefix read read≡ chain [] ps≡))) →
       case runParser parseCertList (PEM.extractCerts chain) of λ where
         (mkLogged log₂ (no  _)) →
           Armor.IO.putStrLnErr
             (fn String.++ " (decoded): failed to parse PEM as X.509" String.++ "\n"
              String.++ (foldl String._++_ "-- " log₂))
-          IO.>> Armor.IO.exitFailure
+          IO.>> IO.return nothing
         (mkLogged log₂ (yes (success prefix read read≡ chainX509 suf@(_ ∷ _) ps≡))) →
           Armor.IO.putStrLnErr
             (fn String.++ " (decoded): incomplete read\n"
@@ -101,13 +101,13 @@ parseCerts fn input =
           IO.>> ((case runParser parseCert suf of λ where
             (mkLogged log₃ (yes _)) →
               Armor.IO.putStrLnErr (fn String.++ " (decoded): parse remainder success (SHOULD NOT HAPPEN)")
-              IO.>> Armor.IO.exitFailure
+              IO.>> IO.return nothing
             (mkLogged log₃ (no _)) →
               Armor.IO.putStrLnErr (fn String.++ " (decoded): "
                 String.++ show (map toℕ (take 10 suf))
                 String.++ foldl String._++_ "" log₃)
-              IO.>> Armor.IO.exitFailure))
-        (mkLogged log₂ (yes schain)) → IO.return (_ , schain)
+              IO.>> IO.return nothing))
+        (mkLogged log₂ (yes schain)) → IO.return (just (_ , schain))
 
 -- CertListToList : ∀ {@0 bs} → CertList bs  → List (Exists─ (List UInt8) Cert)
 -- CertListToList nil = []
@@ -116,17 +116,6 @@ parseCerts fn input =
 --   helper : ∀ {@0 bs} → IList Cert bs → List (Exists─ (List UInt8) Cert)
 --   helper nil = []
 --   helper (cons (mkIListCons h t bs≡)) = (_ , h) ∷ helper t
-
--- open import Data.Unit as Unit using (⊤) renaming (⊤ to ⊤₀)
-
--- ⊤ : ∀ {ℓ} → Set ℓ
--- ⊤ {ℓ} = Unit.⊤
-
--- repeatIO : ∀ {ℓ A} → ℕ → IO.IO {ℓ} A → IO.IO {ℓ} unit
--- repeatIO zero action = pure tt
--- repeatIO (suc n) action = action IO.>> repeatIO n action
-
-import Data.List.Categorical
 
 main : IO.Main
 main = IO.run $
@@ -141,20 +130,35 @@ main = IO.run $
       case (CmdArg.rootname cmd) of λ where
         nothing →
           readCert (CmdArg.isDER cmd) (CmdArg.certname cmd)
-          IO.>>= λ cert─ → runCertChecksLeaf (CmdArg.purpose cmd) (IList.toList _ (proj₂ cert─))
+          IO.>>= λ cert─ →
+          case cert─ of λ where
+            (just cert─) → runCertChecksLeaf (CmdArg.purpose cmd) (IList.toList _ (proj₂ cert─))
+            nothing → Armor.IO.exitFailure
         (just rootName) →
           Armor.IO.getCurrentTimeMicroseconds IO.>>= λ start →
           readPEM rootName IO.>>= λ root─ →
-          Armor.IO.getCurrentTimeMicroseconds IO.>>= λ end →
-          Armor.IO.putStrLnErr ("roots parsed: " String.++ (showℕ (end - start)))
-          IO.>>
-          Armor.IO.getCurrentTimeMicroseconds IO.>>= λ start →
-          readCert (CmdArg.isDER cmd) (CmdArg.certname cmd)
-          IO.>>= λ cert─ → runCertChecks (CmdArg.purpose cmd) (IList.toList _ (proj₂ root─)) (IList.toList _ (proj₂ cert─))
-          -- IO.>>
-          -- Armor.IO.getCurrentTimeMicroseconds IO.>>= λ end →
-          -- Armor.IO.putStrLnErr ("validation took: " String.++ (showℕ (end - start)))
-          -- IO.>> Armor.IO.exitSuccess
+          case root─ of λ where
+            nothing → Armor.IO.exitFailure
+            (just root─) →
+              Armor.IO.getCurrentTimeMicroseconds IO.>>= λ end →
+              Armor.IO.putStrLnErr ("roots parsed: " String.++ (showℕ (end - start)))
+              IO.>>
+              Armor.IO.getCurrentTimeMicroseconds IO.>>= λ start →
+
+              Armor.IO.forever (
+                (IO.getLine IO.>>= λ line →
+                Armor.IO.putStrLnErr "start" IO.>>
+                ((readCert (CmdArg.isDER cmd) line)
+                IO.>>= λ cert─ →
+                case cert─ of λ where
+                  (just cert─) →
+                    runCertChecks (CmdArg.purpose cmd) (IList.toList _ (proj₂ root─)) (IList.toList _ (proj₂ cert─))
+                  nothing →
+                    Armor.IO.putStrLnErr "parsing failed"
+                ))
+                IO.>>
+                Armor.IO.putStrLnErr "end"
+              )
   where
   record CmdArgTmp : Set where
     pattern
@@ -199,23 +203,32 @@ main = IO.run $
   processCmdArgs [] cmd = inj₁ "not enough arguments"
   processCmdArgs args _ = inj₁ "unrecognized arguments"
 
-  readPEM : (filename : String) → IO.IO (Exists─ _ CertList)
+  readPEM : (filename : String) → IO.IO (Maybe (Exists─ _ CertList))
   readPEM filename =
     IO.readFiniteFile filename
     IO.>>= (parseCerts filename ∘ String.toList)
-    IO.>>= λ certS → let (_ , success pre r r≡ certs suf ps≡) = certS in
-    IO.return (_ , certs)
+    IO.>>= λ certS →
+    case certS of λ where
+      (just certS) →
+        let (_ , success pre r r≡ certs suf ps≡) = certS in
+        IO.return (just (_ , certs))
+      nothing → IO.return nothing
 
-  readDER : (filename : String) → IO.IO (Exists─ _ CertList)
+  readDER : (filename : String) → IO.IO (Maybe (Exists─ _ CertList))
   readDER filename =
     Armor.IO.openFile filename Armor.IO.Primitive.readMode
     IO.>>= Armor.IO.hGetByteStringContents
     IO.>>= λ contents → let bs = Armor.Foreign.ByteString.toUInt8 contents in
     parseDERCerts filename bs
-    IO.>>= λ certS → let (_ , success pre r r≡ certs suf ps≡) = certS in
-    IO.return (_ , certs)
+    IO.>>= λ certS →
+    case certS of λ where
+      (just certS) →
+        let (_ , success pre r r≡ certs suf ps≡) = certS in
+        IO.return (just (_ , certs))
+      nothing →
+        IO.return nothing
 
-  readCert : (isDER : Bool) (filename : String) → IO.IO (Exists─ _ CertList)
+  readCert : (isDER : Bool) (filename : String) → IO.IO (Maybe (Exists─ _ CertList))
   readCert false = readPEM
   readCert true = readDER
 
@@ -260,7 +273,7 @@ main = IO.run $
     with d c
   ... | no ¬p =
     Armor.IO.putStrLnErr (m String.++ ": failed") IO.>>
-    Armor.IO.exitFailure
+    IO.return tt
   ... | yes p =
     -- Armor.IO.putStrLnErr (m String.++ ": passed") IO.>>
     IO.return tt
@@ -274,7 +287,7 @@ main = IO.run $
     with d i c
   ... | no ¬p =
     Armor.IO.putStrLnErr (m String.++ ": failed") IO.>>
-    Armor.IO.exitFailure
+    IO.return tt
   ... | yes p =
     -- Armor.IO.putStrLnErr (m String.++ ": passed") IO.>>
     IO.return tt
@@ -338,7 +351,7 @@ main = IO.run $
   helper₂ kp issuee (chain ∷ otherChains) =
     helper₁ kp issuee chain IO.>>= λ where
       false →  helper₂ kp issuee otherChains
-      true → Armor.IO.exitSuccess
+      true → IO.return (Level.lift tt) -- Armor.IO.exitSuccess
 
   runCertChecks : Maybe KeyPurpose → (trustedRoot candidates : List (Exists─ _ Cert)) → _
   runCertChecks kp trustedRoot [] = Armor.IO.putStrLnErr "Error: no candidate certificates"

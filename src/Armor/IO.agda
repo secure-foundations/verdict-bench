@@ -14,6 +14,7 @@ module Armor.IO where
 {-# FOREIGN GHC import qualified Data.Text.IO as TIO #-}
 {-# FOREIGN GHC import           Data.Time.Clock #-}
 {-# FOREIGN GHC import           Data.Time.Clock.POSIX (getPOSIXTime) #-}
+{-# FOREIGN GHC import           Control.Monad (forever) #-}
 
 module Primitive where
   open import IO.Primitive
@@ -32,6 +33,8 @@ module Primitive where
     getCurrentTime : IO UTCTime
 
     getCurrentTimeMicroseconds : IO ℕ
+
+    forever : ∀ {a b} → {A : Set a} {B : Set b} → IO A → IO B
 
 {-# COMPILE GHC Primitive.Handle = type System.IO.Handle #-}
 {-# COMPILE GHC Primitive.IOMode = type System.IO.IOMode #-}
@@ -52,6 +55,8 @@ aeresOpenFile path mode = System.IO.openFile (Data.Text.unpack path) mode
 {-# COMPILE GHC Primitive.hGetContents = ByteString.hGetContents #-}
 {-# COMPILE GHC Primitive.getCurrentTime = getCurrentTime #-}
 {-# COMPILE GHC Primitive.getCurrentTimeMicroseconds = fmap (round . (* 1e6)) getPOSIXTime #-}
+
+{-# COMPILE GHC Primitive.forever = \a b c d -> forever #-}
 
 open import IO
 open System.Exit public using (exitFailure ; exitSuccess)
@@ -77,56 +82,13 @@ getCurrentTime = lift Primitive.getCurrentTime
 getCurrentTimeMicroseconds : IO ℕ
 getCurrentTimeMicroseconds = lift Primitive.getCurrentTimeMicroseconds
 
+forever : ∀ {a b} → {A : Set a} {B : Set b} → IO A → IO B
+forever action = lift (Primitive.forever (run action))
+
+-- getLine : IO String
+-- getLine = lift Primitive.getLine
+
 postulate stringToNat : String → Maybe ℕ
 
 {-# COMPILE GHC stringToNat = \s -> case reads (Data.Text.unpack s) of
       [(n, "")] -> Just n; _ -> Nothing #-}
-
--- open import Agda.Builtin.Nat using (Nat)
--- open import Foreign.Haskell using (Pair)
-
--- data Clock : Set where
---   monotonic realTime processCPUTime : Clock
---   threadCPUTime monotonicRaw bootTime : Clock
---   monotonicCoarse realTimeCoarse : Clock
-
--- {-# COMPILE GHC Clock = data Clock (Monotonic | Realtime | ProcessCPUTime
---                                    | ThreadCPUTime | MonotonicRaw | Boottime
---                                    | MonotonicCoarse | RealtimeCoarse )
--- #-}
-
--- postulate getTimePrim : Clock → IO (Pair Nat Nat)
-
--- {-# FOREIGN GHC import System.Clock  #-}
--- {-# FOREIGN GHC import Data.Function #-}
--- {-# COMPILE GHC getTimePrim = fmap (\ (TimeSpec a b) -> ((,) `on` fromIntegral) a b) . getTime #-}
-
--- record Time : Set where
---   constructor mkTime
---   field seconds     : ℕ
---         nanoseconds : ℕ
--- open Time public
-
--- ------------------------------------------------------------------------
--- -- Reading the clock
-
--- getTime : Clock → IO Time
--- getTime c = do
---   (a , b) ← lift (getTimePrim c)
---   pure $ mkTime a b
-
--- diff : Time → Time → Time
--- diff (mkTime ss sns) (mkTime es ens) =
---   if ens <ᵇ sns
---   then mkTime (es ∸ suc ss) ((1000000000 + ens) ∸ sns)
---   else mkTime (es ∸ ss) (ens ∸ sns)
-
--- show : Time →   -- Time in seconds and nanoseconds
---        Fin 10 → -- Number of decimals to show
---                 -- (in [0,9] because we are using nanoseconds)
---        String
--- show (mkTime s ns) prec = secs ++ "s" ++ padLeft '0' decimals nsecs where
---   decimals = toℕ prec
---   secs     = ℕ.show s
---   prf      = ℕ.m^n≢0 10 (9 ∸ decimals)
---   nsecs    = ℕ.show ((ns / (10 ^ (9 ∸ decimals))) {{prf}})
