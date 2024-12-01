@@ -18,21 +18,15 @@ pub struct ArmorHarness {
 }
 
 pub struct ArmorInstance {
-    harness: ArmorHarness,
-
-    driver_path: PathBuf,
-    roots_path: String,
-    fake_time: String,
+    child: Child,
+    stdin: ChildStdin,
+    stdout: BufReader<ChildStdout>,
 }
 
 impl Harness for ArmorHarness {
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let mut driver_path = PathBuf::from(&self.repo);
         driver_path.extend([ "src", "armor-driver", "driver.py" ]);
-
-        if !driver_path.exists() {
-            return Err(Error::ArmorRepoNotFound(driver_path.display().to_string()));
-        }
 
         let fake_time = Utc.timestamp_opt(timestamp as i64, 0).unwrap()
             .format("%Y-%m-%d %H:%M:%S").to_string();
@@ -42,97 +36,76 @@ impl Harness for ArmorHarness {
             return Err(Error::LibFakeTimeNotFound(self.faketime_lib.clone()));
         }
 
-        Ok(Box::new(ArmorInstance {
-            harness: self.clone(),
-            driver_path,
-            roots_path: roots_path.to_string(),
-            fake_time: format!("@{}", fake_time),
-        }))
+        if !driver_path.exists() {
+            return Err(Error::ArmorRepoNotFound(driver_path.display().to_string()));
+        }
+
+        let mut cmd = process::Command::new("python3");
+        cmd // Use libfaketime to change the validation time
+            .env("LD_PRELOAD", &self.faketime_lib)
+            .env("FAKETIME", &format!("@{}", fake_time))
+            .arg(std::fs::canonicalize(driver_path)?)
+            .arg("--trust_store").arg(std::fs::canonicalize(roots_path)?)
+            .arg("--purpose").arg("serverAuth")
+            .stdin(process::Stdio::piped())
+            .stdout(process::Stdio::piped());
+
+        if !self.debug {
+            cmd.stderr(process::Stdio::null());
+        };
+
+        let mut child = cmd.spawn()?;
+
+        let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
+        let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
+
+        Ok(Box::new(ArmorInstance { child, stdin, stdout: BufReader::new(stdout) }))
     }
 }
 
 impl Instance for ArmorInstance {
     fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
+        if bundle.len() == 0 {
+            return Err(Error::EmptyBundle);
+        }
+
+        if repeat == 0 {
+            return Err(Error::ZeroRepeat);
+        }
+
         if let ExecTask::ChainValidation(ExecPurpose::ServerAuth) = task {} else {
-            return Err(Error::ArmorBenchError(format!("unsupported task: {:?}", task)));
+            return Err(Error::UnsupportedTask);
         }
 
-        // Create a temporary PEM file to store the bundle
-        let mut chain_file = NamedTempFile::with_suffix(".pem")?;
+        writeln!(self.stdin, "repeat: {}", repeat)?;
+        writeln!(self.stdin, "leaf: {}", bundle[0])?;
 
-        for cert_base64 in bundle {
-            writeln!(chain_file, "-----BEGIN CERTIFICATE-----")?;
-
-            let len = cert_base64.len();
-            for i in (0..len).step_by(64) {
-                writeln!(chain_file, "{}", std::str::from_utf8(&cert_base64.as_bytes()[i..(i + 64).min(len)])?)?;
-            }
-
-            writeln!(chain_file, "-----END CERTIFICATE-----")?;
+        for cert in bundle.iter().skip(1) {
+            writeln!(self.stdin, "interm: {}", cert)?;
         }
-        chain_file.flush()?;
+        writeln!(self.stdin, "validate")?;
 
-        // time faketime "$(date -d @<timestamp> '+%Y-%m-%d %H:%M:%S')" \
-        // python3 src/armor-driver/driver.py \
-        //     --chain <chain.pem> \
-        //     --trust_store <roots.pem> \
-        //     --purpose serverAuth
-        let mut cmd = process::Command::new("python3");
-        cmd.current_dir(&self.harness.repo)
-            // Use libfaketime to change the validation time
-            .env("LD_PRELOAD", &self.harness.faketime_lib)
-            .env("FAKETIME", &self.fake_time)
-            .arg(std::fs::canonicalize(&self.driver_path)?)
-            .arg("--chain").arg(chain_file.path())
-            .arg("--trust_store").arg(std::fs::canonicalize(&self.roots_path)?)
-            .arg("--purpose").arg("serverAuth");
+        let mut line = String::new();
 
-        let mut durations = Vec::with_capacity(repeat);
-        let mut result = false;
-
-        // Repeat ARMOR execution
-        for i in 0..repeat {
-            let start = Instant::now();
-
-            let cmd_output = cmd.output()?;
-            if self.harness.debug && i == 0 {
-                std::io::stderr().write_all(&cmd_output.stderr)?;
-            }
-            let output = String::from_utf8(cmd_output.stdout)?;
-
-            let total: u64 = start.elapsed().as_micros()
-                .try_into().map_err(|_| Error::DurationOverflow)?;
-
-            let mut roots_parsing_time = 0;
-            let mut found_result = false;
-
-            // Try to read result and roots parsing time
-            for line in output.lines() {
-                if line.trim() == "success" {
-                    found_result = true;
-                    result = true;
-                } else if line.trim() == "failed" {
-                    found_result = true;
-                    result = false;
-                } else if line.starts_with("roots parsed: ") {
-                    roots_parsing_time = line["roots parsed: ".len()..].parse::<u64>()
-                        .map_err(|_| Error::ArmorBenchError("failed to parse roots parsing time".to_string()))?;
-                }
-            }
-
-            if roots_parsing_time == 0 || !found_result {
-                return Err(Error::ArmorBenchError("failed to find results in the output".to_string()));
-            }
-
-            durations.push(total - roots_parsing_time);
+        if self.stdout.read_line(&mut line)? == 0 {
+            return Err(Error::ArmorBenchError("failed to read stdout".to_string()));
         }
 
-        chain_file.close()?;
+        if line.starts_with("result:") {
+            let mut res = line["result:".len()..].trim().split_ascii_whitespace();
+            let res_fst = res.next().ok_or(Error::ArmorBenchError("no results".to_string()))?;
 
-        Ok(ValidationResult {
-            valid: result,
-            err: "".to_string(),
-            stats: durations,
-        })
+            Ok(ValidationResult {
+                valid: res_fst == "true",
+                err: "".to_string(),
+
+                // Parse the rest as a space separated list of integers (time in microseconds)
+                stats: res.map(|s| s.parse().unwrap()).collect(),
+            })
+        } else if line.starts_with("error:") {
+            Err(Error::ArmorBenchError(line["error:".len()..].trim().to_string()))
+        } else {
+            Err(Error::ArmorBenchError(format!("unexpected output: {}", line)))
+        }
     }
 }
