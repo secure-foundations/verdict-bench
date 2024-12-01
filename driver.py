@@ -5,6 +5,7 @@ import argparse
 import os
 import random
 import tempfile
+import time
 
 from pathlib import Path
 from pem import *
@@ -14,28 +15,21 @@ from verifySignature import *
 def main():
 
     ### command-line argument processing
-    # usage: ./armor-driver [-h] [--chain INPUT] [--trust_store CA_STORE] [--purpose CHECK_PURPOSE]
+    # usage: ./armor-driver [-h] [--trust_store CA_STORE] [--purpose CHECK_PURPOSE]
     parser = argparse.ArgumentParser(description='ARMOR command-line arguments')
-    parser.add_argument('--chain', type=str,
-                        help='Input certificate chain location')
     parser.add_argument('--trust_store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
                         help='Trust anchor location; default=/etc/ssl/certs/ca-certificates.crt')
     parser.add_argument('--purpose', type=str,
                         help='expected purpose for end-user certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, or OCSPSigning')
     args = parser.parse_args()
 
-    input_chain = args.chain
     input_CA_store = args.trust_store
     input_purpose = args.purpose
 
-    if input_chain == None:
-        print("Error : missing input certificate chain")
-        sys.exit(-1)
 
-    if not (input_chain.endswith((".pem", ".crt", ".der")) \
-        and input_CA_store.endswith((".pem", ".crt")) \
-        and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
-        print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
+    if not (input_CA_store.endswith((".pem", ".crt")) \
+        and os.path.exists(input_CA_store)):
+        print("Error : CA store doesn't exist or not supported (supported formats: .pem, .crt)")
         sys.exit(-1)
 
     if (input_purpose != 'serverAuth' and \
@@ -57,55 +51,114 @@ def main():
     # home_dir = str(Path.home())
     script_dir = os.path.dirname(os.path.realpath(__file__))
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        filename_certchain = input_chain
-        filename_aeres_output = tmp_dir + "/.residuals/temp_{}.txt".format(ep)
+    assert input_purpose is not None
+    # assert not input_chain.endswith(".der")
 
-        if not os.path.exists(tmp_dir + "/.residuals/"):
-            os.mkdir(tmp_dir + "/.residuals/")
+    child = subprocess.Popen(
+        [
+            f"{script_dir}/armor-bin",
+            "--purpose", input_purpose,
+            input_CA_store,
+        ],
+        stdin=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=0,
+    )
 
-        if input_chain.endswith(".der"):
-            if input_purpose == None:
-                cmd = ['{}/armor-bin --DER {} {} > {}'.format(script_dir, filename_certchain, input_CA_store, filename_aeres_output)]
-            else:
-                cmd = ['{}/armor-bin --DER --purpose {} {} {} > {}'.format(script_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
-        else: ## for .pem and .crt
-            if input_purpose == None:
-                cmd = ['{}/armor-bin {} {} > {}'.format(script_dir, filename_certchain, input_CA_store, filename_aeres_output)]
-            else:
-                cmd = ['{}/armor-bin --purpose {} {} {} > {}'.format(script_dir, input_purpose, filename_certchain, input_CA_store, filename_aeres_output)]
+    # First wait until root certificates have been parsed
+    line = child.stderr.readline()
+    assert line.startswith(b"roots parsed:")
 
-        # print(cmd[0])
-        # exit()
+    def validate(chain_file):
+        child.stdin.write(chain_file.encode() + b"\n")
 
-        aeres_res = subprocess.getoutput(cmd)
-        print(aeres_res)
+        line = child.stderr.readline().decode().strip()
+        assert line == "start"
 
-        if aeres_res.__contains__("failed") or aeres_res.__contains__("error") or aeres_res.__contains__("Error") \
-                or aeres_res.__contains__("exception") or aeres_res.__contains__("TLV: cert") \
-                or aeres_res.__contains__("cannot execute binary file") or aeres_res.__contains__("more bytes remain") \
-                or aeres_res.__contains__("incomplete read") or aeres_res.__contains__("not found"):
-            print("AERES syntactic or semantic checks: failed", file=sys.stderr)
-            os.remove(filename_aeres_output)
+        # Read every line between "start" and "end"
+        output = []
+        failed = False
+
+        while True:
+            line = child.stderr.readline().decode()
+            # print(output)
+            assert line, "unexpected end of stdout"
+            if line.strip() == "end":
+                break
+
+            # From the original driver
+            failed = failed or line.__contains__("failed") or \
+                line.__contains__("error") or \
+                line.__contains__("Error") or \
+                line.__contains__("exception") or \
+                line.__contains__("TLV: cert") or \
+                line.__contains__("cannot execute binary file") or \
+                line.__contains__("more bytes remain") or \
+                line.__contains__("incomplete read") or \
+                line.__contains__("not found")
+
+            output.append(line)
+
+        if failed:
             return False
-        else:
-            print("AERES syntactic and semantic checks: passed", file=sys.stderr)
 
-        readData(filename_aeres_output)
-        os.remove(filename_aeres_output)
-
+        readData(output)
         sign_verify_res = verifySignatures()
-        if sign_verify_res == "false":
-            print("Signature verification: failed", file=sys.stderr)
-            return False
-        else:
-            print("Signature verification: passed", file=sys.stderr)
 
-        return True
+        return sign_verify_res == "true"
+
+    leaf = None
+    interm = []
+    repeat = 1
+
+    # Prepare a temporary file for the chain
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            for input_line in sys.stdin:
+                input_line = input_line.strip()
+
+                if input_line == "": continue
+
+                elif input_line.startswith("leaf: "):
+                    assert leaf is None
+                    leaf = input_line[len("leaf: "):]
+
+                elif input_line.startswith("interm: "):
+                    assert leaf is not None
+                    interm.append(input_line[len("interm: "):])
+
+                elif input_line.startswith("repeat: "):
+                    repeat = int(input_line[len("repeat: "):])
+                    assert repeat >= 1
+
+                elif input_line == "validate":
+                    durations = []
+
+                    # Prepare a temporary file for the chain
+                    with open(tmp_file.name, "wb") as f:
+                        for cert in [leaf] + interm:
+                            f.write(b"-----BEGIN CERTIFICATE-----\n")
+                            f.writelines(cert[i:i+64].encode() + b"\n" for i in range(0, len(cert), 64))
+                            f.write(b"-----END CERTIFICATE-----\n")
+                        f.flush()
+
+                    for _ in range(repeat):
+                        start = time.time()
+                        result = validate(tmp_file.name)
+                        durations.append(time.time() - start)
+
+                    print(f"result: {'true' if result else 'false'} {' '.join(str(int(d * 1000000)) for d in durations)}", flush=True)
+
+                    leaf = None
+                    interm = []
+
+                else:
+                    assert False, f"unexpected input: {input_line}"
+
+    finally:
+        os.unlink(tmp_file.name)
+        child.kill()
+        child.wait()
 
 if __name__ == "__main__":
-    res = main()
-    if res:
-        print("success")
-    else:
-        print("failed")
+    main()

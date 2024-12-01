@@ -44,9 +44,11 @@ sign_oid_map_insecure = {
 }
 
 
-def readData(filepath):
-    f = open(filepath, "r")
-    lines = f.readlines()
+def readData(lines):
+    tbs_bytes = []
+    sign_oids = []
+    signatures = []
+    pks = []
 
     for i in range(0, len(lines)):
         if (i % 6 == 0):  # tbs bytes
