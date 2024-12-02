@@ -43,6 +43,13 @@ fn hacl_new_rsapss_load_pkey(
 }
 
 #[verifier::external_body]
+fn hacl_free_pkey(pkey: *mut u64) {
+    unsafe {
+        libcrux_hacl::hacl_free(pkey as _);
+    }
+}
+
+#[verifier::external_body]
 fn hacl_rsa_decrypt(
     mod_bits: u32,
     e_bits: u32,
@@ -135,6 +142,7 @@ pub fn rsa_pkcs1_v1_5_verify(
     );
 
     if sig.len() > usize::MAX as usize {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::SizeOverflow);
     }
 
@@ -147,7 +155,10 @@ pub fn rsa_pkcs1_v1_5_verify(
             sig,
         ) {
             Some(decoded) => decoded,
-            None => return Err(RSAError::DecryptError),
+            None => {
+                hacl_free_pkey(hacl_pub_key);
+                return Err(RSAError::DecryptError);
+            }
         };
 
     // PKCS#1 v1.5 padding
@@ -158,6 +169,7 @@ pub fn rsa_pkcs1_v1_5_verify(
     //     digest OCTET STRING
     // }
     if decoded.len() < 2 || decoded[0] != 0x00 || decoded[1] != 0x01 {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::PKCS1PaddingError);
     }
 
@@ -167,6 +179,7 @@ pub fn rsa_pkcs1_v1_5_verify(
     }
 
     if i >= decoded.len() || decoded[i] != 0x00 {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::PKCS1PaddingError);
     }
 
@@ -176,12 +189,14 @@ pub fn rsa_pkcs1_v1_5_verify(
         .or(Err(RSAError::PKCS1PaddingError))?;
 
     if len != dig_info.len() {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::PKCS1PaddingError);
     }
 
     // Check that the signature algorithms specified by the digest info
     // and the given `alg` are the same
     if digest_info_parsed.alg.id.polyfill_eq(&alg.id) {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::AlgorithmMismatch);
     }
 
@@ -197,12 +212,16 @@ pub fn rsa_pkcs1_v1_5_verify(
     } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
         slice_eq(&digest_info_parsed.digest, &hash::sha512_digest(msg))
     } else {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::UnsupportedAlgorithm);
     };
 
     if !res {
+        hacl_free_pkey(hacl_pub_key);
         return Err(RSAError::HashMismatch);
     }
+
+    hacl_free_pkey(hacl_pub_key);
 
     Ok(())
 }
