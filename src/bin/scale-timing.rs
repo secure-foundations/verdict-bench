@@ -102,7 +102,7 @@ fn main() {
 
                 match acclib::get_chain_facts(&mut chain, None, arc.flag_ocsp, false) {
                     Ok(facts) => {
-                        acclib::write_job_files(&job_dir, domain, &facts).unwrap();
+                        acclib::write_job_files(&job_dir, domain, &facts, 1601603624).unwrap();
                         let result = acclib::verify_chain(&job_dir, &arc.arg_client);
                         let result_str = match result {
                             Ok(_) => "OK".to_string(),

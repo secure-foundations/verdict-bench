@@ -1,7 +1,7 @@
 #!/usr/bin/env swipl
-:- module(firefox, [
-  verifiedLeaf/12
-]).
+% :- module(firefox, [
+%   verifiedLeaf/12
+% ]).
 
 :- use_module(firefox_env).
 :- use_module(ev).
@@ -40,7 +40,7 @@ nameLabelsPermitted(_, []).
 nameLabelsPermitted([_|_], [""|[]]).
 % Presented: foo.example.com, Permitted: foo.example.com -- valid
 % Presented: foo1.example.com, Permitted: foo.example.com --invalid
-nameLabelsPermitted([NameLabel|NameRest], [PermittedLabel|PermittedRest]) :- 
+nameLabelsPermitted([NameLabel|NameRest], [PermittedLabel|PermittedRest]) :-
   PermittedLabel \= "", % Should be checked earlier
   PermittedLabel = NameLabel,
   nameLabelsPermitted(NameRest, PermittedRest).
@@ -168,7 +168,7 @@ internationalInvalidIntermediate(Cert, Domain) :-
 
 isEVChain(Cert) :-
   certs:certificatePoliciesExt(Cert, true),
-  certs:certificatePolicies(Cert, Oid), 
+  certs:certificatePolicies(Cert, Oid),
   ev:evPolicyOid(Oid, _, _, _, _, _),
   certs:issuer(Cert, P),
   isEVIntermediate(P, Oid).
@@ -243,7 +243,7 @@ extKeyUsageValid(BasicConstraints, ExtKeyUsage) :-
   std:isCA(BasicConstraints),
   member(serverAuth, ExtKeyUsage).
 
-% Firefox rejects end-entity certificates 
+% Firefox rejects end-entity certificates
 % (other than delegated OCSP Signing Certs)
 % that have the oCSPSigning EKU
 extKeyUsageValid(BasicConstraints, ExtKeyUsage) :-
@@ -255,7 +255,7 @@ extKeyUsageValid(_, ExtKeyUsage) :-
   ExtKeyUsage = [].
 
 checkKeyCertSign(KeyUsage) :-
-  KeyUsage = []; 
+  KeyUsage = [];
   member(keyCertSign, KeyUsage).
 
 
@@ -323,7 +323,7 @@ pathLengthValid(CertsSoFar, BasicConstraints):-
 pathLengthValid(CertsSoFar, BasicConstraints):-
   CertsSoFar =< 6,            % global max intermediates limit in Firefox
   BasicConstraints = [_, Limit],
-  Limit \= none, 
+  Limit \= none,
   CertsSoFar =< Limit.
 
 verifiedRoot(LeafSANList, Fingerprint, Lower, Upper, BasicConstraints, KeyUsage, ChildFingerprint):-
@@ -340,7 +340,7 @@ verifiedRoot(LeafSANList, Fingerprint, Lower, Upper, BasicConstraints, KeyUsage,
   std:isCA(BasicConstraints),
   checkKeyCertSign(KeyUsage).
 
-verifiedIntermediate(Fingerprint, Lower, Upper, Algorithm, BasicConstraints, KeyUsage, ExtKeyUsage, EVStatus, StapledResponse, OcspResponse):- 
+verifiedIntermediate(Fingerprint, Lower, Upper, Algorithm, BasicConstraints, KeyUsage, ExtKeyUsage, EVStatus, StapledResponse, OcspResponse):-
   std:isCA(BasicConstraints),
   notCrl(Fingerprint),
   std:isTimeValid(Lower, Upper),
@@ -349,7 +349,7 @@ verifiedIntermediate(Fingerprint, Lower, Upper, Algorithm, BasicConstraints, Key
   extKeyUsageValid(BasicConstraints, ExtKeyUsage),
   notRevoked(Lower, Upper, EVStatus, StapledResponse, OcspResponse).
 
-verifiedLeaf(Fingerprint, SANList, CommonName, Lower, Upper, Algorithm, BasicConstraints, KeyUsage, ExtKeyUsage, EVStatus, StapledResponse, OcspResponse):- 
+verifiedLeaf(Fingerprint, SANList, CommonName, Lower, Upper, Algorithm, BasicConstraints, KeyUsage, ExtKeyUsage, EVStatus, StapledResponse, OcspResponse):-
   \+std:isCA(BasicConstraints),
   firefoxNameMatches(SANList, CommonName),
   leafDurationValid(EVStatus, Lower, Upper),
@@ -379,7 +379,7 @@ certVerifiedNonLeaf(Cert, LeafCommonName, LeafSANList, EVStatus, CertsSoFar, Lea
   pathLengthValid(CertsSoFar, BasicConstraints),
   (
     (
-      verifiedIntermediate(Fingerprint, Lower, Upper, InnerAlgorithm, BasicConstraints, KeyUsage, ExtKeyUsage, EVStatus, StapledResponse, OcspResponse), 
+      verifiedIntermediate(Fingerprint, Lower, Upper, InnerAlgorithm, BasicConstraints, KeyUsage, ExtKeyUsage, EVStatus, StapledResponse, OcspResponse),
       certs:issuer(Cert, Parent),
       Cert \= Parent,
       certVerifiedNonLeaf(Parent, LeafCommonName, LeafSANList, EVStatus, CertsSoFar + 1, Leaf),
@@ -509,8 +509,8 @@ certVerifiedLeaf(Cert, SANList, EVStatus):-
 certVerifiedChain(Cert):-
   getEVStatus(Cert, EVStatus),
   (
-    ( 
-      certs:sanExt(Cert, true), 
+    (
+      certs:sanExt(Cert, true),
       findall(Lower, (
         certs:san(Cert, Name),
         string_lower(Name, Lower)
@@ -523,12 +523,12 @@ certVerifiedChain(Cert):-
   certs:issuer(Cert, Parent),
   certVerifiedNonLeaf(Parent, CommonName, SANList, EVStatus, 0, Cert).
 
-main([CertsFile, Cert]):-
-  %statistics(walltime, _),
-  consult(CertsFile),
-  %statistics(walltime, [_ | [LoadTime]]),
-  %write('Cert facts loading time: '), write(LoadTime), write('ms\n'),
-  %statistics(walltime, _),
-  certVerifiedChain(Cert).
-  %statistics(walltime, [_ | [VerifyTime]]),
-  %write('Cert verification time: '), write(VerifyTime), write('ms\n').
+% main([CertsFile, Cert]):-
+%   %statistics(walltime, _),
+%   consult(CertsFile),
+%   %statistics(walltime, [_ | [LoadTime]]),
+%   %write('Cert facts loading time: '), write(LoadTime), write('ms\n'),
+%   %statistics(walltime, _),
+%   certVerifiedChain(Cert).
+%   %statistics(walltime, [_ | [VerifyTime]]),
+%   %write('Cert verification time: '), write(VerifyTime), write('ms\n').

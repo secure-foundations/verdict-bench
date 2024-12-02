@@ -1,15 +1,15 @@
 #!/usr/bin/env swipl
 
-:- module(chrome, [
-  verifiedLeaf/8
-]).
+% :- module(chrome, [
+%   verifiedLeaf/8
+% ]).
 
 :- use_module(library(uri)).
 :- use_module(chrome_env).
 :- use_module(std).
 :- use_module(psl).
 
-:- initialization(main, main).
+% :- initialization(main, main).
 
 % Presented: example.com, Excluded: .example.com -- valid
 nameLabelsNotExcluded([], [""|[]]).
@@ -219,11 +219,11 @@ keyUsageValid(BasicConstraints, KeyUsage) :-
   \+member(keyCertSign, KeyUsage).
 
 checkKeyCertSign(KeyUsage) :-
-  KeyUsage = []; 
+  KeyUsage = [];
   member(keyCertSign, KeyUsage).
 
 extKeyUsageValid(ExtKeyUsage) :-
-  ExtKeyUsage = []; 
+  ExtKeyUsage = [];
   % I'm pretty sure about this one, firefox doesn't allow this
   member(any, ExtKeyUsage);
   member(serverAuth, ExtKeyUsage).
@@ -456,13 +456,13 @@ certVerifiedChain(Cert):-
   certs:issuer(Cert, Parent),
   certVerifiedNonLeaf(Parent, CleanSANList, 0, Cert).
 
-main([CertsFile, Cert]):-
-  %statistics(walltime, _),
-  consult(CertsFile),
-  %statistics(walltime, [_ | [LoadTime]]),
-  %write('Cert facts loading time: '), write(LoadTime), write('ms\n'),
-  %statistics(walltime, _),
-  certVerifiedChain(Cert).
-  %statistics(walltime, [_ | [VerifyTime]]).
-  %write('Cert verification time: '), write(VerifyTime), write('ms\n').
-  
+% main([CertsFile, Cert]):-
+%   %statistics(walltime, _),
+%   consult(CertsFile),
+%   %statistics(walltime, [_ | [LoadTime]]),
+%   %write('Cert facts loading time: '), write(LoadTime), write('ms\n'),
+%   %statistics(walltime, _),
+%   certVerifiedChain(Cert).
+%   %statistics(walltime, [_ | [VerifyTime]]).
+%   %write('Cert verification time: '), write(VerifyTime), write('ms\n').
+

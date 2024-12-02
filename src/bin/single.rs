@@ -47,7 +47,7 @@ fn main() {
     let domain = &args.arg_hostname.to_lowercase();
 
     let facts = acclib::get_chain_facts(&mut chain, None, args.flag_ocsp, args.flag_staple).unwrap();
-    acclib::write_job_files(&job_dir, domain, &facts).unwrap();
+    acclib::write_job_files(&job_dir, domain, &facts, 1601603624).unwrap();
     match acclib::verify_chain(&job_dir, &args.arg_client) {
         Ok(_) => println!("OK"),
         Err(e) => println!("Error: {:?}", e),
