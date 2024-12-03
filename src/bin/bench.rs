@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             let validate = || -> Result<(), String> {
                 let mut chain = X509::stack_from_pem(&pem.as_bytes())
-                    .map_err(|_| "parse_failed".to_string())?;
+                    .map_err(|_| "parse_failed")?;
                 let facts = acclib::get_chain_facts_with_roots(&roots, &mut chain)
                     .map_err(|_| "fact_gen_failed")?;
 
