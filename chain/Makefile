@@ -8,4 +8,6 @@ VERUS_DEPS = parser polyfill vest rspec_lib
 # TODO: this skips the lifetime check for proof-mode code
 VERUS_FLAGS = --no-lifetime --rlimit 50
 
+# LTO = true
+
 include ../dep.mk

@@ -9,6 +9,8 @@ VERUS_FLAGS = --no-lifetime
 TEST_TARGETS = test-policy-chrome-hammurabi test-policy-firefox-hammurabi test-policy-open-ssl
 TEST_TIME = 1725029869
 
+# LTO = true
+
 include ../dep.mk
 
 DOMAINS = github.com google.com outlook.com slack.com verus.rs

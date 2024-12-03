@@ -9,7 +9,7 @@ builtin = { git = "https://github.com/verus-lang/verus", branch = "main" }
 vstd = { git = "https://github.com/verus-lang/verus", branch = "main" }
 parser = { path = "../parser" }
 chain = { path = "../chain" }
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.21", features = ["derive"] }
 thiserror = "1.0.63"
 csv = "1.3.0"
 serde = { version = "1.0.210", features = ["derive"] }
