@@ -147,7 +147,7 @@ def main():
                         result = validate(tmp_file.name)
                         durations.append(time.time() - start)
 
-                    print(f"result: {'true' if result else 'false'} {' '.join(str(int(d * 1000000)) for d in durations)}", flush=True)
+                    print(f"result: {'OK' if result else 'false'} {' '.join(str(int(d * 1000000)) for d in durations)}", flush=True)
 
                     leaf = None
                     interm = []
