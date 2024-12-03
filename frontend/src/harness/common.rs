@@ -47,14 +47,7 @@ impl Instance for CommonBenchInstance {
             return Err(Error::ZeroRepeat);
         }
 
-        writeln!(self.stdin, "repeat: {}", repeat)?;
-        writeln!(self.stdin, "leaf: {}", bundle[0])?;
-
-        for cert in bundle.iter().skip(1) {
-            writeln!(self.stdin, "interm: {}", cert)?;
-        }
-
-        match task {
+        let task_str = match task {
             ExecTask::DomainValidation(domain) => {
                 if domain.trim().is_empty() {
                     // Abort if the domain is empty
@@ -64,11 +57,18 @@ impl Instance for CommonBenchInstance {
                         stats: vec![0; repeat],
                     });
                 }
-                writeln!(self.stdin, "domain: {}", domain)?
+                format!("domain: {}", domain)
             },
-            ExecTask::ChainValidation(ExecPurpose::ServerAuth) => writeln!(self.stdin, "validate")?,
+            ExecTask::ChainValidation(ExecPurpose::ServerAuth) => "validate".to_string(),
             // _ => return Err(Error::UnsupportedTask)
+        };
+
+        writeln!(self.stdin, "repeat: {}", repeat)?;
+        writeln!(self.stdin, "leaf: {}", bundle[0])?;
+        for cert in bundle.iter().skip(1) {
+            writeln!(self.stdin, "interm: {}", cert)?;
         }
+        writeln!(self.stdin, "{}", task_str)?;
 
         let mut line = String::new();
 
