@@ -4,7 +4,7 @@ use std::thread::JoinHandle;
 use std::time::Instant;
 
 use chain::policy;
-use chain::policy::ExecPolicy;
+use chain::policy::{ExecTask, ExecPolicy};
 use chain::validate::Validator;
 use crossbeam::channel;
 use crossbeam::channel::Receiver;

@@ -76,6 +76,9 @@ pub enum Error {
     #[error("armor cert bench error: {0}")]
     ArmorBenchError(String),
 
+    #[error("cert bench error: {0}")]
+    CommonBenchError(String),
+
     #[error("duration overflow")]
     DurationOverflow,
 

@@ -10,7 +10,7 @@ use crossbeam::channel;
 use crossbeam::channel::Receiver;
 use crossbeam::channel::Sender;
 use csv::{ReaderBuilder, WriterBuilder};
-use chain::policy::ExecPurpose;
+use chain::policy::{ExecTask, ExecPurpose};
 
 use crate::ct_logs::*;
 use crate::error::*;

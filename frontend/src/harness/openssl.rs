@@ -1,8 +1,5 @@
 use std::path::PathBuf;
-use std::io::{BufRead, BufReader, Write};
-use std::process::{self, Child, ChildStdin, ChildStdout};
-
-use chain::policy::ExecPurpose;
+use std::process;
 
 use super::common::*;
 use crate::error::*;
@@ -10,12 +7,6 @@ use crate::error::*;
 pub struct OpenSSLHarness {
     pub repo: String,
     pub debug: bool,
-}
-
-pub struct OpenSSLInstance {
-    child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
 }
 
 impl Harness for OpenSSLHarness {
@@ -39,72 +30,6 @@ impl Harness for OpenSSLHarness {
             cmd.stderr(process::Stdio::null());
         };
 
-        let mut child = cmd.spawn()?;
-
-        let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
-        let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
-
-        Ok(Box::new(OpenSSLInstance { child, stdin, stdout: BufReader::new(stdout) }))
-    }
-}
-
-impl Instance for OpenSSLInstance {
-    /// Send one validation job, and then read the results from stdout
-    fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error> {
-        if bundle.len() == 0 {
-            return Err(Error::EmptyBundle);
-        }
-
-        if repeat == 0 {
-            return Err(Error::ZeroRepeat);
-        }
-
-        if let ExecTask::ChainValidation(ExecPurpose::ServerAuth) = task {} else {
-            return Err(Error::UnsupportedTask);
-        }
-
-        writeln!(self.stdin, "repeat: {}", repeat)?;
-        writeln!(self.stdin, "leaf: {}", bundle[0])?;
-
-        for cert in bundle.iter().skip(1) {
-            writeln!(self.stdin, "interm: {}", cert)?;
-        }
-        writeln!(self.stdin, "validate")?;
-
-        let mut line = String::new();
-
-        if self.stdout.read_line(&mut line)? == 0 {
-            return Err(Error::OpenSSLBenchError("failed to read stdout".to_string()));
-        }
-
-        if line.starts_with("result:") {
-            let mut res = line["result:".len()..].trim().split_ascii_whitespace();
-            let res_fst = res.next().ok_or(Error::OpenSSLBenchError("no results".to_string()))?;
-
-            Ok(ValidationResult {
-                valid: res_fst == "OK",
-                err: if res_fst == "OK" { "".to_string() } else { res_fst.to_string() },
-
-                // Parse the rest as a space separated list of integers (time in microseconds)
-                stats: res.map(|s| s.parse().unwrap()).collect(),
-            })
-        } else if line.starts_with("error:") {
-            Err(Error::OpenSSLBenchError(line["error:".len()..].trim().to_string()))
-        } else {
-            Err(Error::OpenSSLBenchError(format!("unexpected output: {}", line)))
-        }
-    }
-}
-
-impl Drop for OpenSSLInstance {
-    fn drop(&mut self) {
-        if let Some(status) = self.child.try_wait().unwrap() {
-            eprintln!("openssl cert bench failed with: {}", status);
-        }
-
-        // We expect the process to be still running
-        // so no need to consume the status here
-        self.child.kill().unwrap();
-        self.child.wait().unwrap();
+        Ok(Box::new(CommonBenchInstance::new(cmd.spawn()?)?))
     }
 }
