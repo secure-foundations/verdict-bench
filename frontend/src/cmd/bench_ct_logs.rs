@@ -64,6 +64,10 @@ pub struct Args {
     #[clap(long)]
     armor_repo: Option<String>,
 
+    /// Path to the Hammurabi repo
+    #[clap(long)]
+    hammurabi_repo: Option<String>,
+
     /// Path to libfaketime.so
     #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
     faketime_lib: String,
@@ -91,6 +95,8 @@ pub enum BenchHarness {
     Firefox,
     OpenSSL,
     Armor,
+    HammurabiChrome,
+    HammurabiFirefox,
     VerdictChrome,
     VerdictFirefox,
     VerdictOpenSSL,
@@ -101,7 +107,7 @@ fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
         BenchHarness::Chrome =>
             Box::new(ChromeHarness {
                 repo: args.chrome_repo.clone()
-                    .ok_or(Error::ChromeBenchError("chrome repo not specified".to_string()))?,
+                    .ok_or(Error::CommonBenchError("chrome repo not specified".to_string()))?,
                 faketime_lib: args.faketime_lib.clone(),
                 debug: args.debug,
             }),
@@ -109,22 +115,38 @@ fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
         BenchHarness::Firefox =>
             Box::new(FirefoxHarness {
                 repo: args.firefox_repo.clone()
-                    .ok_or(Error::FirefoxBenchError("firefox repo not specified".to_string()))?,
+                    .ok_or(Error::CommonBenchError("firefox repo not specified".to_string()))?,
                 debug: args.debug,
             }),
 
         BenchHarness::OpenSSL =>
             Box::new(OpenSSLHarness {
                 repo: args.openssl_repo.clone()
-                    .ok_or(Error::OpenSSLBenchError("openssl repo not specified".to_string()))?,
+                    .ok_or(Error::CommonBenchError("openssl repo not specified".to_string()))?,
                 debug: args.debug,
             }),
 
         BenchHarness::Armor =>
             Box::new(ArmorHarness {
                 repo: args.armor_repo.clone()
-                    .ok_or(Error::ArmorBenchError("armor repo not specified".to_string()))?,
+                    .ok_or(Error::CommonBenchError("armor repo not specified".to_string()))?,
                 faketime_lib: args.faketime_lib.clone(),
+                debug: args.debug,
+            }),
+
+        BenchHarness::HammurabiChrome =>
+            Box::new(HammurabiHarness {
+                repo: args.hammurabi_repo.clone()
+                    .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
+                policy: HammurabiPolicy::Chrome,
+                debug: args.debug,
+            }),
+
+        BenchHarness::HammurabiFirefox =>
+            Box::new(HammurabiHarness {
+                repo: args.hammurabi_repo.clone()
+                    .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
+                policy: HammurabiPolicy::Firefox,
                 debug: args.debug,
             }),
 

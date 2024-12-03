@@ -55,6 +55,9 @@ pub enum Error {
     #[error("armor driver not found at {0}")]
     ArmorRepoNotFound(String),
 
+    #[error("hammurabi bench program not found at {0}")]
+    HammurabiRepoNotFound(String),
+
     #[error("failed to get child process stdin")]
     ChildStdin,
 
@@ -63,18 +66,6 @@ pub enum Error {
 
     #[error("empty certificate bundle")]
     EmptyBundle,
-
-    #[error("chrome cert bench error: {0}")]
-    ChromeBenchError(String),
-
-    #[error("firefox cert bench error: {0}")]
-    FirefoxBenchError(String),
-
-    #[error("openssl cert bench error: {0}")]
-    OpenSSLBenchError(String),
-
-    #[error("armor cert bench error: {0}")]
-    ArmorBenchError(String),
 
     #[error("cert bench error: {0}")]
     CommonBenchError(String),

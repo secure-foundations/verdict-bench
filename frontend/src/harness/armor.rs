@@ -6,7 +6,6 @@ use chrono::{TimeZone, Utc};
 use super::common::*;
 use crate::error::*;
 
-#[derive(Clone)]
 pub struct ArmorHarness {
     pub repo: String,
     pub faketime_lib: String,
