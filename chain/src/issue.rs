@@ -282,6 +282,7 @@ pub fn normalize_string(s: &str) -> (res: String)
 pub closed spec fn spec_char_lower(c: char) -> Seq<char>;
 
 #[verifier::external_body]
+#[inline(always)]
 fn char_lower(c: char) -> (res: String)
     ensures res@ == spec_char_lower(c)
 {

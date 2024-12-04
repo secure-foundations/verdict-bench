@@ -124,6 +124,7 @@ impl<C1, C2> Combinator for Default<C1::Owned, C1, C2> where
         &&& C1::V::is_prefix_secure()
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let res = if let Ok((n, (v1, v2))) = (&self.1, &self.2).parse(s) {
             if !v1.polyfill_eq(&self.0.clone().ex_into()) {
@@ -153,6 +154,7 @@ impl<C1, C2> Combinator for Default<C1::Owned, C1, C2> where
         &&& C1::V::is_prefix_secure()
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         let len = if v.0.polyfill_eq(&self.0.clone().ex_into()) {
             self.2.serialize(v.1, data, pos)?

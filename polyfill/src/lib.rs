@@ -530,6 +530,13 @@ pub fn string_new() -> (res: String)
 }
 
 #[verifier::external_body]
+pub fn string_push(s: &mut String, c: char)
+    ensures s@ == old(s)@.push(c)
+{
+    s.push(c)
+}
+
+#[verifier::external_body]
 pub fn format_dbg(a: impl Debug) -> String {
     format!("{:?}", a)
 }
