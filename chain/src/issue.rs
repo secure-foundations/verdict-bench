@@ -113,9 +113,10 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
                 ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA384)
                 ||| subject.sig_alg.id == spec_oid!(RSA_SIGNATURE_SHA512)
             }
-            &&& rsa::spec_rsa_pkcs1_v1_5_verify(
+            &&& rsa::spec_pkcs1_v1_5_load_pub_key(BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key)) matches Some(pub_key)
+            &&& rsa::spec_pkcs1_v1_5_verify(
                 subject.sig_alg,
-                BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),
+                pub_key,
                 BitStringValue::spec_bytes(subject.sig),
                 tbs_cert,
             )
@@ -130,7 +131,7 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA384)
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA512)
             }
-            &&& ecdsa::spec_ecdsa_p256_verify(
+            &&& ecdsa::spec_p256_verify(
                 subject.sig_alg,
                 BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),
                 BitStringValue::spec_bytes(subject.sig),
@@ -146,7 +147,7 @@ pub open spec fn spec_verify_signature(issuer: SpecCertificateValue, subject: Sp
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA256)
                 ||| subject.sig_alg.id == spec_oid!(ECDSA_SIGNATURE_SHA384)
             }
-            &&& ecdsa::spec_ecdsa_p384_verify(
+            &&& ecdsa::spec_p384_verify(
                 subject.sig_alg,
                 BitStringValue::spec_bytes(issuer.cert.subject_key.pub_key),
                 BitStringValue::spec_bytes(subject.sig),
@@ -234,7 +235,7 @@ pub fn normalize_string(s: &str) -> (res: String)
     let mut seen_nw = false;
     let mut seen_ws = false;
 
-    let mut res = string_new();
+    let mut res = string_new_with_cap(str_byte_len(s));
     let mut char_len = s.unicode_len();
 
     assert(s@.skip(0) == s@);
@@ -292,7 +293,10 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
                sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
                sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
                sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
-                return rsa::rsa_pkcs1_v1_5_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
+                return match rsa::pkcs1_v1_5_load_pub_key(pub_key) {
+                    Ok(pub_key) => rsa::pkcs1_v1_5_verify(sig_alg, &pub_key, sig, tbs_cert).is_ok(),
+                    Err(..) => false,
+                }
             }
         }
 
@@ -303,14 +307,14 @@ pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -
                 sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384)) ||
                 sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA512))
             ) {
-                return ecdsa::ecdsa_p256_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
+                return ecdsa::p256_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
 
             if curve.polyfill_eq(&oid!(EC_P_384)) && (
                 sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA256)) ||
                 sig_alg.id.polyfill_eq(&oid!(ECDSA_SIGNATURE_SHA384))
             ) {
-                return ecdsa::ecdsa_p384_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
+                return ecdsa::p384_verify(sig_alg, pub_key, sig, tbs_cert).is_ok();
             }
         }
 

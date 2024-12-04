@@ -24,25 +24,47 @@ pub enum RSAError {
     HashMismatch,
 }
 
+pub struct RSAPublicKeyInternal {
+    n_bits: u32,
+    e_bits: u32,
+    key: *mut u64,
+}
+
+impl Drop for RSAPublicKeyInternal {
+    #[verifier::external_body]
+    fn drop(&mut self)
+        opens_invariants none
+        no_unwind
+    {
+        hacl_free_pkey(self.key)
+    }
+}
+
 #[verifier::external_body]
+#[inline(always)]
 fn hacl_new_rsapss_load_pkey(
     mod_bits: u32,
     e_bits: u32,
     nb: &[u8],
     eb: &[u8],
-) -> *mut u64
+) -> RSAPublicKeyInternal
 {
-    unsafe {
-        libcrux_hacl::Hacl_RSAPSS_new_rsapss_load_pkey(
-            mod_bits,
-            e_bits,
-            nb.as_ptr() as _,
-            eb.as_ptr() as _,
-        )
+    RSAPublicKeyInternal {
+        n_bits: mod_bits,
+        e_bits: e_bits,
+        key: unsafe {
+            libcrux_hacl::Hacl_RSAPSS_new_rsapss_load_pkey(
+                mod_bits,
+                e_bits,
+                nb.as_ptr() as _,
+                eb.as_ptr() as _,
+            )
+        },
     }
 }
 
 #[verifier::external_body]
+#[inline(always)]
 fn hacl_free_pkey(pkey: *mut u64) {
     unsafe {
         libcrux_hacl::hacl_free(pkey as _);
@@ -50,6 +72,7 @@ fn hacl_free_pkey(pkey: *mut u64) {
 }
 
 #[verifier::external_body]
+#[inline(always)]
 fn hacl_rsa_decrypt(
     mod_bits: u32,
     e_bits: u32,
@@ -79,9 +102,10 @@ fn hacl_rsa_decrypt(
     }
 }
 
-pub closed spec fn spec_rsa_pkcs1_v1_5_verify(
+pub closed spec fn spec_pkcs1_v1_5_load_pub_key(pub_key: Seq<u8>) -> Option<RSAPublicKeyInternal>;
+pub closed spec fn spec_pkcs1_v1_5_verify(
     alg: SpecAlgorithmIdentifierValue,
-    pub_key: Seq<u8>,
+    pub_key: RSAPublicKeyInternal,
     sig: Seq<u8>,
     msg: Seq<u8>,
 ) -> bool;
@@ -99,18 +123,100 @@ pub closed spec fn spec_rsa_pkcs1_v1_5_verify(
 ///         publicExponent     INTEGER  -- e --
 ///     }
 /// ```
+/// (decoded via `pkcs1_v1_5_load_pub_key`)
 ///
 /// `sig` is the signature encoded in big-endian (expected to be the same length as the modulus)
 /// `msg` is the message expected to be signed
 #[verifier::external_body]
-pub fn rsa_pkcs1_v1_5_verify(
+pub fn pkcs1_v1_5_verify(
     alg: &AlgorithmIdentifierValue,
-    pub_key: &[u8],
+    pub_key: &RSAPublicKeyInternal,
     sig: &[u8],
     msg: &[u8],
 ) -> (res: Result<(), RSAError>)
     ensures
-        res.is_ok() == spec_rsa_pkcs1_v1_5_verify(alg@, pub_key@, sig@, msg@),
+        res.is_ok() == spec_pkcs1_v1_5_verify(alg@, *pub_key, sig@, msg@),
+{
+    if sig.len() > usize::MAX as usize {
+        return Err(RSAError::SizeOverflow);
+    }
+
+    // Decrypt the signature using hacl*
+    let decoded = match hacl_rsa_decrypt(
+            pub_key.n_bits,
+            pub_key.e_bits,
+            pub_key.key,
+            sig.len() as u32,
+            sig,
+        ) {
+            Some(decoded) => decoded,
+            None => {
+                return Err(RSAError::DecryptError);
+            }
+        };
+
+    // PKCS#1 v1.5 padding
+    //     msg = 0x00 || 0x01 || PS || 0x00 || T
+    // where T is a DigestInfo:
+    // DigestInfo ::= SEQUENCE {
+    //     digestAlgorithm AlgorithmIdentifier,
+    //     digest OCTET STRING
+    // }
+    if decoded.len() < 2 || decoded[0] != 0x00 || decoded[1] != 0x01 {
+        return Err(RSAError::PKCS1PaddingError);
+    }
+
+    let mut i = 2;
+    while i < decoded.len() && decoded[i] == 0xff {
+        i += 1;
+    }
+
+    if i >= decoded.len() || decoded[i] != 0x00 {
+        return Err(RSAError::PKCS1PaddingError);
+    }
+
+    let dig_info = slice_skip(decoded.as_slice(), i + 1);
+
+    let (len, digest_info_parsed) = ASN1(DigestInfo).parse(dig_info)
+        .or(Err(RSAError::PKCS1PaddingError))?;
+
+    if len != dig_info.len() {
+        return Err(RSAError::PKCS1PaddingError);
+    }
+
+    // Check that the signature algorithms specified by the digest info
+    // and the given `alg` are the same
+    if digest_info_parsed.alg.id.polyfill_eq(&alg.id) {
+        return Err(RSAError::AlgorithmMismatch);
+    }
+
+    // TODO: enforce parameter field to be NULL or empty?
+
+    // TODO: more digest algorithms
+    let res = if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) {
+        slice_eq(&digest_info_parsed.digest, &hash::sha224_digest(msg))
+    } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) {
+        slice_eq(&digest_info_parsed.digest, &hash::sha256_digest(msg))
+    } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) {
+        slice_eq(&digest_info_parsed.digest, &hash::sha384_digest(msg))
+    } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
+        slice_eq(&digest_info_parsed.digest, &hash::sha512_digest(msg))
+    } else {
+        return Err(RSAError::UnsupportedAlgorithm);
+    };
+
+    if !res {
+        return Err(RSAError::HashMismatch);
+    }
+
+    Ok(())
+}
+
+#[verifier::external_body]
+pub fn pkcs1_v1_5_load_pub_key(pub_key: &[u8]) -> (res: Result<RSAPublicKeyInternal, RSAError>)
+    ensures
+        res matches Ok(key) ==> spec_pkcs1_v1_5_load_pub_key(pub_key@) == Some(key),
+        res is Err ==> spec_pkcs1_v1_5_load_pub_key(pub_key@) is None,
 {
     let (len, pub_key_parsed) = ASN1(RSAPublicKey).parse(pub_key)
         .or(Err(RSAError::InvalidPublicKey))?;
@@ -137,93 +243,9 @@ pub fn rsa_pkcs1_v1_5_verify(
     }
 
     // Load the public key into hacl*
-    let hacl_pub_key = hacl_new_rsapss_load_pkey(
+    Ok(hacl_new_rsapss_load_pkey(
         usize_into_u32(n_len), usize_into_u32(e_len), n, e,
-    );
-
-    if sig.len() > usize::MAX as usize {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::SizeOverflow);
-    }
-
-    // Decrypt the signature using hacl*
-    let decoded = match hacl_rsa_decrypt(
-            usize_into_u32(n_len),
-            usize_into_u32(e_len),
-            hacl_pub_key,
-            sig.len() as u32,
-            sig,
-        ) {
-            Some(decoded) => decoded,
-            None => {
-                hacl_free_pkey(hacl_pub_key);
-                return Err(RSAError::DecryptError);
-            }
-        };
-
-    // PKCS#1 v1.5 padding
-    //     msg = 0x00 || 0x01 || PS || 0x00 || T
-    // where T is a DigestInfo:
-    // DigestInfo ::= SEQUENCE {
-    //     digestAlgorithm AlgorithmIdentifier,
-    //     digest OCTET STRING
-    // }
-    if decoded.len() < 2 || decoded[0] != 0x00 || decoded[1] != 0x01 {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::PKCS1PaddingError);
-    }
-
-    let mut i = 2;
-    while i < decoded.len() && decoded[i] == 0xff {
-        i += 1;
-    }
-
-    if i >= decoded.len() || decoded[i] != 0x00 {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::PKCS1PaddingError);
-    }
-
-    let dig_info = slice_skip(decoded.as_slice(), i + 1);
-
-    let (len, digest_info_parsed) = ASN1(DigestInfo).parse(dig_info)
-        .or(Err(RSAError::PKCS1PaddingError))?;
-
-    if len != dig_info.len() {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::PKCS1PaddingError);
-    }
-
-    // Check that the signature algorithms specified by the digest info
-    // and the given `alg` are the same
-    if digest_info_parsed.alg.id.polyfill_eq(&alg.id) {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::AlgorithmMismatch);
-    }
-
-    // TODO: enforce parameter field to be NULL or empty?
-
-    // TODO: more digest algorithms
-    let res = if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) {
-        slice_eq(&digest_info_parsed.digest, &hash::sha224_digest(msg))
-    } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) {
-        slice_eq(&digest_info_parsed.digest, &hash::sha256_digest(msg))
-    } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) {
-        slice_eq(&digest_info_parsed.digest, &hash::sha384_digest(msg))
-    } else if alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
-        slice_eq(&digest_info_parsed.digest, &hash::sha512_digest(msg))
-    } else {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::UnsupportedAlgorithm);
-    };
-
-    if !res {
-        hacl_free_pkey(hacl_pub_key);
-        return Err(RSAError::HashMismatch);
-    }
-
-    hacl_free_pkey(hacl_pub_key);
-
-    Ok(())
+    ))
 }
 
 }

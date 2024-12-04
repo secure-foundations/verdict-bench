@@ -15,6 +15,7 @@ pub closed spec fn spec_sha384_digest(data: Seq<u8>) -> Seq<u8>;
 pub closed spec fn spec_sha512_digest(data: Seq<u8>) -> Seq<u8>;
 
 #[verifier::external_body]
+#[inline(always)]
 pub fn sha224_digest(data: &[u8]) -> (res: [u8; 28])
     ensures res@ == spec_sha224_digest(data@)
 {
@@ -22,6 +23,7 @@ pub fn sha224_digest(data: &[u8]) -> (res: [u8; 28])
 }
 
 #[verifier::external_body]
+#[inline(always)]
 pub fn sha256_digest(data: &[u8]) -> (res: [u8; 32])
     ensures res@ == spec_sha256_digest(data@)
 {
@@ -29,6 +31,7 @@ pub fn sha256_digest(data: &[u8]) -> (res: [u8; 32])
 }
 
 #[verifier::external_body]
+#[inline(always)]
 pub fn sha384_digest(data: &[u8]) -> (res: [u8; 48])
     ensures res@ == spec_sha384_digest(data@)
 {
@@ -36,6 +39,7 @@ pub fn sha384_digest(data: &[u8]) -> (res: [u8; 48])
 }
 
 #[verifier::external_body]
+#[inline(always)]
 pub fn sha512_digest(data: &[u8]) -> (res: [u8; 64])
     ensures res@ == spec_sha512_digest(data@)
 {
@@ -45,6 +49,7 @@ pub fn sha512_digest(data: &[u8]) -> (res: [u8; 64])
 /// Convert a sequence of data to a hex string in upper case
 /// e.g. [ 0xbe, 0xef ] -> "BEEF"
 #[verifier::external_body]
+#[inline(always)]
 pub fn to_hex_upper(data: &[u8]) -> (res: String)
     ensures res@ == spec_to_hex_upper(data@)
 {

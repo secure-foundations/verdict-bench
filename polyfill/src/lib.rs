@@ -474,6 +474,22 @@ pub fn eprintln_debug<T: Debug>(s: T) {
 }
 
 #[verifier::external_body]
+#[inline(always)]
+pub fn string_new_with_cap(cap: usize) -> (res: String)
+    ensures
+        res@ == Seq::<char>::empty(),
+{
+    String::with_capacity(cap)
+}
+
+#[verifier::external_body]
+#[inline(always)]
+pub fn str_byte_len(s: &str) -> usize
+{
+    s.as_bytes().len()
+}
+
+#[verifier::external_body]
 pub fn string_new() -> (res: String)
     ensures
         res@ == Seq::<char>::empty(),

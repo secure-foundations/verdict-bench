@@ -95,7 +95,7 @@ force-target/debug/lib%.rlib: Cargo.toml
 	cargo build --package=$*
 
 force-target/release/lib%.rlib: Cargo.toml
-	$(if $(LTO),CARGO_PROFILE_RELEASE_LTO=true,) $(if $(CODEGEN_UNITS),CARGO_PROFILE_RELEASE_CODEGEN_UNITS=$(CODEGEN_UNITS),) cargo build --package=$* --release
+	$(if $(LTO),CARGO_PROFILE_RELEASE_LTO=fat,) $(if $(CODEGEN_UNITS),CARGO_PROFILE_RELEASE_CODEGEN_UNITS=$(CODEGEN_UNITS),) cargo build --package=$* --release
 
 .PHONY: clean
 clean:
