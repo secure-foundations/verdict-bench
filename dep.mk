@@ -10,6 +10,7 @@
 #   VERUS_DEPS = Verus dependency paths (e.g. vest). For each dep in VERUS_DEPS, we expect $(dep).rlib and $(dep).verusdata to exist
 #   TEST_TARGETS = List of custom test targets
 #   LTO = set to enable LTO
+#   CODEGEN_UNITS = set to control the number of codegen units
 
 EXEC_MAIN = src/main.rs
 LIB_MAIN = src/lib.rs
@@ -70,7 +71,7 @@ VERUS_COMMAND = \
 		$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$*/deps) \
 		$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$*) \
 		$(foreach dep,$(VERUS_DEPS),--extern $(dep)=../$(dep)/target/$*/lib$(dep).rlib --import $(dep)=../$(dep)/target/$*/lib$(dep).rlib.verusdata) \
-		--compile $(if $(filter release,$*),-Copt-level=3 $(if $(LTO),-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld,)) \
+		--compile $(if $(filter release,$*),-Copt-level=3 $(if $(LTO),-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld,) $(if $(CODEGEN_UNITS),-Ccodegen-units=$(CODEGEN_UNITS))) \
 		-o $@ --export $@.verusdata \
 		$(VERUS_FLAGS)
 
@@ -94,7 +95,7 @@ force-target/debug/lib%.rlib: Cargo.toml
 	cargo build --package=$*
 
 force-target/release/lib%.rlib: Cargo.toml
-	$(if $(LTO),CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1,) cargo build --package=$* --release
+	$(if $(LTO),CARGO_PROFILE_RELEASE_LTO=true,) $(if $(CODEGEN_UNITS),CARGO_PROFILE_RELEASE_CODEGEN_UNITS=$(CODEGEN_UNITS),) cargo build --package=$* --release
 
 .PHONY: clean
 clean:

@@ -7,6 +7,7 @@ edition = "2021"
 builtin_macros = { git = "https://github.com/verus-lang/verus", branch = "main" }
 builtin = { git = "https://github.com/verus-lang/verus", branch = "main" }
 vstd = { git = "https://github.com/verus-lang/verus", branch = "main" }
+limbo-harness-support = { git = "https://github.com/C2SP/x509-limbo", branch = "main" }
 parser = { path = "../parser" }
 chain = { path = "../chain" }
 clap = { version = "4.5.21", features = ["derive"] }
@@ -16,7 +17,5 @@ serde = { version = "1.0.210", features = ["derive"] }
 chrono = "0.4.38"
 regex = "1.11.0"
 crossbeam = "0.8.4"
-cpu-time = "1.0.0"
-heappy = { git = "https://github.com/mkmik/heappy", branch = "main" }
 rspec-lib = { path = "../rspec_lib" }
 tempfile = "3.14.0"

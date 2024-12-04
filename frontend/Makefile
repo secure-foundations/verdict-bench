@@ -1,15 +1,13 @@
 NAME = frontend
 TARGETS = frontend
 
-CARGO_DEPS = macros clap thiserror csv serde chrono regex crossbeam cpu-time heappy tempfile
+CARGO_DEPS = macros clap thiserror csv serde chrono regex crossbeam tempfile limbo-harness-support
 VERUS_DEPS = parser polyfill vest chain rspec_lib
 TEST_TARGETS =
 VERUS_FLAGS = --no-lifetime
 
 TEST_TARGETS = test-policy-chrome-hammurabi test-policy-firefox-hammurabi test-policy-open-ssl
 TEST_TIME = 1725029869
-
-# LTO = true
 
 include ../dep.mk
 
