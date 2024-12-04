@@ -2,9 +2,10 @@
 
 use vstd::prelude::*;
 
-use parser::{*, x509::*};
+use parser::{*, x509::*, asn1::BitStringValue};
 
 use crate::policy;
+use crate::rsa;
 use crate::issue::*;
 use crate::error::*;
 
@@ -62,15 +63,60 @@ impl Query {
 pub struct Validator<'a> {
     pub policy: policy::ExecPolicy,
     pub roots: VecDeep<CertificateValue<'a>>,
+    pub roots_rsa_cache: Vec<Option<rsa::RSAPublicKeyInternal>>,
 }
 
 impl<'a> Validator<'a> {
+    #[verifier::loop_isolation(false)]
     pub fn new(policy: policy::ExecPolicy, roots: VecDeep<CertificateValue<'a>>) -> (res: Validator<'a>)
         ensures
+            res.wf(),
             res.policy == policy,
             res.roots == roots,
     {
-        Validator { policy, roots }
+        let mut roots_rsa_cache = Vec::new();
+        let roots_len = roots.len();
+
+        // Initialize the RSA key cache by parsing
+        // the RSA public key of each root certificate
+        for i in 0..roots_len
+            invariant
+                i == roots_rsa_cache@.len(),
+                forall |i| 0 <= i < roots_rsa_cache@.len() ==>
+                    (#[trigger] roots_rsa_cache@[i] matches Some(key) ==> {
+                        let subject_key = roots@[i].cert.subject_key;
+                        &&& subject_key.alg.param is RSAEncryption
+                        &&& rsa::spec_pkcs1_v1_5_load_pub_key(BitStringValue::spec_bytes(subject_key.pub_key)) == Some(key)
+                    })
+        {
+            let root = roots.get(i);
+
+            if let AlgorithmParamValue::RSAEncryption(..) = &root.get().cert.get().subject_key.alg.param {
+                let pub_key = root.get().cert.get().subject_key.pub_key.bytes();
+
+                match rsa::pkcs1_v1_5_load_pub_key(pub_key) {
+                    Ok(pub_key) => roots_rsa_cache.push(Some(pub_key)),
+
+                    // NOTE: skip if the pub key of a root certificate fail to parse
+                    Err(..) => roots_rsa_cache.push(None),
+                }
+            } else {
+                roots_rsa_cache.push(None);
+            }
+        }
+
+        Validator { policy, roots, roots_rsa_cache }
+    }
+
+    pub closed spec fn wf(self) -> bool {
+        &&& self.roots_rsa_cache@.len() == self.roots@.len()
+        &&& forall |i| 0 <= i < self.roots@.len() ==>
+            (#[trigger] self.roots_rsa_cache@[i] matches Some(key) ==> {
+                let subject_key = self.roots@[i].cert.subject_key;
+
+                &&& subject_key.alg.param is RSAEncryption
+                &&& rsa::spec_pkcs1_v1_5_load_pub_key(BitStringValue::spec_bytes(subject_key.pub_key)) == Some(key)
+            })
     }
 
     closed spec fn is_prefix_of<T>(s1: Seq<T>, s2: Seq<T>) -> bool {
@@ -94,6 +140,40 @@ impl<'a> Validator<'a> {
         }
 
         return false;
+    }
+
+    /// A specialized version of `likely_issued`
+    /// that uses RSA public key cache of root certs
+    fn check_root_likely_issued(&self, idx: usize, subject: &CertificateValue) -> (res: bool)
+        requires
+            self.wf(),
+            0 <= idx < self.roots@.len(),
+
+        ensures res == spec_likely_issued(self.roots@[idx as int], subject@)
+    {
+        let root = self.roots.get(idx);
+
+        if let Some(pub_key) = &self.roots_rsa_cache[idx] {
+            if !same_name(&root.get().cert.get().subject, &subject.get().cert.get().issuer) {
+                return false;
+            }
+
+            // Mostly the same as the RSA branch of `verify_signature`
+            let tbs_cert = subject.get().cert.serialize();
+            let sig_alg = &subject.get().sig_alg.get();
+            let sig = subject.get().sig.bytes();
+
+            if sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA224)) ||
+               sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA256)) ||
+               sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA384)) ||
+               sig_alg.id.polyfill_eq(&oid!(RSA_SIGNATURE_SHA512)) {
+                return rsa::pkcs1_v1_5_verify(sig_alg, &pub_key, sig, tbs_cert).is_ok();
+            }
+
+            return false;
+        }
+
+        likely_issued(root, subject)
     }
 
     pub open spec fn get_query(
@@ -223,6 +303,7 @@ impl<'a> Validator<'a> {
 
     /// Get indices of root certificates that likely issued the given certificate
     fn get_root_issuer(&self, cert: &CertificateValue) -> (res: Vec<usize>)
+        requires self.wf()
         ensures self.spec_root_issuers(cert@, res@)
     {
         let mut res = Vec::new();
@@ -238,7 +319,7 @@ impl<'a> Validator<'a> {
         {
             reveal_with_fuel(Seq::<_>::filter, 1);
 
-            if likely_issued(self.roots.get(i), cert) {
+            if self.check_root_likely_issued(i, cert) {
                 res.push(i);
             }
 
@@ -270,7 +351,9 @@ impl<'a> Validator<'a> {
         bundle: &VecDeep<CertificateValue>,
         task: &policy::ExecTask,
     ) -> (res: Result<bool, ValidationError>)
-        requires bundle@.len() != 0,
+        requires
+            self.wf(),
+            bundle@.len() != 0,
 
         ensures
             // Soundness & completeness (modulo ValidationError)
@@ -416,7 +499,9 @@ impl<'a> Validator<'a> {
     }
 
     pub fn validate_hostname(&self, bundle: &VecDeep<CertificateValue>, domain: &str) -> (res: Result<bool, ValidationError>)
-        requires bundle@.len() != 0,
+        requires
+            self.wf(),
+            bundle@.len() != 0,
 
         ensures
             res matches Ok(res) ==> res == self.get_query(bundle@, policy::Task::DomainValidation(domain@)).valid(),
@@ -425,7 +510,9 @@ impl<'a> Validator<'a> {
     }
 
     pub fn validate_purpose(&self, bundle: &VecDeep<CertificateValue>, purpose: policy::ExecPurpose) -> (res: Result<bool, ValidationError>)
-        requires bundle@.len() != 0,
+        requires
+            self.wf(),
+            bundle@.len() != 0,
 
         ensures
             res matches Ok(res) ==> res == self.get_query(bundle@, policy::Task::ChainValidation(purpose.deep_view())).valid(),
