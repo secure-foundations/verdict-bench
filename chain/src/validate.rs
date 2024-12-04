@@ -382,6 +382,7 @@ impl<'a> Validator<'a> {
         let mut stack: Vec<Vec<usize>> = Vec::new();
         stack.push(vec![ 0 ]);
 
+        // For triggering quantifiers associated with the leaf
         let ghost _ = stack@[0]@;
 
         loop

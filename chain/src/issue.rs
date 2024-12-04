@@ -236,32 +236,43 @@ pub fn normalize_string(s: &str) -> (res: String)
     let mut seen_ws = false;
 
     let mut res = string_new_with_cap(str_byte_len(s));
-    let mut char_len = s.unicode_len();
+    let mut iter = str_chars(s);
+    let mut i: usize = 0;
 
     assert(s@.skip(0) == s@);
 
-    // NOTE: performance might be bad since get_char is O(n)
-    for i in 0..char_len
+    // Using a custom chars iterator wrapper in polyfill
+    loop
         invariant
-            char_len == s@.len(),
+            spec_chars_iter_str(iter) == s@,
+            s@.len() <= usize::MAX,
+
+            i == spec_chars_iter_index(iter),
             spec_normalize_string(s@) =~= res@ + spec_normalize_string_helper(s@.skip(i as int), seen_nw, seen_ws),
+
+        ensures
+            i == s@.len(),
     {
-        let c = s.get_char(i);
+        if let Some(c) = chars_iter_next(&mut iter) {
+            if c == ' ' {
+                seen_ws = true;
+            } else {
+                if seen_nw && seen_ws {
+                    res.append(" ");
+                }
+                res.append(char_lower(c).as_str());
 
-        if c == ' ' {
-            seen_ws = true;
-        } else {
-            if seen_nw && seen_ws {
-                res.append(" ");
+                seen_nw = true;
+                seen_ws = false;
             }
-            res.append(char_lower(c).as_str());
 
-            seen_nw = true;
-            seen_ws = false;
+            proof { reveal_strlit(" "); }
+            assert(s@.skip(i as int).drop_first() == s@.skip(i + 1));
+
+            i += 1;
+        } else {
+            break;
         }
-
-        proof { reveal_strlit(" "); }
-        assert(s@.skip(i as int).drop_first() == s@.skip(i + 1));
     }
 
     res

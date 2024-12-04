@@ -473,6 +473,38 @@ pub fn eprintln_debug<T: Debug>(s: T) {
     eprintln!("{:?}", s);
 }
 
+/// Wrapper around `Chars` since Verus doesn't support all iterators yet
+#[verifier::external_body]
+pub struct CharsIter<'a>(std::str::Chars<'a>);
+
+pub closed spec fn spec_chars_iter_str<'a>(iter: CharsIter<'a>) -> Seq<char>;
+pub closed spec fn spec_chars_iter_index<'a>(iter: CharsIter<'a>) -> int;
+
+#[verifier::external_body]
+pub fn chars_iter_next<'a>(iter: &mut CharsIter<'a>) -> (res: Option<char>)
+    ensures ({
+        let raw = spec_chars_iter_str(*old(iter));
+        let prev_idx = spec_chars_iter_index(*old(iter));
+        let new_idx = spec_chars_iter_index(*iter);
+
+        &&& spec_chars_iter_str(*iter) == raw
+        &&& res matches Some(c) ==> prev_idx < raw.len() && c == raw[prev_idx] && new_idx == prev_idx + 1
+        &&& res is None <==> new_idx == prev_idx == raw.len()
+    })
+{
+    iter.0.next()
+}
+
+#[verifier::external_body]
+pub fn str_chars<'a>(s: &'a str) -> (res: CharsIter<'a>)
+    ensures
+        s@.len() <= usize::MAX,
+        spec_chars_iter_str(res) == s@,
+        spec_chars_iter_index(res) === 0,
+{
+    CharsIter(s.chars())
+}
+
 #[verifier::external_body]
 #[inline(always)]
 pub fn string_new_with_cap(cap: usize) -> (res: String)

@@ -40,6 +40,7 @@ impl<T: PolyfillClone> PolyfillClone for VecDeep<T> where
 }
 
 impl<T: View> VecDeep<T> {
+    #[inline(always)]
     pub fn new() -> (res: Self)
         ensures
             res@ =~= Seq::<T::V>::empty(),
@@ -47,6 +48,7 @@ impl<T: View> VecDeep<T> {
         VecDeep(Vec::new())
     }
 
+    #[inline(always)]
     pub fn push(&mut self, value: T)
         ensures
             self@ =~= old(self)@.push(value@)
@@ -54,6 +56,7 @@ impl<T: View> VecDeep<T> {
         self.0.push(value);
     }
 
+    #[inline(always)]
     pub fn len(&self) -> (res: usize)
         ensures
             res == self@.len()
@@ -61,6 +64,7 @@ impl<T: View> VecDeep<T> {
         self.0.len()
     }
 
+    #[inline(always)]
     pub fn get(&self, i: usize) -> (res: &T)
         requires
             i < self@.len(),
@@ -70,6 +74,7 @@ impl<T: View> VecDeep<T> {
         &self.0[i]
     }
 
+    #[inline(always)]
     pub fn remove(&mut self, i: usize) -> (res: T)
         requires
             i < old(self)@.len(),
@@ -80,6 +85,7 @@ impl<T: View> VecDeep<T> {
         self.0.remove(i)
     }
 
+    #[inline(always)]
     pub fn append(&mut self, other: &mut VecDeep<T>)
         ensures
             self@ =~= old(self)@ + old(other)@,
@@ -88,6 +94,7 @@ impl<T: View> VecDeep<T> {
         self.0.append(&mut other.0);
     }
 
+    #[inline(always)]
     pub fn append_owned(&mut self, mut other: VecDeep<T>)
         ensures
             self@ =~= old(self)@ + other@,
@@ -97,12 +104,14 @@ impl<T: View> VecDeep<T> {
 
     /// TODO: verify this?
     #[verifier::external_body]
+    #[inline(always)]
     pub fn flatten(v: VecDeep<VecDeep<T>>) -> (res: VecDeep<T>)
         ensures res@ == v@.flatten()
     {
         Self::from_vec(v.0.into_iter().map(|u| u.0).flatten().collect())
     }
 
+    #[inline(always)]
     pub fn split_off(&mut self, at: usize) -> (res: VecDeep<T>)
         requires
             at <= old(self)@.len(),
@@ -113,6 +122,7 @@ impl<T: View> VecDeep<T> {
         VecDeep(self.0.split_off(at))
     }
 
+    #[inline(always)]
     pub fn from_vec(v: Vec<T>) -> (res: Self)
         ensures
             res@ =~= VecDeep(v)@,
@@ -121,6 +131,7 @@ impl<T: View> VecDeep<T> {
     }
 
     #[verifier::external_body]
+    #[inline(always)]
     pub fn from_slice(slice: &[T]) -> (res: Self)
         where T: Clone
         ensures
@@ -129,6 +140,7 @@ impl<T: View> VecDeep<T> {
         VecDeep(slice.to_vec())
     }
 
+    #[inline(always)]
     pub fn to_vec_owned(self) -> (res: Vec<T>)
         ensures
             self@ =~= VecDeep(res)@,
@@ -136,6 +148,7 @@ impl<T: View> VecDeep<T> {
         self.0
     }
 
+    #[inline(always)]
     pub fn to_vec(&self) -> (res: &Vec<T>)
         ensures
             self@ =~= VecDeep(*res)@,
