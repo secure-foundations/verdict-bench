@@ -23,7 +23,7 @@ impl<T: PolyfillClone> PolyfillClone for VecDeep<T> where
 {
     /// Same as clone of Vec, but this is a "deep" copy
     fn clone(&self) -> Self {
-        let mut cloned: Vec<T> = Vec::new();
+        let mut cloned: Vec<T> = Vec::with_capacity(self.len());
 
         for i in 0..self.0.len()
             invariant
@@ -46,6 +46,14 @@ impl<T: View> VecDeep<T> {
             res@ =~= Seq::<T::V>::empty(),
     {
         VecDeep(Vec::new())
+    }
+
+    #[inline(always)]
+    pub fn with_capacity(cap: usize) -> (res: Self)
+        ensures
+            res@ =~= Seq::<T::V>::empty(),
+    {
+        VecDeep(Vec::with_capacity(cap))
     }
 
     #[inline(always)]

@@ -20,6 +20,7 @@ impl<C> ASN1Tagged for SequenceOf<C> {
         tag_of!(SEQUENCE)
     }
 
+    #[inline(always)]
     fn tag(&self) -> TagValue {
         tag_of!(SEQUENCE)
     }
@@ -81,6 +82,7 @@ impl<C: Combinator> Combinator for SequenceOf<C> where
         &&& self.0.parse_requires()
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         ExplicitTag(self.tag(), Repeat(&self.0)).parse(s)
     }
@@ -90,6 +92,7 @@ impl<C: Combinator> Combinator for SequenceOf<C> where
         &&& self.0.serialize_requires()
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         ExplicitTag(self.tag(), Repeat(&self.0)).serialize(v, data, pos)
     }

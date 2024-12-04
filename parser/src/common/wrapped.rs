@@ -220,6 +220,7 @@ macro_rules! wrap_combinator_impls {
                 }
 
                 #[verifier::external_body]
+                #[inline(always)]
                 fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
                     $(let $field_name: $field_type = self.$field_name;)*
                     let res = $inner_expr.parse(s);
@@ -235,6 +236,7 @@ macro_rules! wrap_combinator_impls {
                 }
 
                 #[verifier::external_body]
+                #[inline(always)]
                 fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
                     $(let $field_name: $field_type = self.$field_name;)*
                     $inner_expr.serialize(v, data, pos)

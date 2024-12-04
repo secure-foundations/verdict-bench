@@ -74,8 +74,8 @@ impl<'a> Validator<'a> {
             res.policy == policy,
             res.roots == roots,
     {
-        let mut roots_rsa_cache = Vec::new();
         let roots_len = roots.len();
+        let mut roots_rsa_cache = Vec::with_capacity(roots_len);
 
         // Initialize the RSA key cache by parsing
         // the RSA public key of each root certificate
@@ -91,18 +91,18 @@ impl<'a> Validator<'a> {
         {
             let root = roots.get(i);
 
-            if let AlgorithmParamValue::RSAEncryption(..) = &root.get().cert.get().subject_key.alg.param {
+            roots_rsa_cache.push(if let AlgorithmParamValue::RSAEncryption(..) = &root.get().cert.get().subject_key.alg.param {
                 let pub_key = root.get().cert.get().subject_key.pub_key.bytes();
 
                 match rsa::pkcs1_v1_5_load_pub_key(pub_key) {
-                    Ok(pub_key) => roots_rsa_cache.push(Some(pub_key)),
+                    Ok(pub_key) => Some(pub_key),
 
                     // NOTE: skip if the pub key of a root certificate fail to parse
-                    Err(..) => roots_rsa_cache.push(None),
+                    Err(..) => None,
                 }
             } else {
-                roots_rsa_cache.push(None);
-            }
+                None
+            });
         }
 
         Validator { policy, roots, roots_rsa_cache }
@@ -205,8 +205,12 @@ impl<'a> Validator<'a> {
             res matches Ok(res) ==>
                 res == self.get_query(bundle@, task.deep_view()).path_satisfies_policy(path@, root_idx),
     {
-        let mut candidate: Vec<policy::ExecCertificate> = Vec::new();
         let path_len = path.len();
+        if path_len == usize::MAX {
+            return Err(ValidationError::IntegerOverflow);
+        }
+
+        let mut candidate: Vec<policy::ExecCertificate> = Vec::with_capacity(path_len + 1);
 
         // Convert the entire path to `ExecCertificate`
         for i in 0..path_len
@@ -306,7 +310,7 @@ impl<'a> Validator<'a> {
         requires self.wf()
         ensures self.spec_root_issuers(cert@, res@)
     {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(1); // usually there is only 1 root issuer
         let roots_len = self.roots.len();
 
         let ghost pred = |j: usize| spec_likely_issued(self.roots@[j as int], cert@);
@@ -363,7 +367,7 @@ impl<'a> Validator<'a> {
         let roots_len = self.roots.len();
 
         // root_issuers[i] are the indices of root certificates that likely issued bundle[i]
-        let mut root_issuers: Vec<Vec<usize>> = Vec::new();
+        let mut root_issuers: Vec<Vec<usize>> = Vec::with_capacity(bundle_len);
 
         // Collect all root issuers for each certificate in the bundle
         for i in 0..bundle_len
@@ -379,8 +383,7 @@ impl<'a> Validator<'a> {
 
         // DFS from bundle[0] to try to reach a root
         // Stack of path prefices to explore
-        let mut stack: Vec<Vec<usize>> = Vec::new();
-        stack.push(vec![ 0 ]);
+        let mut stack: Vec<Vec<usize>> = vec![ vec![ 0 ] ];
 
         // For triggering quantifiers associated with the leaf
         let ghost _ = stack@[0]@;

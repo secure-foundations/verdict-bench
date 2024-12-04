@@ -133,6 +133,7 @@ impl Combinator for Length {
         None
     }
 
+    #[inline]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         if s.len() == 0 {
             return Err(ParseError::UnexpectedEndOfInput);
@@ -154,6 +155,7 @@ impl Combinator for Length {
         }
     }
 
+    #[inline]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if v < 0x80 {
             if pos < data.len() {

@@ -30,6 +30,7 @@ impl View for ObjectIdentifierValue {
 }
 
 impl PolyfillEq for ObjectIdentifierValue {
+    #[inline(always)]
     fn polyfill_eq(&self, other: &ObjectIdentifierValue) -> bool
     {
         self.0.polyfill_eq(&other.0)
@@ -77,9 +78,12 @@ impl SpecCombinator for ObjectIdentifier {
         match new_spec_object_identifier_inner().spec_parse(s) {
             Ok((len, (_, (first, rest_arcs)))) =>
                 match Self::parse_first_two_arcs(first) {
-                    Some((arc1, arc2)) => {
-                        Ok((len, seq![ arc1, arc2 ] + rest_arcs))
-                    },
+                    Some((arc1, arc2)) =>
+                        if rest_arcs.len() + 2 <= usize::MAX {
+                            Ok((len, seq![ arc1, arc2 ] + rest_arcs))
+                        } else {
+                            Err(())
+                        }
                     None => Err(()),
                 }
 
@@ -90,7 +94,7 @@ impl SpecCombinator for ObjectIdentifier {
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
     open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
-        if v.len() < 2 {
+        if v.len() < 2 || v.len() > usize::MAX {
             Err(())
         } else {
             match Self::serialize_first_two_arcs(v[0], v[1]) {
@@ -162,6 +166,7 @@ impl Combinator for ObjectIdentifier {
         None
     }
 
+    #[inline]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (len, (_, (first, mut rest_arcs))) = new_object_identifier_inner().parse(s)?;
 
@@ -172,7 +177,13 @@ impl Combinator for ObjectIdentifier {
             return Err(ParseError::Other("Invalid first two arcs".to_string()));
         }
 
-        let mut res = VecDeep::from_vec(vec![ arc1 as UInt, arc2 as UInt ]);
+        if rest_arcs.len() > usize::MAX - 2 {
+            return Err(ParseError::SizeOverflow);
+        }
+
+        let mut res = VecDeep::with_capacity(2 + rest_arcs.len());
+        res.push(arc1 as UInt);
+        res.push(arc2 as UInt);
         res.append(&mut rest_arcs);
 
         assert(res@ == self.spec_parse(s@).unwrap().1);
@@ -180,6 +191,7 @@ impl Combinator for ObjectIdentifier {
         Ok((len, ObjectIdentifierValue(res)))
     }
 
+    #[inline]
     fn serialize(&self, mut v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         let mut v = v.0;
         let ghost old_v = v@;
@@ -222,6 +234,7 @@ impl Continuation for OIDCont {
     type Input<'a> = LengthValue;
     type Output = AndThen<Bytes, (U8, Repeat<Base128UInt>)>;
 
+    #[inline(always)]
     fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
         AndThen(Bytes(i as usize), (U8, Repeat(Base128UInt)))
     }
@@ -250,6 +263,7 @@ pub open spec fn new_spec_object_identifier_inner() -> SpecObjectIdentifierInner
     }
 }
 
+#[inline(always)]
 fn new_object_identifier_inner() -> (res: ObjectIdentifierInner)
     ensures res@ == new_spec_object_identifier_inner()
 {

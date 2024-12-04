@@ -497,6 +497,7 @@ pub use gen_match_continuation_apply_helper;
 macro_rules! gen_match_continuation_apply {
     ($mapper:expr; $(($value:expr, $spec_value:expr, $combinator:expr),)* (, $last_combinator:expr)) => {
         ::builtin_macros::verus! {
+            #[inline(always)]
             fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
                 let other = $(!i.polyfill_eq(&$value) &&)* true;
                 $({ let v = $value; assert(ext_equal(v.view(), $spec_value)); })*

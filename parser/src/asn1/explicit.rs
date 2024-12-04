@@ -18,6 +18,7 @@ impl<T> ASN1Tagged for ExplicitTag<T> {
         self.0
     }
 
+    #[inline(always)]
     fn tag(&self) -> TagValue {
         self.0.clone()
     }
@@ -80,6 +81,7 @@ impl<T: Combinator> Combinator for ExplicitTag<T> where
         self.1.parse_requires()
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         LengthWrapped(&self.1).parse(s)
     }
@@ -88,6 +90,7 @@ impl<T: Combinator> Combinator for ExplicitTag<T> where
         self.1.serialize_requires()
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         LengthWrapped(&self.1).serialize(v, data, pos)
     }

@@ -14,36 +14,42 @@ pub trait PolyfillClone: View + Sized {
 }
 
 impl PolyfillClone for bool {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
 impl<'a> PolyfillClone for &'a str {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
 impl<'a, T> PolyfillClone for &'a [T] {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
 impl PolyfillClone for usize {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
 impl PolyfillClone for u8 {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
 impl PolyfillClone for u16 {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
@@ -58,30 +64,22 @@ impl PolyfillClone for u16 {
 
 impl<T: Copy> PolyfillClone for Vec<T>
 {
+    #[verifier::external_body]
+    #[inline(always)]
     fn clone(&self) -> Self {
-        let mut cloned: Vec<T> = Vec::new();
-
-        for i in 0..self.len()
-            invariant
-                cloned.len() == i,
-                forall |j| 0 <= j < i ==> #[trigger] cloned[j] == self[j],
-        {
-            cloned.push(self[i]);
-        }
-
-        assert(cloned@ =~= self@);
-
-        cloned
+        Clone::clone(self)
     }
 }
 
 impl<T1: PolyfillClone, T2: PolyfillClone> PolyfillClone for (T1, T2) {
+    #[inline(always)]
     fn clone(&self) -> Self {
         (self.0.clone(), self.1.clone())
     }
 }
 
 impl<T1: PolyfillClone, T2: PolyfillClone> PolyfillClone for Either<T1, T2> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         match self {
             Either::Left(v) => Either::Left(v.clone()),

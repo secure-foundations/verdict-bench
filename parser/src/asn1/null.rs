@@ -64,6 +64,7 @@ impl Combinator for Null {
         Some(1)
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         if s.len() >= 1 && s[0] == 0x00 {
             Ok((1, NullValue))
@@ -72,6 +73,7 @@ impl Combinator for Null {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if pos > usize::MAX - 1 || pos + 1 > data.len() {
             return Err(SerializeError::InsufficientBuffer);

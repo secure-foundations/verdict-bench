@@ -88,6 +88,7 @@ impl Combinator for PrintableString {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         Refined {
             inner: UTF8String,
@@ -95,6 +96,7 @@ impl Combinator for PrintableString {
         }.parse(s)
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         Refined {
             inner: UTF8String,
@@ -121,6 +123,7 @@ impl PrintableStringPred {
         ||| c == '?'
     }
 
+    #[inline(always)]
     fn exec_wf_char(c: char) -> (res: bool)
         ensures res == Self::wf_char(c)
     {

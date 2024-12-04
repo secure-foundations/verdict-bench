@@ -36,6 +36,7 @@ impl<'a, C: Combinator> PolyfillClone for CachedValue<'a, C> where
     C::V: SecureSpecCombinator<SpecResult = <C::Owned as View>::V>,
     C::Result<'a>: PolyfillClone,
 {
+    #[inline(always)]
     fn clone(&self) -> Self {
         proof {
             use_type_invariant(self);
@@ -58,6 +59,7 @@ impl<'a, C: Combinator> CachedValue<'a, C> where
         &&& self.serialized@ =~= res.unwrap()
     }
 
+    #[inline(always)]
     pub fn get(&self) -> (res: &C::Result<'a>)
         ensures res@ == self@
     {
@@ -70,6 +72,7 @@ impl<'a, C: Combinator> CachedValue<'a, C> where
     /// But the type of self.combinator is exposed to the user, and
     /// if there is a unique constructor for that type, then we can
     /// deduce that the serialized result would be the same.
+    #[inline(always)]
     pub fn serialize(&self) -> (res: &[u8])
         requires forall |c1: C, c2: C| c1.view() == c2.view()
         ensures forall |c: C| (#[trigger] c.view()).spec_serialize(self@) matches Ok(r) && r == res@
@@ -133,6 +136,7 @@ impl<T: Combinator> Combinator for Cached<T> where
         self.0.parse_requires()
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>)
     {
         let (n, x) = self.0.parse(s)?;
@@ -148,6 +152,7 @@ impl<T: Combinator> Combinator for Cached<T> where
         self.0.serialize_requires()
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<
         usize,
         SerializeError,

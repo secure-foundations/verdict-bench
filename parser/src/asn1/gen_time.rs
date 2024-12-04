@@ -94,10 +94,12 @@ impl Combinator for GeneralizedTime {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, v: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         LengthWrapped(GeneralizedTimeInner).parse(v)
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         LengthWrapped(GeneralizedTimeInner).serialize(v, data, pos)
     }

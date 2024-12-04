@@ -148,6 +148,7 @@ impl<C: Combinator> Repeat<C> where
 
     /// Helper function for parse()
     /// TODO: Recursion is not ideal, but hopefully tail call opt will kick in
+    #[inline(always)]
     fn parse_helper<'a>(&self, s: &'a [u8], res: &mut VecDeep<C::Result<'a>>) -> (r: Result<(), ParseError>)
         requires
             self.0.parse_requires(),
@@ -175,6 +176,7 @@ impl<C: Combinator> Repeat<C> where
         }
     }
 
+    #[inline(always)]
     fn serialize_helper(&self, v: &mut VecDeep<C::Result<'_>>, data: &mut Vec<u8>, pos: usize, len: usize)
         -> (res: Result<usize, SerializeError>)
         requires
@@ -214,6 +216,10 @@ impl<C: Combinator> Repeat<C> where
     }
 }
 
+/// TODO: this is somewhat arbitrary and based on the
+/// max number of arcs in an OID
+const REPEAT_DEFAULT_CAP: usize = 10;
+
 impl<C: Combinator> Combinator for Repeat<C> where
     <C as View>::V: SecureSpecCombinator<SpecResult = <C::Owned as View>::V>,
 {
@@ -234,7 +240,7 @@ impl<C: Combinator> Combinator for Repeat<C> where
     }
 
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
-        let mut res = VecDeep::new();
+        let mut res = VecDeep::with_capacity(REPEAT_DEFAULT_CAP);
         self.parse_helper(s, &mut res)?;
         Ok((s.len(), res))
     }

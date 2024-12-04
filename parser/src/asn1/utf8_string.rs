@@ -109,6 +109,7 @@ impl Combinator for UTF8String {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (n, l) = Length.parse(s)?;
 
@@ -126,6 +127,7 @@ impl Combinator for UTF8String {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         let s = str_to_utf8(v);
         let n = Length.serialize(s.len() as LengthValue, data, pos)?;

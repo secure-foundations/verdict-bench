@@ -287,6 +287,7 @@ impl SecureSpecCombinator for Base64 {
 
 /// Exec versions of some of the spec functions above
 impl Base64 {
+    #[inline(always)]
     fn char_to_bits(b: u8) -> (res: Result<Option<u8>, ()>)
         ensures res == Self::spec_char_to_bits(b)
     {
@@ -308,6 +309,7 @@ impl Base64 {
         }
     }
 
+    #[inline(always)]
     fn bits_to_char(b: u8) -> (res: u8)
         ensures res == Self::spec_bits_to_char(b)
     {
@@ -325,6 +327,7 @@ impl Base64 {
     }
 
     /// Exec version of spec_decode_6_bit_bytes
+    #[inline(always)]
     fn decode_6_bit_bytes(b1: u8, b2: u8, b3: u8, b4: u8) -> (res: (u8, u8, u8))
         ensures res == Self::spec_decode_6_bit_bytes(b1, b2, b3, b4)
     {
@@ -335,6 +338,7 @@ impl Base64 {
     }
 
     /// Exec version of spec_encode_6_bit_bytes
+    #[inline(always)]
     fn encode_6_bit_bytes(v1: u8, v2: u8, v3: u8) -> (res: (u8, u8, u8, u8))
         ensures res == Self::spec_encode_6_bit_bytes(v1, v2, v3)
     {

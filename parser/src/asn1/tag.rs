@@ -42,6 +42,7 @@ pub enum TagForm {
 }
 
 impl TagValue {
+    #[inline(always)]
     pub fn eq(self, other: TagValue) -> (res: bool)
         ensures res == (self == other)
     {
@@ -60,6 +61,7 @@ impl TagValue {
     }
 
     /// TODO: fix after Verus supports Clone
+    #[inline(always)]
     pub fn clone(&self) -> (res: TagValue)
         ensures res == *self
     {
@@ -201,6 +203,7 @@ impl Combinator for ASN1Tag {
         Some(1)
     }
 
+    #[inline]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         if s.len() == 0 {
             return Err(ParseError::UnexpectedEndOfInput);
@@ -231,6 +234,7 @@ impl Combinator for ASN1Tag {
         }
     }
 
+    #[inline]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         let class: u8 = match v.class {
             TagClass::Universal => 0,
@@ -297,6 +301,7 @@ impl<T: ASN1Tagged> ASN1Tagged for ASN1<T> {
         self.0.spec_tag()
     }
 
+    #[inline(always)]
     fn tag(&self) -> TagValue {
         self.0.tag()
     }
@@ -379,6 +384,7 @@ impl<T: ASN1Tagged + Combinator> Combinator for ASN1<T> where
         self.0.parse_requires()
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         proof {
             self.0.lemma_view_preserves_tag();
@@ -398,6 +404,7 @@ impl<T: ASN1Tagged + Combinator> Combinator for ASN1<T> where
         self.0.serialize_requires()
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         proof {
             self.0.lemma_view_preserves_tag();

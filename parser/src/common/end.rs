@@ -56,6 +56,7 @@ impl Combinator for End {
         Some(0)
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         if s.len() == 0 {
             Ok((0, EndValue))
@@ -64,6 +65,7 @@ impl Combinator for End {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if pos <= data.len() {
             let ghost empty: Seq<u8> = seq![];

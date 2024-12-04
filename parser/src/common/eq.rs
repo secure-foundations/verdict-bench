@@ -19,6 +19,7 @@ macro_rules! impl_trivial_polyfill_eq {
         $(
             ::builtin_macros::verus! {
                 impl PolyfillEq for $t {
+                    #[inline(always)]
                     fn polyfill_eq(&self, other: &Self) -> bool {
                         self == other
                     }
@@ -106,6 +107,7 @@ impl<T: PolyfillEq> PolyfillEq for VecDeep<T> {
 }
 
 impl<U: PolyfillEq, V: PolyfillEq> PolyfillEq for Either<U, V> {
+    #[inline(always)]
     fn polyfill_eq(&self, other: &Self) -> (res: bool) {
         match (self, other) {
             (Either::Left(a), Either::Left(b)) => a.polyfill_eq(b),
@@ -116,12 +118,14 @@ impl<U: PolyfillEq, V: PolyfillEq> PolyfillEq for Either<U, V> {
 }
 
 impl PolyfillEq for NullValue {
+    #[inline(always)]
     fn polyfill_eq(&self, other: &Self) -> (res: bool) {
         true
     }
 }
 
 impl PolyfillEq for EndValue {
+    #[inline(always)]
     fn polyfill_eq(&self, other: &Self) -> (res: bool) {
         true
     }

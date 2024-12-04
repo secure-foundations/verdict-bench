@@ -768,8 +768,8 @@ impl policy::GeneralName {
     pub fn from_names(names: &GeneralNamesValue) -> (res: Vec<policy::ExecGeneralName>)
         ensures res.deep_view() =~= Self::spec_from_names(names@),
     {
-        let mut gen_names = Vec::new();
         let len = names.len();
+        let mut gen_names = Vec::with_capacity(len);
 
         assert(names@.skip(0) == names@);
 
@@ -808,8 +808,8 @@ impl policy::GeneralName {
         ensures
             res.deep_view() =~= Self::spec_from_general_subtrees(subtrees@)
     {
-        let mut names = Vec::new();
         let len = subtrees.len();
+        let mut names = Vec::with_capacity(len);
 
         assert(subtrees@.skip(0) == subtrees@);
 
@@ -926,8 +926,8 @@ impl policy::DistinguishedName {
     pub fn from(name: &NameValue) -> (res: policy::ExecDistinguishedName)
         ensures res.deep_view() == Self::spec_from(name@),
     {
-        let mut dir_names = Vec::new();
         let len = name.len();
+        let mut dir_names = Vec::with_capacity(len);
 
         assert(name@.skip(0) == name@);
 
@@ -962,8 +962,8 @@ impl policy::DistinguishedName {
     pub fn from_rdn<'a, 'b>(rdn: &'b RDNValue<'a>) -> (res: Vec<policy::ExecAttribute>)
         ensures res.deep_view() == Self::spec_from_rdn(rdn@),
     {
-        let mut names = Vec::new();
         let len = rdn.len();
+        let mut names = Vec::with_capacity(len);
 
         assert(rdn@.skip(0) == rdn@);
 

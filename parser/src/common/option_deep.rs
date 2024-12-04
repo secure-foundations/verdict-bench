@@ -19,6 +19,7 @@ impl<T> OptionDeep<T> {
     }
 
     #[verifier::when_used_as_spec(spec_unwrap_or)]
+    #[inline(always)]
     pub fn unwrap_or(self, default: T) -> (res: T)
         ensures res == self.spec_unwrap_or(default)
     {
@@ -36,6 +37,7 @@ impl<T> OptionDeep<T> {
     }
 
     #[verifier::when_used_as_spec(spec_as_ref)]
+    #[inline(always)]
     pub fn as_ref(&self) -> (res: Option<&T>)
         ensures res == self.spec_as_ref()
     {
@@ -53,6 +55,7 @@ impl<T> OptionDeep<T> {
     }
 
     #[verifier::when_used_as_spec(spec_from_opt)]
+    #[inline(always)]
     pub fn from_opt(opt: Option<T>) -> (res: Self)
         ensures res == Self::spec_from_opt(opt)
     {

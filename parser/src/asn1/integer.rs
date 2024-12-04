@@ -81,6 +81,7 @@ impl Combinator for Integer {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (len, (n, v)) = new_integer_inner().parse(s)?;
 
@@ -91,6 +92,7 @@ impl Combinator for Integer {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         proof {
             lemma_min_num_bytes_signed(v);
@@ -107,6 +109,7 @@ impl Continuation for IntegerCont {
     type Input<'a> = LengthValue;
     type Output = VarInt;
 
+    #[inline(always)]
     fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
         VarInt(i as usize)
     }
@@ -136,6 +139,7 @@ pub open spec fn new_spec_integer_inner() -> SpecIntegerInner {
     }
 }
 
+#[inline(always)]
 fn new_integer_inner() -> (res: IntegerInner)
     ensures res.view() == new_spec_integer_inner()
 {

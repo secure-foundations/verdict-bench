@@ -525,6 +525,7 @@ impl Combinator for VarInt {
         Some(self.0)
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         if self.0 > uint_size!() {
             return Err(ParseError::SizeOverflow);
@@ -552,6 +553,7 @@ impl Combinator for VarInt {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if self.0 > uint_size!() {
             return Err(SerializeError::SizeOverflow);

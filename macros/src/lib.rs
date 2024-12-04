@@ -190,6 +190,7 @@ pub fn derive_polyfill_clone(input: TokenStream) -> TokenStream {
                     quote! {
                         ::builtin_macros::verus! {
                             impl<#(#impl_generic_params),*> PolyfillClone for #name<#(#generic_params),*> {
+                                #[inline(always)]
                                 fn clone(&self) -> Self {
                                     #name(#(#field_view),*)
                                 }
@@ -208,6 +209,7 @@ pub fn derive_polyfill_clone(input: TokenStream) -> TokenStream {
                     quote! {
                         ::builtin_macros::verus! {
                             impl<#(#impl_generic_params),*> PolyfillClone for #name<#(#generic_params),*> {
+                                #[inline(always)]
                                 fn clone(&self) -> Self {
                                     #name {
                                         #(#field_view),*
@@ -221,6 +223,7 @@ pub fn derive_polyfill_clone(input: TokenStream) -> TokenStream {
                     quote! {
                         ::builtin_macros::verus! {
                             impl<#(#impl_generic_params),*> PolyfillClone for #name<#(#generic_params),*> {
+                                #[inline(always)]
                                 fn clone(&self) -> Self {
                                     #name
                                 }
@@ -266,6 +269,7 @@ pub fn derive_polyfill_clone(input: TokenStream) -> TokenStream {
             quote! {
                 ::builtin_macros::verus! {
                     impl<#(#impl_generic_params),*> PolyfillClone for #name<#(#generic_params),*> {
+                        #[inline(always)]
                         fn clone(&self) -> Self {
                             match &self {
                                 #(#variant_matches),*

@@ -28,6 +28,7 @@ pub struct BitStringValue<'a>(&'a [u8]);
 pub struct BitStringValueOwned(Vec<u8>);
 
 impl<'a> PolyfillClone for BitStringValue<'a> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         proof {
             use_type_invariant(self);
@@ -66,6 +67,7 @@ impl<'a> BitStringValue<'a> {
         ||| s.len() > 1 && s[0] <= s.last().trailing_zeros()
     }
 
+    #[inline(always)]
     pub fn wf(s: &'a [u8]) -> (res: bool)
         ensures res == Self::spec_wf(s@)
     {
@@ -75,6 +77,7 @@ impl<'a> BitStringValue<'a> {
 
     /// Create a BitString from raw bytes
     /// The first byte of the slice should indicate the number of trailing zeros
+    #[inline(always)]
     pub fn new_raw(s: &'a [u8]) -> (res: Option<BitStringValue<'a>>)
         ensures
             res matches Some(res) ==> res@ == s@ && Self::spec_wf(res@),
@@ -88,6 +91,7 @@ impl<'a> BitStringValue<'a> {
     }
 
     /// Get the number of padded zeros at the end
+    #[inline(always)]
     pub fn trailing_zeros(&self) -> u8
     {
         proof {
@@ -101,6 +105,7 @@ impl<'a> BitStringValue<'a> {
     }
 
     /// Get the actual (zero-padded) bit string
+    #[inline(always)]
     pub fn bytes(&self) -> (res: &[u8])
         ensures res@ == Self::spec_bytes(self@)
     {
@@ -119,6 +124,7 @@ impl<'a> BitStringValue<'a> {
         &&& s[1 + n / 8] & (1u8 << (7 - n % 8)) != 0
     }
 
+    #[inline(always)]
     pub fn has_bit(&self, n: usize) -> (res: bool)
         ensures res == Self::spec_has_bit(self@, n as int)
     {
@@ -186,6 +192,7 @@ impl Combinator for BitString {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (len, v) = OctetString.parse(s)?;
 
@@ -196,6 +203,7 @@ impl Combinator for BitString {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         proof {
             use_type_invariant(&v);

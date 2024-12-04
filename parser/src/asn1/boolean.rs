@@ -70,6 +70,7 @@ impl Combinator for Boolean {
         Some(2)
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         if s.len() < 2 {
             Err(ParseError::UnexpectedEndOfInput)
@@ -82,6 +83,7 @@ impl Combinator for Boolean {
         }
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if pos > usize::MAX - 2 || pos + 2 > data.len() {
             return Err(SerializeError::InsufficientBuffer);

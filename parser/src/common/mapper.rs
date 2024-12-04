@@ -91,11 +91,13 @@ macro_rules! mapper_from_impls {
             }
 
             impl<$($param: View),*> From<$from<$($param),*>> for $to<$($param),*> {
+                #[inline(always)]
                 fn ex_from($forward_var: $from<$($param),*>) -> Self
                     $forward_body
             }
 
             impl<$($param: View),*> From<$to<$($param),*>> for $from<$($param),*> {
+                #[inline(always)]
                 fn ex_from($backward_var: $to<$($param),*>) -> Self
                     $backward_body
             }

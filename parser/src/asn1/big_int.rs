@@ -31,6 +31,7 @@ impl<'a> View for BigIntValue<'a> {
 }
 
 impl<'a> PolyfillEq for BigIntValue<'a> {
+    #[inline(always)]
     fn polyfill_eq(&self, other: &Self) -> bool {
         self.0.polyfill_eq(&other.0)
     }
@@ -45,6 +46,7 @@ impl View for BigIntOwned {
 }
 
 impl<'a> PolyfillClone for BigIntValue<'a> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         proof {
             use_type_invariant(self);
@@ -72,6 +74,7 @@ impl<'a> BigIntValue<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn wf(bytes: &'a [u8]) -> (res: bool)
         ensures res == BigIntValue::spec_wf(bytes@)
     {
@@ -84,6 +87,7 @@ impl<'a> BigIntValue<'a> {
     }
 
     /// The minimum number of bytes to represent the integer
+    #[inline(always)]
     pub fn byte_len(&self) -> (res: usize)
         ensures res == self.spec_byte_len()
     {
@@ -93,6 +97,7 @@ impl<'a> BigIntValue<'a> {
         self.0.len() - 1
     }
 
+    #[inline(always)]
     pub fn bytes(&self) -> (res: &[u8])
         ensures res@ == self@
     {
@@ -146,11 +151,13 @@ impl Combinator for BigInt {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let ((len, v)) = new_big_int_inner().parse(s)?;
         Ok((len, BigIntValue(v)))
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         new_big_int_inner().serialize(v.0, data, pos)
     }
@@ -188,6 +195,7 @@ pub open spec fn new_spec_big_int_inner() -> BigIntInner
     }
 }
 
+#[inline(always)]
 fn new_big_int_inner() -> (res: BigIntInner)
     ensures res@ == new_spec_big_int_inner()
 {

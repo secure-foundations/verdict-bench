@@ -81,6 +81,7 @@ impl<T: Combinator> Combinator for LengthWrapped<T> where
         self.0.parse_requires()
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (len, (_, v)) = new_length_wrapped_inner(&self.0).parse(s)?;
         Ok((len, v))
@@ -90,6 +91,7 @@ impl<T: Combinator> Combinator for LengthWrapped<T> where
         self.0.serialize_requires()
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         // TODO: can we avoid serializing twice?
         let len = self.0.serialize(v.clone(), data, pos)?;
@@ -113,6 +115,7 @@ impl<'b, T: Combinator> Continuation for LengthWrappedCont<'b, T> where
     type Input<'a> = LengthValue;
     type Output = AndThen<Bytes, &'b T>;
 
+    #[inline(always)]
     fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
         AndThen(Bytes(i as usize), &self.0)
     }
@@ -154,6 +157,7 @@ closed spec fn new_length_wrapped_inner_spec<'a, T: Combinator>(inner: &'a T) ->
     }
 }
 
+#[inline(always)]
 fn new_length_wrapped_inner<'a, T: Combinator>(inner: &'a T) -> (res: LengthWrappedInner<'a, T>) where
     <T as View>::V: SecureSpecCombinator<SpecResult = <<T as Combinator>::Owned as View>::V>,
 

@@ -514,11 +514,12 @@ impl Base128UInt {
     }
 
     /// TODO: change this to a non-recursive function
+    #[inline(always)]
     fn serialize_helper(v: UInt) -> (r: Vec<u8>)
         ensures r@ == Self::spec_serialize_helper(v, false)
     {
         if v == 0 {
-            Vec::new()
+            Vec::with_capacity(4) // usually OID arcs fit in 4 bytes
         } else {
             // Add the lowest 7 bits with the highest bit set to 0
             let mut r = Self::serialize_helper(v >> 7);

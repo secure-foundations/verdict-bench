@@ -222,7 +222,7 @@ pub fn vec_map<T, U>(v: &Vec<T>, f: impl Fn(&T) -> U) -> (res: Vec<U>)
             #![trigger v[i]]
             0 <= i < v.len() ==> call_ensures(f, (&v[i],), #[trigger] res[i]),
 {
-    let mut res = Vec::new();
+    let mut res = Vec::with_capacity(v.len());
     let mut j = 0;
     while j < v.len()
         invariant
@@ -270,7 +270,7 @@ pub fn vec_init_n<T: Clone + View>(n: usize, v: &T) -> (res: Vec<T>)
         res.len() == n,
         forall |i| 0 <= i < n ==> #[trigger] res@[i]@ == v@,
 {
-    let mut res: Vec<T> = Vec::new();
+    let mut res: Vec<T> = Vec::with_capacity(n);
 
     for i in 0..n
         invariant

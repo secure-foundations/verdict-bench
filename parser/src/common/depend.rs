@@ -222,6 +222,7 @@ impl<Fst, Snd, C> Combinator for Depend<Fst, Snd, C> where
         &&& Fst::V::is_prefix_secure()
     }
 
+    #[inline]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (n, v1) = self.fst.parse(s)?;
         let s_ = slice_subrange(s, n, s.len());
@@ -241,6 +242,7 @@ impl<Fst, Snd, C> Combinator for Depend<Fst, Snd, C> where
         &&& Fst::V::is_prefix_secure()
     }
 
+    #[inline]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<
         usize,
         SerializeError,

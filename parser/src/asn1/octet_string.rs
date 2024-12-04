@@ -60,11 +60,13 @@ impl Combinator for OctetString {
         None
     }
 
+    #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         let (len, (_, v)) = new_octet_string_inner().parse(s)?;
         Ok((len, v))
     }
 
+    #[inline(always)]
     fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         new_octet_string_inner().serialize((v.len() as LengthValue, v), data, pos)
     }
@@ -77,6 +79,7 @@ impl Continuation for BytesCont {
     type Input<'a> = LengthValue;
     type Output = Bytes;
 
+    #[inline(always)]
     fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
         Bytes(i as usize)
     }
@@ -115,6 +118,7 @@ closed spec fn spec_new_octet_string_inner() -> OctetStringInner
     }
 }
 
+#[inline(always)]
 fn new_octet_string_inner() -> (res: OctetStringInner)
     ensures
         res@ == new_spec_octet_string_inner(),
