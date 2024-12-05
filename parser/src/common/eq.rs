@@ -51,14 +51,14 @@ macro_rules! impl_polyfill_eq_for_slice_vec {
                             invariant
                                 len == self@.len(),
                                 self@.len() == other@.len(),
-                                forall |j| 0 <= j < i ==> self@[j] == other@[j],
+                                forall |j| !(0 <= j < i) || self@[j] == other@[j],
                         {
                             if self[i] != other[i] {
                                 return false;
                             }
                         }
 
-                        assert(self@ =~= other@);
+                        assert(::builtin::ext_equal(self@, other@));
 
                         true
                     }

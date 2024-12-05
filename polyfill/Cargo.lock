@@ -5,12 +5,12 @@ version = 3
 [[package]]
 name = "builtin"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#a3c257e717b7b6166ec14cb3580668fe9726c998"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 
 [[package]]
 name = "builtin_macros"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#a3c257e717b7b6166ec14cb3580668fe9726c998"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "prettyplease_verus",
  "proc-macro2",
@@ -32,7 +32,7 @@ dependencies = [
 [[package]]
 name = "prettyplease_verus"
 version = "0.1.15"
-source = "git+https://github.com/verus-lang/verus?branch=main#a3c257e717b7b6166ec14cb3580668fe9726c998"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "proc-macro2",
  "syn_verus",
@@ -70,7 +70,7 @@ dependencies = [
 [[package]]
 name = "syn_verus"
 version = "1.0.95"
-source = "git+https://github.com/verus-lang/verus?branch=main#a3c257e717b7b6166ec14cb3580668fe9726c998"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -104,7 +104,7 @@ checksum = "229730647fbc343e3a80e463c1db7f78f3855d3f3739bee0dda773c9a037c90a"
 [[package]]
 name = "vstd"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#a3c257e717b7b6166ec14cb3580668fe9726c998"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "builtin",
  "builtin_macros",

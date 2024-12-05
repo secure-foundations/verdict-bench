@@ -164,18 +164,18 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 [[package]]
 name = "builtin"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#12b857fe93dce7043ce689d9dc05abe88f6ca6db"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 
 [[package]]
 name = "builtin_macros"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#12b857fe93dce7043ce689d9dc05abe88f6ca6db"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "prettyplease_verus",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
+ "syn_verus 1.0.95 (git+https://github.com/zhengyao-lin/verus?branch=x509)",
  "synstructure",
 ]
 
@@ -502,12 +502,6 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "hashbrown"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-
-[[package]]
-name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
@@ -628,16 +622,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "indexmap"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
-dependencies = [
- "autocfg",
- "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -956,10 +940,10 @@ dependencies = [
 [[package]]
 name = "prettyplease_verus"
 version = "0.1.15"
-source = "git+https://github.com/verus-lang/verus?branch=main#12b857fe93dce7043ce689d9dc05abe88f6ca6db"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "proc-macro2",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
+ "syn_verus 1.0.95 (git+https://github.com/zhengyao-lin/verus?branch=x509)",
 ]
 
 [[package]]
@@ -1077,7 +1061,7 @@ dependencies = [
 name = "rspec"
 version = "0.1.0"
 dependencies = [
- "indexmap 2.7.0",
+ "indexmap",
  "proc-macro2",
  "quote",
  "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus)",
@@ -1086,6 +1070,11 @@ dependencies = [
 [[package]]
 name = "rspec-lib"
 version = "0.1.0"
+dependencies = [
+ "builtin",
+ "builtin_macros",
+ "vstd",
+]
 
 [[package]]
 name = "rustc-hash"
@@ -1207,17 +1196,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "state_machines_macros"
-version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#12b857fe93dce7043ce689d9dc05abe88f6ca6db"
-dependencies = [
- "indexmap 1.9.3",
- "proc-macro2",
- "quote",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus?branch=main)",
-]
-
-[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1248,7 +1226,7 @@ dependencies = [
 [[package]]
 name = "syn_verus"
 version = "1.0.95"
-source = "git+https://github.com/verus-lang/verus?branch=main#12b857fe93dce7043ce689d9dc05abe88f6ca6db"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1408,11 +1386,10 @@ dependencies = [
 [[package]]
 name = "vstd"
 version = "0.1.0"
-source = "git+https://github.com/verus-lang/verus?branch=main#12b857fe93dce7043ce689d9dc05abe88f6ca6db"
+source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "builtin",
  "builtin_macros",
- "state_machines_macros",
 ]
 
 [[package]]

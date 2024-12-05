@@ -153,7 +153,7 @@ impl Combinator for BigInt {
 
     #[inline(always)]
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
-        let ((len, v)) = new_big_int_inner().parse(s)?;
+        let (len, v) = new_big_int_inner().parse(s)?;
         Ok((len, BigIntValue(v)))
     }
 

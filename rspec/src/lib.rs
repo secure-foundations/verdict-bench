@@ -7,7 +7,21 @@ use quote::quote;
 use syn_verus::parse::{Parse, ParseStream};
 use syn_verus::punctuated::Punctuated;
 use syn_verus::spanned::Spanned;
-use syn_verus::{parse_macro_input, AngleBracketedGenericArguments, Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error, Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure, ExprField, ExprIf, ExprLit, ExprMatch, ExprMatches, ExprMethodCall, ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary, Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg, FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, LitBool, LitStr, Local, MatchesOpExpr, MatchesOpToken, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, PatWild, Path, PathArguments, PathSegment, Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath, TypeReference, UnOp, UseRename, UseTree, Variant, Visibility};
+use syn_verus::{
+    parse_macro_input, AngleBracketedGenericArguments,
+    Arm, BigAnd, BigOr, BinOp, Block, Ensures, Error,
+    Expr, ExprBinary, ExprBlock, ExprCall, ExprCast, ExprClosure,
+    ExprField, ExprIf, ExprLit, ExprMatch, ExprMatches, ExprMethodCall,
+    ExprParen, ExprPath, ExprReference, ExprTuple, ExprUnary,
+    Field, FieldPat, Fields, FieldsNamed, FieldsUnnamed, FnArg,
+    FnArgKind, FnMode, GenericArgument, Ident, Index, Item, ItemEnum,
+    ItemFn, ItemMod, ItemStruct, Lit, LitBool, LitStr, Local, MatchesOpExpr,
+    MatchesOpToken, Pat, PatIdent, PatPath, PatReference, PatStruct, PatTuple,
+    PatTupleStruct, PatType, PatWild, Path, PathArguments, PathSegment,
+    Publish, ReturnType, Signature, Specification, Stmt, Type, TypePath,
+    TypeReference, UnOp, UseRename, UseTree, Variant, Visibility,
+};
+
 
 struct Context {
     structs: IndexMap<String, ItemStruct>,
