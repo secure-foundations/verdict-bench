@@ -192,7 +192,7 @@ impl Combinator for ObjectIdentifier {
     }
 
     #[inline]
-    fn serialize(&self, mut v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
+    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         let mut v = v.0;
         let ghost old_v = v@;
 
@@ -251,6 +251,7 @@ impl Continuation for OIDCont {
 /// The inner version parses a length first
 /// then read a single byte (for the first two arcs)
 /// and then repeatedly read a sequence of Base128UInt's
+#[allow(dead_code)]
 type SpecObjectIdentifierInner = SpecDepend<Length, AndThen<Bytes, (U8, Repeat<Base128UInt>)>>;
 type ObjectIdentifierInner = Depend<Length, AndThen<Bytes, (U8, Repeat<Base128UInt>)>, OIDCont>;
 

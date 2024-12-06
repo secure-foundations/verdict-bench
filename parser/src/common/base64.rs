@@ -432,7 +432,7 @@ impl Combinator for Base64 {
         Ok((s.len(), out))
     }
 
-    fn serialize(&self, mut v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
+    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         let mut i = 0;
         let mut written = 0;
         let len = v.len();

@@ -1,3 +1,5 @@
+#![allow(unused_parens)]
+
 use vstd::prelude::*;
 use rspec::rspec;
 use rspec_lib::*;
@@ -168,7 +170,7 @@ pub open spec fn valid_san(env: &Environment, san: &SubjectAltName) -> bool {
             }
 }
 
-pub open spec fn match_san(env: &Environment, san: &SubjectAltName, name: &SpecString) -> bool {
+pub open spec fn match_san(san: &SubjectAltName, name: &SpecString) -> bool {
     exists |i: usize| 0 <= i < san.names.len() && {
         &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
         &&& match_name(&clean_name(dns_name), &name)
@@ -179,7 +181,7 @@ pub open spec fn match_san(env: &Environment, san: &SubjectAltName, name: &SpecS
 pub open spec fn match_san_domain(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
     &&& &cert.ext_subject_alt_name matches Some(san)
     &&& valid_san(env, san)
-    &&& match_san(env, san, domain)
+    &&& match_san(san, domain)
 }
 
 pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
@@ -344,7 +346,7 @@ pub open spec fn valid_root_fingerprint(env: &Environment, cert: &Certificate, d
     &&& is_anssi_fingerprint ==> exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && match_name(&env.anssi_domains[i as int], &domain)
 }
 
-pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize, domain: &SpecString) -> bool {
+pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, depth: usize, domain: &SpecString) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
 
     &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.crl_sign
@@ -368,7 +370,7 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
                 &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
                 &&& cert_verified_leaf(env, leaf, &domain)
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-                &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, &domain)
+                &&& cert_verified_root(env, root, (chain.len() - 2) as usize, &domain)
             })
         }
         _ => Err(PolicyError::UnsupportedTask),

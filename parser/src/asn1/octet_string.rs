@@ -95,6 +95,7 @@ impl Continuation for BytesCont {
     }
 }
 
+#[allow(dead_code)]
 type SpecOctetStringInner = SpecDepend<Length, Bytes>;
 type OctetStringInner = Depend<Length, Bytes, BytesCont>;
 

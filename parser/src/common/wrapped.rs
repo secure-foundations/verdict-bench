@@ -147,9 +147,11 @@ macro_rules! wrap_combinator_impls {
             impl $name {
                 /// Since we can't exactly specify the inner combinator in SpecCombinator,
                 /// we need to separately check that it is a valid Combinator
+                #[allow(dead_code)]
                 fn check_valid_inner_combinator() {
                     // Type check
                     // TODO: remove this once the Verus issue is fixed
+                    #[allow(unused_variables)]
                     let c: $inner_type = $inner_expr;
 
                     // For future compatibility, check that $inner_expr is also a valid spec expr

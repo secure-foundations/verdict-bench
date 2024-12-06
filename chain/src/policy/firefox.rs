@@ -1,3 +1,5 @@
+#![allow(unused_parens)]
+
 use vstd::prelude::*;
 use rspec::rspec;
 use rspec_lib::*;
@@ -64,7 +66,7 @@ pub struct Environment {
 pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     match cert.subject_key {
         SubjectKey::RSA { mod_length } => mod_length >= 1024,
-        SubjectKey::DSA { p_len, q_len, g_len } => p_len >= 1024,
+        SubjectKey::DSA { p_len, .. } => p_len >= 1024,
         SubjectKey::Other => true,
     }
 }
@@ -72,7 +74,7 @@ pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
 /// Mostly the same as Chrome's, except without checking
 /// publix suffix, and requiring that after '*.' there
 /// should be at least two components (i.e. "*.com" is invalid)
-pub open spec fn valid_name(env: &Environment, name: &SpecString) -> bool {
+pub open spec fn valid_name(name: &SpecString) -> bool {
     if name.has_char('*') {
         &&& name.len() > 2
         &&& name.char_at(0) == '*'
@@ -142,14 +144,14 @@ pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
     // TODO check if this is equivalent to extKetUsageValid in Hammurabi
 }
 
-pub open spec fn not_revoked(env: &Environment, cert: &Certificate) -> bool {
-    ||| cert.not_after >= cert.not_before && cert.not_after - cert.not_before < 864001 // 10 days
+// pub open spec fn not_revoked(env: &Environment, cert: &Certificate) -> bool {
+//     ||| cert.not_after >= cert.not_before && cert.not_after - cert.not_before < 864001 // 10 days
 
-    // notOCSPRevoked
-    ||| true
-}
+//     // notOCSPRevoked
+//     ||| true
+// }
 
-pub open spec fn match_common_name_domain(env: &Environment, cert: &Certificate, domain: &SpecString) -> bool {
+pub open spec fn match_common_name_domain(cert: &Certificate, domain: &SpecString) -> bool {
     exists |i: usize| #![trigger cert.subject_name.0[i as int]]
         0 <= i < cert.subject_name.0.len() &&
     exists |j: usize| #![trigger cert.subject_name.0[i as int][j as int]]
@@ -157,16 +159,16 @@ pub open spec fn match_common_name_domain(env: &Environment, cert: &Certificate,
         {
             let name = &cert.subject_name.0[i as int][j as int];
             &&& &name.oid == "2.5.4.3"@ // common name
-            &&& valid_name(&env, &name.value)
+            &&& valid_name(&name.value)
             &&& match_name(&name.value, &domain)
         }
 }
 
-pub open spec fn match_san_domain(env: &Environment, san: &SubjectAltName, domain: &SpecString) -> bool {
+pub open spec fn match_san_domain(san: &SubjectAltName, domain: &SpecString) -> bool {
     &&& forall |i: usize| #![trigger &san.names[i as int]]
             0 <= i < san.names.len() ==> {
                 &san.names[i as int] matches GeneralName::DNSName(dns_name)
-                    ==> valid_name(&env, dns_name)
+                    ==> valid_name(dns_name)
             }
 
     &&& exists |i: usize|
@@ -288,7 +290,7 @@ pub open spec fn is_international_valid_name(env: &Environment, cert: &Certifica
             match_name(&env.anssi_domains[i as int], &name)
 }
 
-pub open spec fn is_international_valid_san(env: &Environment, cert: &Certificate, san: &SubjectAltName, leaf: &Certificate) -> bool {
+pub open spec fn is_international_valid_san(env: &Environment, cert: &Certificate, san: &SubjectAltName) -> bool {
     forall |i: usize| #![trigger &san.names[i as int]]
         0 <= i < san.names.len() ==> {
             &san.names[i as int] matches GeneralName::DNSName(dns_name)
@@ -302,10 +304,10 @@ pub open spec fn is_international_valid_san(env: &Environment, cert: &Certificat
 /// TODO: this seems a bit weird, since it only checks if there is one valid SAN?
 pub open spec fn is_international_valid(env: &Environment, cert: &Certificate, leaf: &Certificate) -> bool {
     &leaf.ext_subject_alt_name matches Some(san)
-    ==> is_international_valid_san(env, cert, san, leaf)
+    ==> is_international_valid_san(env, cert, san)
 }
 
-pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize, domain: &SpecString) -> bool {
+pub open spec fn cert_verified_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(env, cert, leaf, depth)
     &&& !is_bad_symantec_root(env, cert)
     &&& is_international_valid(env, cert, leaf)
@@ -426,7 +428,7 @@ pub open spec fn cert_verified_intermediate(env: &Environment, cert: &Certificat
     &&& not_in_crl(env, cert)
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& extended_key_usage_valid(cert)
-    &&& not_revoked(env, cert)
+    // &&& not_revoked(env, cert)
     &&& check_name_constraints(cert, leaf)
 }
 
@@ -436,10 +438,10 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     // Check that SAN or CN is valid
     // and the domain belongs to one of them
     &&& match &cert.ext_subject_alt_name {
-        Some(san) => match_san_domain(env, san, domain),
+        Some(san) => match_san_domain(san, domain),
 
         // If SAN is not present, check CN instead
-        None => match_common_name_domain(env, cert, domain),
+        None => match_common_name_domain(cert, domain),
     }
 
     &&& &cert.ext_basic_constraints matches Some(bc) ==> !bc.is_ca
@@ -459,7 +461,7 @@ pub open spec fn cert_verified_leaf(env: &Environment, cert: &Certificate, domai
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid_leaf(cert)
     &&& extended_key_usage_valid(cert)
-    &&& not_revoked(env, cert)
+    // &&& not_revoked(env, cert)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
@@ -477,7 +479,7 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
                 &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
                 &&& cert_verified_leaf(env, leaf, &domain, false) // EV chains are not yet supported
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-                &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize, &domain)
+                &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize)
             })
         }
         _ => Err(PolicyError::UnsupportedTask),

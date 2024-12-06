@@ -74,12 +74,12 @@ impl Combinator for Null {
     }
 
     #[inline(always)]
-    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
+    fn serialize(&self, _v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if pos > usize::MAX - 1 || pos + 1 > data.len() {
             return Err(SerializeError::InsufficientBuffer);
         }
         data.set(pos, 0x00);
-        assert(data@ =~= seq_splice(old(data)@, pos, self@.spec_serialize(v@).unwrap()));
+        assert(data@ =~= seq_splice(old(data)@, pos, self@.spec_serialize(_v@).unwrap()));
         Ok(1)
     }
 }

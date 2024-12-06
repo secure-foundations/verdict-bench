@@ -624,7 +624,7 @@ impl Combinator for Base128UInt {
         Ok((len, v))
     }
 
-    fn serialize(&self, mut v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
+    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if pos >= data.len() {
             return Err(SerializeError::SizeOverflow);
         }

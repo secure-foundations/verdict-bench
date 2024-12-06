@@ -66,7 +66,7 @@ impl Combinator for End {
     }
 
     #[inline(always)]
-    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
+    fn serialize(&self, _v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<usize, SerializeError>) {
         if pos <= data.len() {
             let ghost empty: Seq<u8> = seq![];
             assert(data@ =~= seq_splice(old(data)@, pos, empty));

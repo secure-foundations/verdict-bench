@@ -51,12 +51,12 @@ impl Combinator for Unreachable {
     }
 
     #[inline(always)]
-    fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
+    fn parse<'a>(&self, _s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
         Err(ParseError::Other("Unreachable".to_string()))
     }
 
     #[inline(always)]
-    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> (res: Result<
+    fn serialize(&self, _v: Self::Result<'_>, _data: &mut Vec<u8>, _pos: usize) -> (res: Result<
         usize,
         SerializeError,
     >) {

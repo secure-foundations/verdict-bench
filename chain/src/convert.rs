@@ -26,6 +26,23 @@ macro_rules! spec_get_extension {
     }
 }
 
+/// Used for error handling in specs
+#[allow(unused_macros)]
+macro_rules! if_let {
+    ($body:expr) => {
+        ::builtin_macros::verus_proof_expr! { $body }
+    };
+
+    (let $pat:pat = $opt:expr; $(let $rest_pat:pat = $rest_opt:expr;)* $body:expr) => {
+        #[allow(irrefutable_let_patterns)]
+        if let $pat = ::builtin_macros::verus_proof_expr! { $opt } {
+            if_let!($(let $rest_pat = $rest_opt;)* { $body })
+        } else {
+            None
+        }
+    };
+}
+
 impl policy::Certificate {
     /// Convert a more concrete parsed certificate to
     /// an abstract certificate to be used in a policy
@@ -1030,30 +1047,12 @@ impl policy::DistinguishedName {
             DirectoryStringValue::PrintableString(s) => Some(s),
             DirectoryStringValue::UTF8String(s) => Some(s),
             DirectoryStringValue::IA5String(s) => Some(s),
-            DirectoryStringValue::TeletexString(s) => None,
-            DirectoryStringValue::UniversalString(s) => None,
-            DirectoryStringValue::BMPString(s) => None,
+            DirectoryStringValue::TeletexString(..) => None,
+            DirectoryStringValue::UniversalString(..) => None,
+            DirectoryStringValue::BMPString(..) => None,
             DirectoryStringValue::Unreachable => None,
         }
     }
 }
-
-/// Used for error handling in specs
-#[allow(unused_macros)]
-macro_rules! if_let {
-    ($body:expr) => {
-        ::builtin_macros::verus_proof_expr! { $body }
-    };
-
-    (let $pat:pat = $opt:expr; $(let $rest_pat:pat = $rest_opt:expr;)* $body:expr) => {
-        #[allow(irrefutable_let_patterns)]
-        if let $pat = ::builtin_macros::verus_proof_expr! { $opt } {
-            if_let!($(let $rest_pat = $rest_opt;)* { $body })
-        } else {
-            None
-        }
-    };
-}
-pub(crate) use if_let;
 
 }

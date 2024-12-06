@@ -152,7 +152,7 @@ impl<Inner, T> Combinator for Tag<Inner, T> where
         self.0.serialize_requires()
     }
 
-    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> Result<
+    fn serialize(&self, _v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> Result<
         usize,
         SerializeError,
     > {
@@ -189,7 +189,7 @@ impl<Inner, const N: usize> Combinator for Tag<Inner, [u8; N]> where
         self.0.serialize_requires()
     }
 
-    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> Result<
+    fn serialize(&self, _v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> Result<
         usize,
         SerializeError,
     > {
@@ -226,7 +226,7 @@ impl<Inner, 'a> Combinator for Tag<Inner, &'a [u8]> where
         self.0.serialize_requires()
     }
 
-    fn serialize(&self, v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> Result<
+    fn serialize(&self, _v: Self::Result<'_>, data: &mut Vec<u8>, pos: usize) -> Result<
         usize,
         SerializeError,
     > {

@@ -119,14 +119,14 @@ impl<U: PolyfillEq, V: PolyfillEq> PolyfillEq for Either<U, V> {
 
 impl PolyfillEq for NullValue {
     #[inline(always)]
-    fn polyfill_eq(&self, other: &Self) -> (res: bool) {
+    fn polyfill_eq(&self, _other: &Self) -> (res: bool) {
         true
     }
 }
 
 impl PolyfillEq for EndValue {
     #[inline(always)]
-    fn polyfill_eq(&self, other: &Self) -> (res: bool) {
+    fn polyfill_eq(&self, _other: &Self) -> (res: bool) {
         true
     }
 }

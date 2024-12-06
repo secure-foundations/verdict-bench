@@ -500,7 +500,7 @@ macro_rules! gen_match_continuation_apply {
             #[inline(always)]
             fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
                 let other = $(!i.polyfill_eq(&$value) &&)* true;
-                $({ let v = $value; assert(ext_equal(v.view(), $spec_value)); })*
+                $({ #[allow(unused_variables)] let v = $value; assert(ext_equal(v.view(), $spec_value)); })*
 
                 Mapped {
                     inner: gen_match_continuation_apply_helper!(i, other; $(($value, $combinator),)* (, $last_combinator)),

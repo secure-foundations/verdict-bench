@@ -1,8 +1,11 @@
+#![allow(unused_parens)]
+
 use vstd::prelude::*;
 use rspec::rspec;
 use rspec_lib::*;
 use crate::issue;
 
+#[allow(unused_imports)]
 pub use super::*;
 pub use super::chrome::{
     Environment as ChromeEnvironment,

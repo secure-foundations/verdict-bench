@@ -237,6 +237,8 @@ pub fn normalize_string(s: &str) -> (res: String)
 
     let mut res = string_new_with_cap(str_byte_len(s));
     let mut iter = str_chars(s);
+
+    #[allow(unused_variables)]
     let mut i: usize = 0;
 
     assert(s@.skip(0) == s@);

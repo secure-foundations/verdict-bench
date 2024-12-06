@@ -1,3 +1,5 @@
+#![allow(unused_parens)]
+
 use vstd::prelude::*;
 use rspec::rspec;
 use rspec_lib::*;
@@ -81,7 +83,7 @@ pub open spec fn check_ca(cert: &Certificate) -> u32
         1
     } else if &cert.ext_basic_constraints matches Some(bc) && !bc.is_ca {
         0
-    } else if cert.version == 1 || &cert.ext_key_usage matches Some(key_usage) {
+    } else if cert.version == 1 || &cert.ext_key_usage matches Some(..) {
         2
     } else {
         0
@@ -92,7 +94,7 @@ pub open spec fn check_ca(cert: &Certificate) -> u32
 pub open spec fn check_basic_constraints(cert: &Certificate) -> bool
 {
     &cert.ext_basic_constraints matches Some(bc) ==> {
-        &&& bc.path_len matches Some(path_len) ==> {
+        &&& bc.path_len matches Some(..) ==> {
             &&& bc.is_ca
             &&& &cert.ext_key_usage matches Some(key_usage)
             &&& key_usage.key_cert_sign
@@ -300,11 +302,11 @@ pub open spec fn valid_leaf(env: &Environment, cert: &Certificate) -> bool {
     valid_cert_common(env, cert, true, false, 0)
 }
 
-pub open spec fn valid_intermediate(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
+pub open spec fn valid_intermediate(env: &Environment, cert: &Certificate, depth: usize) -> bool {
     valid_cert_common(env, cert, false, false, depth)
 }
 
-pub open spec fn valid_root(env: &Environment, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
+pub open spec fn valid_root(env: &Environment, cert: &Certificate, depth: usize) -> bool {
     valid_cert_common(env, cert, false, true, depth)
 }
 
@@ -315,13 +317,10 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
     match task {
         Task::ChainValidation(Purpose::ServerAuth) =>
             Ok(chain.len() >= 2 && {
-                let leaf = &chain[0];
-                let root = &chain[chain.len() - 1];
-
                 &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
-                &&& valid_leaf(env, leaf)
-                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-                &&& valid_root(env, root, leaf, (chain.len() - 2) as usize)
+                &&& valid_leaf(env, &chain[0])
+                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
+                &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
                 &&& check_name_constraints(chain)
             }),
 

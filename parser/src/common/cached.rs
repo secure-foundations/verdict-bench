@@ -140,9 +140,8 @@ impl<T: Combinator> Combinator for Cached<T> where
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>)
     {
         let (n, x) = self.0.parse(s)?;
-        let len = s.len();
         proof {
-            assert(len <= usize::MAX);
+            assert(s.len() <= usize::MAX);
             self@.theorem_parse_serialize_roundtrip(s@);
         }
         Ok((n, CachedValue { inner: x, combinator: Ghost(self.0), serialized: slice_take(s, n) }))

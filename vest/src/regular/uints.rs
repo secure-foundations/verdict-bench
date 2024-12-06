@@ -1,19 +1,18 @@
+#![allow(unused_braces)]
+
 use crate::properties::*;
 use std::mem::size_of;
 use vstd::prelude::*;
+#[allow(unused_imports)]
 use vstd::seq_lib::*;
 use vstd::slice::*;
 
 verus! {
 
 global size_of u8 == 1;
-
 global size_of u16 == 2;
-
 global size_of u32 == 4;
-
 global size_of u64 == 8;
-
 global size_of usize == 8;
 
 /// Proof that the size of the unsigned integer types is as expected.

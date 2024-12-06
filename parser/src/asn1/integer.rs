@@ -125,6 +125,7 @@ impl Continuation for IntegerCont {
 
 /// A combinator that parses (n, v) where v is a VarInt parsed from n bytes
 /// This does not check if n is the minimum number of bytes required to represent v
+#[allow(dead_code)]
 type SpecIntegerInner = SpecDepend<Length, VarInt>;
 type IntegerInner = Depend<Length, VarInt, IntegerCont>;
 

@@ -115,7 +115,7 @@ impl<T> Combinator for BuilderCombinator<T> where T: Builder + View, T::V: Build
         }
     }
 
-    fn serialize(&self, v: (), data: &mut Vec<u8>, pos: usize) -> (res: Result<
+    fn serialize(&self, _v: (), data: &mut Vec<u8>, pos: usize) -> (res: Result<
         usize,
         SerializeError,
     >) {

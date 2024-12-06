@@ -80,7 +80,7 @@ verus! {
             // Completeness
             res is Err ==> Base64.spec_parse(encoded@) is Err,
     {
-        let (n, bytes) = Base64.parse(encoded)?;
+        let (_, bytes) = Base64.parse(encoded)?;
 
         assert(encoded.len() <= usize::MAX);
         proof {

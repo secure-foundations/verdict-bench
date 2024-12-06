@@ -23,11 +23,11 @@ VERUS_DEPS_SANITIZED = $(subst -,_,$(VERUS_DEPS))
 .SECONDARY:
 
 .PHONY: debug
-debug: target/debug/$(NAME).verusdata
+debug: target/debug/verify/$(NAME).verusdata
 	cargo build
 
 .PHONY: release
-release: target/release/$(NAME).verusdata
+release: target/release/verify/$(NAME).verusdata
 	cargo build --release
 
 .PHONY: test
@@ -46,9 +46,9 @@ build-cargo-deps-%:
 
 # For each $dep in VERUS_DEPS_SANITIZED, generate a rule to compile target/$dep.verusdata
 define DEP_TEMPLATE
-../$1/target/%/lib$1.rlib: $$(call rwildcard,../$1/src,*.rs)
+../$1/target/%/verify/lib$1.rlib: $$(call rwildcard,../$1/src,*.rs)
 	@echo "### Verifying Verus dependency $1 (../$1)"
-	cd ../$1 && make target/$$*/lib$1.rlib
+	cd ../$1 && make target/$$*/verify/lib$1.rlib
 endef
 $(foreach dep,$(VERUS_DEPS_SANITIZED),$(eval $(call DEP_TEMPLATE,$(dep))))
 
@@ -58,12 +58,12 @@ verus $(if $(filter lib,$(TYPE)),$(LIB_MAIN),$(EXEC_MAIN)) \
 	$(if $(filter lib,$(TYPE)),--crate-type=lib,) \
 	-L dependency=target/$1/deps \
 	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1/deps) \
-	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1) \
+	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1/verify) \
 	$(foreach dep,$(CARGO_DEPS_SANITIZED),--extern $(subst -,_,$(dep))=$(shell \
 		find target/$1/lib$(subst -,_,$(dep)).{rlib,so,dylib,rmeta} 2>/dev/null | head -n1)) \
 	$(foreach dep,$(VERUS_DEPS_SANITIZED), \
-		--extern $(dep)=../$(dep)/target/$1/lib$(dep).rlib \
-		--import $(dep)=../$(dep)/target/$1/$(dep).verusdata) \
+		--extern $(dep)=../$(dep)/target/$1/verify/lib$(dep).rlib \
+		--import $(dep)=../$(dep)/target/$1/verify/$(dep).verusdata) \
 	$(VERUS_FLAGS)
 endef
 
@@ -73,18 +73,17 @@ endef
 #
 # Each dependency <dep> in CARGO_DEPS_SANITIZED is mapped to verus argument --extern <dep>=target/<profile>/lib<dep>.<rlib|dylib|...>
 # Each dependency <dep> in VERUS_DEPS_SANITIZED is mapped to verus argument
-#     --extern <dep>=../<dep>/target/<profile>/lib<dep>.rlib
-#     --import <dep>=../<dep>/target/<profile>/<dep>.verusdata
-target/%/$(NAME).verusdata: $(SOURCE) build-cargo-deps-% $(foreach dep,$(VERUS_DEPS_SANITIZED),../$(dep)/target/%/lib$(dep).rlib)
-	mkdir -p target/$*
-	ls target/$*
-	$(call VERUS_COMMAND,$*) --export target/$*/$(NAME).verusdata
+#     --extern <dep>=../<dep>/target/<profile>/verify/lib<dep>.rlib
+#     --import <dep>=../<dep>/target/<profile>/verify/<dep>.verusdata
+target/%/verify/$(NAME).verusdata: $(SOURCE) build-cargo-deps-% $(foreach dep,$(VERUS_DEPS_SANITIZED),../$(dep)/target/%/verify/lib$(dep).rlib)
+	mkdir -p target/$*/verify
+	$(call VERUS_COMMAND,$*) --export target/$*/verify/$(NAME).verusdata
 
-target/%/lib$(NAME).rlib: $(SOURCE) build-cargo-deps-% $(foreach dep,$(VERUS_DEPS_SANITIZED),../$(dep)/target/%/lib$(dep).rlib)
-	mkdir -p target/$*
+target/%/verify/lib$(NAME).rlib: $(SOURCE) build-cargo-deps-% $(foreach dep,$(VERUS_DEPS_SANITIZED),../$(dep)/target/%/verify/lib$(dep).rlib)
+	mkdir -p target/$*/verify
 	$(call VERUS_COMMAND,$*) \
-		--export target/$*/$(NAME).verusdata \
-		--compile -o target/$*/lib$(NAME).rlib
+		--export target/$*/verify/$(NAME).verusdata \
+		--compile -o target/$*/verify/lib$(NAME).rlib
 
 .PHONY: clean
 clean:

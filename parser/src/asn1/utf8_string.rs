@@ -178,6 +178,7 @@ mod test {
         Ok(data)
     }
 
+    #[test]
     fn diff_with_der() {
         let diff = |s: &str| {
             let res1 = serialize_utf8_string(s).map_err(|_| ());

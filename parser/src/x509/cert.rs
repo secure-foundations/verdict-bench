@@ -30,6 +30,8 @@ pub type CertificateValue<'a> = CachedValue<'a, ASN1<CertificateInner>>;
 
 #[cfg(test)]
 mod test {
+    #![allow(unused_variables)]
+
     use super::*;
     use base64::Engine;
 

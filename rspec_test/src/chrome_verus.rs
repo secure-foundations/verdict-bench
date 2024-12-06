@@ -1,5 +1,9 @@
 use vstd::prelude::*;
+
+#[allow(unused_imports)]
 use crate::chrome::*;
+
+#[allow(unused_imports)]
 use rspec_lib::*;
 
 verus! {

@@ -131,6 +131,7 @@ impl<'b, T: Combinator> Continuation for LengthWrappedCont<'b, T> where
     }
 }
 
+#[allow(dead_code)]
 type SpecLengthWrappedInner<T> = SpecDepend<Length, AndThen<Bytes, T>>;
 type LengthWrappedInner<'a, T> = Depend<Length, AndThen<Bytes, &'a T>, LengthWrappedCont<'a, T>>;
 

@@ -274,6 +274,7 @@ pub fn vec_init_n<T: Clone + View>(n: usize, v: &T) -> (res: Vec<T>)
 {
     let mut res: Vec<T> = Vec::with_capacity(n);
 
+    #[allow(unused_variables)]
     for i in 0..n
         invariant
             res.len() == i,
