@@ -59,8 +59,10 @@ verus $(if $(filter lib,$(TYPE)),$(LIB_MAIN),$(EXEC_MAIN)) \
 	-L dependency=target/$1/deps \
 	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1/deps) \
 	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1/verify) \
-	$(foreach dep,$(CARGO_DEPS_SANITIZED),--extern $(subst -,_,$(dep))=$(shell \
-		find target/$1/lib$(subst -,_,$(dep)).{rlib,so,dylib,rmeta} 2>/dev/null | head -n1)) \
+	$(foreach dep,$(CARGO_DEPS_SANITIZED),--extern $(dep)=$(shell \
+		find target/$1/lib$(dep).rlib \
+		     target/$1/lib$(dep).so \
+			 target/$1/lib$(dep).dylib 2>/dev/null | head -n1)) \
 	$(foreach dep,$(VERUS_DEPS_SANITIZED), \
 		--extern $(dep)=../$(dep)/target/$1/verify/lib$(dep).rlib \
 		--import $(dep)=../$(dep)/target/$1/verify/$(dep).verusdata) \
