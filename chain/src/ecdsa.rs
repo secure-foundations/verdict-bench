@@ -98,7 +98,7 @@ pub fn p256_verify(
     };
 
     if p256_verify_internal(
-        Algorithm::EcDsaP256(DigestAlgorithm::Sha256),
+        internal_alg,
         pub_key,
         r,
         s,

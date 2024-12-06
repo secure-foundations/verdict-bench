@@ -364,7 +364,6 @@ impl<'a> Validator<'a> {
             res matches Ok(res) ==> res == self.get_query(bundle@, task.deep_view()).valid(),
     {
         let bundle_len = bundle.len();
-        let roots_len = self.roots.len();
 
         // root_issuers[i] are the indices of root certificates that likely issued bundle[i]
         let mut root_issuers: Vec<Vec<usize>> = Vec::with_capacity(bundle_len);

@@ -56,7 +56,7 @@ pub struct Environment {
 pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     match cert.subject_key {
         SubjectKey::RSA { mod_length } => mod_length >= 1024,
-        SubjectKey::DSA { p_len, q_len, g_len } => p_len >= 1024,
+        SubjectKey::DSA { p_len, .. } => p_len >= 1024,
         SubjectKey::Other => true,
     }
 }

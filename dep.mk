@@ -14,10 +14,12 @@ LIB_MAIN = src/lib.rs
 
 # Recursive wildcard from https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make/18258352#18258352
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
-
 SOURCE = $(call rwildcard,src,*.rs)
 
-# Do no delete intermediates
+CARGO_DEPS_SANITIZED = $(subst -,_,$(CARGO_DEPS))
+VERUS_DEPS_SANITIZED = $(subst -,_,$(VERUS_DEPS))
+
+# Do no delete intermediate files
 .SECONDARY:
 
 .PHONY: debug
@@ -32,8 +34,8 @@ release: target/release/$(NAME).verusdata
 test: $(TEST_TARGETS)
 	cargo test
 
-.PHONY: verify-deps-%
-verify-deps-%:
+.PHONY: build-cargo-deps-%
+build-cargo-deps-%:
 # Generate meta data for Rust dependencies
 	@set -e; \
 	for dep in $(CARGO_DEPS); do \
@@ -42,28 +44,25 @@ verify-deps-%:
 		$$cmd; \
     done
 
-# For each $dep in VERUS_DEPS, generate a rule to compile target/$dep.verusdata
+# For each $dep in VERUS_DEPS_SANITIZED, generate a rule to compile target/$dep.verusdata
 define DEP_TEMPLATE
 ../$1/target/%/lib$1.rlib: $$(call rwildcard,../$1/src,*.rs)
 	@echo "### Verifying Verus dependency $1 (../$1)"
 	cd ../$1 && make target/$$*/lib$1.rlib
 endef
-$(foreach dep,$(VERUS_DEPS),$(eval $(call DEP_TEMPLATE,$(dep))))
+$(foreach dep,$(VERUS_DEPS_SANITIZED),$(eval $(call DEP_TEMPLATE,$(dep))))
 
 define VERUS_COMMAND
 verus $(if $(filter lib,$(TYPE)),$(LIB_MAIN),$(EXEC_MAIN)) \
 	--crate-name $(NAME) \
 	$(if $(filter lib,$(TYPE)),--crate-type=lib,) \
 	-L dependency=target/$1/deps \
-	$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$1/deps) \
-	$(foreach dep,$(VERUS_DEPS),-L dependency=../$(dep)/target/$1) \
-	$(foreach dep,$(CARGO_DEPS),--extern $(subst -,_,$(dep))=$(firstword \
-		$(wildcard target/$1/lib$(subst -,_,$(dep)).rlib) \
-		$(wildcard target/$1/lib$(subst -,_,$(dep)).so) \
-		$(wildcard target/$1/lib$(subst -,_,$(dep)).dylib) \
-		$(wildcard target/$1/lib$(subst -,_,$(dep)).rmeta))) \
-	$(foreach dep,$(VERUS_DEPS), \
-		--extern $(dep)=$(firstword $(wildcard ../$(dep)/target/$1/lib$(dep).rlib)) \
+	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1/deps) \
+	$(foreach dep,$(VERUS_DEPS_SANITIZED),-L dependency=../$(dep)/target/$1) \
+	$(foreach dep,$(CARGO_DEPS_SANITIZED),--extern $(subst -,_,$(dep))=$(shell \
+		find target/$1/lib$(subst -,_,$(dep)).{rlib,so,dylib,rmeta} 2>/dev/null | head -n1)) \
+	$(foreach dep,$(VERUS_DEPS_SANITIZED), \
+		--extern $(dep)=../$(dep)/target/$1/lib$(dep).rlib \
 		--import $(dep)=../$(dep)/target/$1/$(dep).verusdata) \
 	$(VERUS_FLAGS)
 endef
@@ -72,15 +71,16 @@ endef
 # by this rule is only supposed to be used for verification purposes
 # Use `cargo build` to build the crate for execution.
 #
-# Each dependency <dep> in CARGO_DEPS is mapped to verus argument --extern <dep>=target/<profile>/lib<dep>.<rlib|dylib|...>
-# Each dependency <dep> in VERUS_DEPS is mapped to verus argument
+# Each dependency <dep> in CARGO_DEPS_SANITIZED is mapped to verus argument --extern <dep>=target/<profile>/lib<dep>.<rlib|dylib|...>
+# Each dependency <dep> in VERUS_DEPS_SANITIZED is mapped to verus argument
 #     --extern <dep>=../<dep>/target/<profile>/lib<dep>.rlib
 #     --import <dep>=../<dep>/target/<profile>/<dep>.verusdata
-target/%/$(NAME).verusdata: $(SOURCE) verify-deps-% $(foreach dep,$(VERUS_DEPS),../$(dep)/target/%/lib$(dep).rlib)
+target/%/$(NAME).verusdata: $(SOURCE) build-cargo-deps-% $(foreach dep,$(VERUS_DEPS_SANITIZED),../$(dep)/target/%/lib$(dep).rlib)
 	mkdir -p target/$*
+	ls target/$*
 	$(call VERUS_COMMAND,$*) --export target/$*/$(NAME).verusdata
 
-target/%/lib$(NAME).rlib: $(SOURCE) verify-deps-% $(foreach dep,$(VERUS_DEPS),../$(dep)/target/%/lib$(dep).rlib)
+target/%/lib$(NAME).rlib: $(SOURCE) build-cargo-deps-% $(foreach dep,$(VERUS_DEPS_SANITIZED),../$(dep)/target/%/lib$(dep).rlib)
 	mkdir -p target/$*
 	$(call VERUS_COMMAND,$*) \
 		--export target/$*/$(NAME).verusdata \
