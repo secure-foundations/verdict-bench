@@ -9,7 +9,7 @@ use chain::policy::ExecTask;
 use clap::Parser;
 use csv::{ReaderBuilder, WriterBuilder};
 
-use parser::{parse_x509_cert, decode_base64, VecDeep};
+use parser::{parse_x509_der, decode_base64, VecDeep};
 use chain::validate::Validator;
 
 use crate::ct_logs::*;
@@ -74,13 +74,15 @@ fn validate_ct_logs_job(
     let begin = Instant::now();
 
     let chain =
-        VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?);
+        VecDeep::from_vec(chain_bytes.iter().map(|bytes| parse_x509_der(bytes)).collect::<Result<Vec<_>, _>>()?);
+
+    let task = ExecTask::DomainValidation(entry.domain.to_string());
 
     if args.validator.debug {
-        print_debug_info(&validator.roots, &chain, &ExecTask::DomainValidation(entry.domain.to_string()), validator.get_validation_time());
+        print_debug_info(&validator.roots, &chain, &task, validator.get_validation_time());
     }
 
-    let res = validator.validate_hostname(&chain, &entry.domain)?;
+    let res = validator.validate(&chain, &task)?;
 
     *timer.lock().unwrap() += begin.elapsed();
 
@@ -114,7 +116,7 @@ pub fn main(args: Args) -> Result<(), Error>
             // TODO: move this outside
             let roots_bytes = read_pem_file_as_bytes(&args.roots)?;
             let roots =
-                roots_bytes.iter().map(|bytes| parse_x509_cert(bytes)).collect::<Result<Vec<_>, _>>()?;
+                roots_bytes.iter().map(|bytes| parse_x509_der(bytes)).collect::<Result<Vec<_>, _>>()?;
 
             let validator = validator::new_validator(&args.validator, roots)?;
 

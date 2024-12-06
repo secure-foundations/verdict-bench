@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use csv::ReaderBuilder;
 use clap::Parser;
 
-use parser::{parse_x509_cert, decode_base64};
+use parser::{parse_x509_der, decode_base64};
 
 use crate::ct_logs::*;
 use crate::error::*;
@@ -41,7 +41,7 @@ pub fn main(args: Args) -> Result<(), Error>
 
             let cert_bytes = decode_base64(result.cert_base64.as_bytes())?;
 
-            match parse_x509_cert(&cert_bytes) {
+            match parse_x509_der(&cert_bytes) {
                 Ok(cert) => {
                     let alg_str = format!("{:?}", cert.get().cert.get().subject_key.alg);
                     *subject_keys.entry(alg_str).or_insert(0) += 1;

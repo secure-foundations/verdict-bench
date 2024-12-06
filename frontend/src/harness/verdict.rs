@@ -5,11 +5,12 @@ use std::time::Instant;
 
 use chain::policy;
 use chain::policy::{ExecTask, ExecPolicy};
-use chain::validate::Validator;
+use chain::validate::{RootStore, Validator};
+
 use crossbeam::channel;
 use crossbeam::channel::Receiver;
 use crossbeam::channel::Sender;
-use parser::{parse_x509_cert, decode_base64, VecDeep};
+use parser::{parse_x509_der, decode_base64, VecDeep};
 
 use crate::validator::Policy;
 use crate::error::*;
@@ -35,35 +36,18 @@ pub struct VerdictInstance {
 }
 
 impl VerdictInstance {
-    fn worker(roots_bytes: Vec<Vec<u8>>, policy: ExecPolicy, rx_job: Receiver<Job>, tx_res: Sender<ValidationResult>) -> Result<(), Error> {
-        // Parse root certificates before receiving any job
-        let roots = roots_bytes.iter()
-            .map(|bytes| parse_x509_cert(bytes))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let validator = Validator::new(policy, VecDeep::from_vec(roots));
+    fn worker(roots_base64: Vec<Vec<u8>>, policy: ExecPolicy, rx_job: Receiver<Job>, tx_res: Sender<ValidationResult>) -> Result<(), Error> {
+        let store = RootStore::from_base64(&roots_base64)?;
+        let validator = Validator::from_root_store(policy, &store)?;
 
         while let Ok(Job { bundle, task, repeat }) = rx_job.recv() {
             let mut durations = Vec::with_capacity(repeat);
-            let mut res: Result<bool, Error> = Ok(false);
-
-            // Errors in chain parsing should not be raised to terminate the entire worker
-            let inner = || -> Result<bool, Error> {
-                let chain_bytes = bundle.iter().map(|base64: &String| {
-                    decode_base64(base64.as_bytes())
-                }).collect::<Result<Vec<_>, _>>()?;
-                let chain = chain_bytes.iter().map(|bytes| {
-                    parse_x509_cert(bytes)
-                }).collect::<Result<Vec<_>, _>>()?;
-
-                let chain = VecDeep::from_vec(chain);
-
-                Ok(validator.validate(&chain, &task)?)
-            };
+            let mut res = Ok(false);
+            let bundle_bytes = bundle.into_iter().map(|base64| base64.into_bytes()).collect();
 
             for _ in 0..repeat {
                 let start = Instant::now();
-                res = inner();
+                res = validator.validate_base64(&bundle_bytes, &task);
                 durations.push(start.elapsed().as_micros()
                     .try_into().map_err(|_| Error::DurationOverflow)?);
             }
@@ -74,7 +58,7 @@ impl VerdictInstance {
                     _ => false,
                 },
                 err: match res {
-                    Err(e) => e.to_string(),
+                    Err(e) => Error::from(e).to_string(),
                     _ => "".to_string(),
                 },
                 stats: durations,
@@ -87,7 +71,8 @@ impl VerdictInstance {
 
 impl Harness for VerdictHarness {
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
-        let roots_bytes = read_pem_file_as_bytes(roots_path)?;
+        let roots_base64 = read_pem_file_as_base64(roots_path)?
+            .into_iter().map(|base64| base64.into_bytes()).collect();
 
         let policy = match self.policy {
             Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
@@ -101,7 +86,7 @@ impl Harness for VerdictHarness {
         Ok(Box::new(VerdictInstance {
             tx_job: Some(tx_job),
             rx_res: Some(rx_res),
-            handle: Some(thread::spawn(move || VerdictInstance::worker(roots_bytes, policy, rx_job, tx_res))),
+            handle: Some(thread::spawn(move || VerdictInstance::worker(roots_base64, policy, rx_job, tx_res))),
         }))
     }
 }

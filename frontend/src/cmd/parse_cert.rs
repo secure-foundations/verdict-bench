@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use clap::Parser;
 
-use parser::parse_x509_cert;
+use parser::parse_x509_der;
 
 use crate::error::*;
 use crate::utils::*;
@@ -25,7 +25,7 @@ pub fn main(args: Args) -> Result<(), Error>
         let cert_bytes = cert_bytes?;
 
         let begin = Instant::now();
-        let parsed = parse_x509_cert(&cert_bytes);
+        let parsed = parse_x509_der(&cert_bytes);
         total_time += begin.elapsed();
 
         match parsed {

@@ -4,7 +4,7 @@ use chain::policy::ExecPurpose;
 use chain::policy::ExecTask;
 use clap::Parser;
 
-use parser::{parse_x509_cert, VecDeep};
+use parser::{parse_x509_der, VecDeep};
 
 use crate::error::*;
 use crate::utils::*;
@@ -40,7 +40,7 @@ pub fn main(args: Args) -> Result<(), Error> {
     let chain_bytes = read_pem_file_as_bytes(&args.chain)?;
 
     let roots = roots_bytes.iter().map(|cert_bytes| {
-        parse_x509_cert(cert_bytes)
+        parse_x509_der(cert_bytes)
     }).collect::<Result<Vec<_>, _>>()?;
 
     let repeat = args.repeat.unwrap_or(1);
@@ -65,7 +65,7 @@ pub fn main(args: Args) -> Result<(), Error> {
         let begin = Instant::now();
 
         let chain = VecDeep::from_vec(chain_bytes.iter().map(|cert_bytes| {
-            parse_x509_cert(cert_bytes)
+            parse_x509_der(cert_bytes)
         }).collect::<Result<Vec<_>, _>>()?);
 
         if args.validator.debug && i == 0 {

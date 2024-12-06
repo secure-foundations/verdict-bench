@@ -7,29 +7,46 @@ pub use common::*;
 use vstd::prelude::*;
 
 verus! {
-    /// A top-level parser with soundness/completeness/non-malleability
-    pub fn parse_x509_cert<'a>(bytes: &'a [u8]) -> (res: Result<x509::CertificateValue<'a>, ParseError>)
+    /// Top-level specification for x509 parsing from DER
+    pub closed spec fn spec_parse_x509_der(der: Seq<u8>) -> Option<x509::SpecCertificateValue> {
+        match x509::Certificate.spec_parse(der) {
+            Ok((n, cert)) if n == der.len() => Some(cert),
+            _ => None,
+        }
+    }
+
+    /// Spec for Base64 decoding
+    pub closed spec fn spec_decode_base64(base64: Seq<u8>) -> Option<Seq<u8>> {
+        match Base64.spec_parse(base64) {
+            Ok((n, bytes)) if n == base64.len() => Some(bytes),
+            _ => None,
+        }
+    }
+
+    /// Composition of `spec_parse_x509_der` and `spec_decode_base64`
+    pub open spec fn spec_parse_x509_base64(base64: Seq<u8>) -> Option<x509::SpecCertificateValue> {
+        match spec_decode_base64(base64) {
+            Some(der) => spec_parse_x509_der(der),
+            None => None,
+        }
+    }
+
+    /// Top-level impl for `spec_parse_x509_der` with soundness/completeness/non-malleability
+    pub fn parse_x509_der<'a>(bytes: &'a [u8]) -> (res: Result<x509::CertificateValue<'a>, ParseError>)
         ensures
             res matches Ok(res) ==> {
                 // Soundness
-                &&& x509::Certificate.spec_parse(bytes@) matches Ok((n, spec_res))
-                &&& res@ == spec_res
-                &&& bytes@.len() == n
+                &&& spec_parse_x509_der(bytes@) == Some(res@)
 
                 // Non-malleability
                 &&& forall |other: Seq<u8>| {
                     &&& other.len() <= usize::MAX
-                    &&& #[trigger] x509::Certificate.spec_parse(other) matches Ok((m, other_res))
-                    &&& m == other.len()
-                    &&& other_res == res@
+                    &&& #[trigger] spec_parse_x509_der(other) == Some(res@)
                 } ==> other == bytes@
             },
 
             // Completeness
-            res is Err ==> {
-                ||| x509::Certificate.spec_parse(bytes@) is Err
-                ||| x509::Certificate.spec_parse(bytes@) matches Ok((n, _)) && n != bytes@.len()
-            },
+            res is Err ==> spec_parse_x509_der(bytes@) is None,
     {
         let (n, cert) = x509::Certificate.parse(bytes)?;
         if n != bytes.len() {
@@ -41,9 +58,7 @@ verus! {
 
             assert forall |other: Seq<u8>| {
                 &&& other.len() <= usize::MAX
-                &&& #[trigger] x509::Certificate.spec_parse(other) matches Ok((m, other_res))
-                &&& m == other.len()
-                &&& other_res == cert@
+                &&& #[trigger] spec_parse_x509_der(other) == Some(cert@)
             } implies other == bytes@ by {
                 let (m, other_res) = x509::Certificate.spec_parse(other).unwrap();
                 let other_ser = x509::Certificate.spec_serialize(other_res).unwrap();
@@ -65,20 +80,17 @@ verus! {
         ensures
             res matches Ok(res) ==> {
                 // Soundness
-                &&& Base64.spec_parse(encoded@) matches Ok((n, spec_res))
-                &&& res@ == spec_res
-                &&& encoded@.len() == n
+                &&& spec_decode_base64(encoded@) == Some(res@)
 
                 // Non-malleability
                 &&& forall |other: Seq<u8>| {
                     &&& other.len() <= usize::MAX
-                    &&& #[trigger] Base64.spec_parse(other) matches Ok((_, other_res))
-                    &&& other_res == res@
+                    &&& #[trigger] spec_decode_base64(other) == Some(res@)
                 } ==> other == encoded@
             },
 
             // Completeness
-            res is Err ==> Base64.spec_parse(encoded@) is Err,
+            res is Err ==> spec_decode_base64(encoded@) is None,
     {
         let (_, bytes) = Base64.parse(encoded)?;
 
@@ -88,8 +100,7 @@ verus! {
 
             assert forall |other: Seq<u8>| {
                 &&& other.len() <= usize::MAX
-                &&& #[trigger] Base64.spec_parse(other) matches Ok((_, other_res))
-                &&& other_res == bytes@
+                &&& #[trigger] spec_decode_base64(other) == Some(bytes@)
             } implies other == encoded@ by {
                 let (_, other_res) = Base64.spec_parse(other).unwrap();
                 let other_ser = Base64.spec_serialize(other_res).unwrap();

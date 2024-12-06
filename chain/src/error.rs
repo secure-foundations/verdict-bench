@@ -1,4 +1,5 @@
 use vstd::prelude::*;
+use parser::ParseError;
 use crate::policy::ExecPolicyError;
 
 verus! {
@@ -12,6 +13,13 @@ pub enum ValidationError {
     RSAPubKeyParseError,
     UnexpectedExtParam,
     PolicyError(ExecPolicyError),
+    ParseError(ParseError),
+}
+
+impl From<ParseError> for ValidationError {
+    fn from(err: ParseError) -> Self {
+        ValidationError::ParseError(err)
+    }
 }
 
 }

@@ -12,6 +12,71 @@ use crate::error::*;
 
 verus! {
 
+/// Top-level spec for X509 validation
+/// from certificates encoded in Base64
+pub open spec fn spec_validate_x509_base64(
+    // Base64 encodings of trusted roots
+    roots_base64: Seq<Seq<u8>>,
+
+    // Base64 encodings of certificate chain
+    // consisting of a leaf certificate (`chain[0`])
+    // and intermediate certificates (`chain[1..]`)
+    chain_base64: Seq<Seq<u8>>,
+
+    policy: policy::Policy,
+    task: policy::Task,
+) -> bool
+    recommends chain_base64.len() != 0
+{
+    let roots = roots_base64.map_values(|base64| spec_parse_x509_base64(base64).unwrap());
+    let chain = chain_base64.map_values(|base64| spec_parse_x509_base64(base64).unwrap());
+
+    Query {
+        policy: policy,
+        roots: roots,
+        bundle: chain,
+        task: task,
+    }.valid()
+}
+
+/// An implementation for `spec_validate_x509_base64`
+/// Note that it's recommended to cache the result of creating
+/// a `RootStore` and `Validator` for better performance without
+/// processing roots every time.
+pub fn validate_x509_base64(
+    roots_base64: &Vec<Vec<u8>>,
+    chain_base64: &Vec<Vec<u8>>,
+
+    policy: policy::ExecPolicy,
+    task: &policy::ExecTask,
+) -> (res: Result<bool, ValidationError>)
+    requires chain_base64@.len() != 0
+    ensures
+        res matches Ok(res) ==> res == spec_validate_x509_base64(
+            roots_base64.deep_view(),
+            chain_base64.deep_view(),
+            policy.deep_view(),
+            task.deep_view(),
+        ),
+{
+    let store = RootStore::from_base64(roots_base64)?;
+    let validator = Validator::from_root_store(policy, &store)?;
+    let res = validator.validate_base64(chain_base64, task)?;
+
+    // Some conversions from deep_view and view
+    assert(roots_base64.deep_view() =~~= roots_base64@.map_values(|base64: Vec<u8>| base64@));
+    assert(chain_base64.deep_view() =~~= chain_base64@.map_values(|base64: Vec<u8>| base64@));
+
+    assert(validator.roots@ =~= roots_base64.deep_view().map_values(|base64: Seq<u8>| spec_parse_x509_base64(base64).unwrap()));
+    assert(
+        chain_base64@.map_values(|base64: Vec<u8>| spec_parse_x509_base64(base64@).unwrap())
+        =~~=
+        chain_base64.deep_view().map_values(|base64| spec_parse_x509_base64(base64).unwrap())
+    );
+
+    Ok(res)
+}
+
 pub struct Query {
     pub policy: policy::Policy,
     pub roots: Seq<SpecCertificateValue>,
@@ -107,6 +172,31 @@ impl<'a> Validator<'a> {
         }
 
         Validator { policy, roots, roots_rsa_cache }
+    }
+
+    /// Initialize a validator from a root store
+    pub fn from_root_store(policy: policy::ExecPolicy, store: &'a RootStore) -> (res: Result<Validator<'a>, ValidationError>)
+        ensures
+            res matches Ok(res) ==> {
+                &&& res.wf()
+                &&& res.policy == policy
+                &&& res.roots@ =~= store.roots_der@.map_values(|der: Vec<u8>| spec_parse_x509_der(der@).unwrap())
+            }
+    {
+        let roots_len = store.roots_der.len();
+        let mut roots = VecDeep::with_capacity(roots_len);
+
+        for i in 0..roots_len
+            invariant
+                roots_len == store.roots_der@.len(),
+                i == roots@.len(),
+                forall |i| 0 <= i < roots@.len() ==>
+                    spec_parse_x509_der(store.roots_der@[i]@) == Some(#[trigger] roots@[i]),
+        {
+            roots.push(parse_x509_der(store.roots_der[i].as_slice())?);
+        }
+
+        Ok(Self::new(policy, roots))
     }
 
     pub closed spec fn wf(self) -> bool {
@@ -501,26 +591,69 @@ impl<'a> Validator<'a> {
         }
     }
 
-    pub fn validate_hostname(&self, bundle: &VecDeep<CertificateValue>, domain: &str) -> (res: Result<bool, ValidationError>)
+    /// Same as `validate`, but parses certificates from DER
+    pub fn validate_der(&self, bundle: &Vec<Vec<u8>>, task: &policy::ExecTask) -> (res: Result<bool, ValidationError>)
         requires
             self.wf(),
             bundle@.len() != 0,
 
         ensures
-            res matches Ok(res) ==> res == self.get_query(bundle@, policy::Task::DomainValidation(domain@)).valid(),
+            // Soundness & completeness (modulo ValidationError)
+            res matches Ok(res) ==>
+                res == self.get_query(
+                    bundle@.map_values(|der: Vec<u8>| spec_parse_x509_der(der@).unwrap()),
+                    task.deep_view(),
+                ).valid(),
     {
-        self.validate(bundle, &policy::ExecTask::DomainValidation(domain.to_string()))
+        let bundle_len = bundle.len();
+        let mut bundle_parsed: VecDeep<CertificateValue> = VecDeep::with_capacity(bundle_len);
+
+        for i in 0..bundle_len
+            invariant
+                bundle_len == bundle@.len(),
+                bundle_parsed@.len() == i,
+                forall |j| 0 <= j < i ==> spec_parse_x509_der(bundle@[j]@) == Some(#[trigger] bundle_parsed@[j]),
+        {
+            bundle_parsed.push(parse_x509_der(bundle[i].as_slice())?);
+        }
+        assert(bundle_parsed@ =~= bundle@.map_values(|der: Vec<u8>| spec_parse_x509_der(der@).unwrap()));
+
+        self.validate(&bundle_parsed, task)
     }
 
-    pub fn validate_purpose(&self, bundle: &VecDeep<CertificateValue>, purpose: policy::ExecPurpose) -> (res: Result<bool, ValidationError>)
+    /// Same as `validate`, but parses certificates from Base64
+    pub fn validate_base64(&self, bundle: &Vec<Vec<u8>>, task: &policy::ExecTask) -> (res: Result<bool, ValidationError>)
         requires
             self.wf(),
             bundle@.len() != 0,
 
         ensures
-            res matches Ok(res) ==> res == self.get_query(bundle@, policy::Task::ChainValidation(purpose.deep_view())).valid(),
+            // Soundness & completeness (modulo ValidationError)
+            res matches Ok(res) ==>
+                res == self.get_query(
+                    bundle@.map_values(|base64: Vec<u8>| spec_parse_x509_base64(base64@).unwrap()),
+                    task.deep_view(),
+                ).valid(),
     {
-        self.validate(bundle, &policy::ExecTask::ChainValidation(purpose))
+        let bundle_len = bundle.len();
+        let mut bundle_der: Vec<Vec<u8>> = Vec::with_capacity(bundle_len);
+
+        for i in 0..bundle_len
+            invariant
+                bundle_len == bundle@.len(),
+                bundle_der@.len() == i,
+                forall |j| 0 <= j < i ==> spec_decode_base64(bundle@[j]@) == Some(#[trigger] bundle_der@[j]@),
+        {
+            bundle_der.push(decode_base64(bundle[i].as_slice())?);
+        }
+
+        assert(
+            bundle_der@.map_values(|der: Vec<u8>| spec_parse_x509_der(der@).unwrap())
+            =~=
+            bundle@.map_values(|base64: Vec<u8>| spec_parse_x509_base64(base64@).unwrap())
+        );
+
+        self.validate_der(&bundle_der, task)
     }
 
     pub fn get_validation_time(&self) -> u64
@@ -530,6 +663,41 @@ impl<'a> Validator<'a> {
             policy::ExecPolicy::Firefox(env) => env.time,
             policy::ExecPolicy::OpenSSL(env) => env.time,
         }
+    }
+}
+
+pub struct RootStore {
+    /// DER encodings of all root certificates
+    pub roots_der: Vec<Vec<u8>>,
+}
+
+impl RootStore {
+    /// Creates a root store from base64 encodings of root certificates
+    pub fn from_base64(roots_base64: &Vec<Vec<u8>>) -> (res: Result<RootStore, ParseError>)
+        ensures
+            res matches Ok(res) ==> {
+                &&& res.roots_der@.len() == roots_base64.len()
+                &&& forall |i| 0 <= i < roots_base64@.len() ==>
+                        spec_decode_base64(#[trigger] roots_base64@[i]@) == Some(res.roots_der@[i]@)
+            },
+            res is Err ==>
+                exists |i| 0 <= i < roots_base64.len() &&
+                    spec_decode_base64(#[trigger] roots_base64@[i]@) is None,
+    {
+        let mut roots_der: Vec<Vec<u8>> = Vec::with_capacity(roots_base64.len());
+        let len = roots_base64.len();
+
+        for i in 0..len
+            invariant
+                len == roots_base64@.len(),
+                roots_der@.len() == i,
+                forall |j| 0 <= j < i ==>
+                    spec_decode_base64(#[trigger] roots_base64@[j]@) == Some(roots_der@[j]@),
+        {
+            roots_der.push(decode_base64(roots_base64[i].as_slice())?);
+        }
+
+        Ok(RootStore { roots_der })
     }
 }
 
