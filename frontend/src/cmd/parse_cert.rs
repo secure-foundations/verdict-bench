@@ -18,9 +18,6 @@ pub struct Args {
 /// Read from stdin a sequence of PEM-encoded certificates, parse them, and print them to stdout
 pub fn main(args: Args) -> Result<(), Error>
 {
-    const PREFIX: &'static str = "-----BEGIN CERTIFICATE-----";
-    const SUFFIX: &'static str = "-----END CERTIFICATE-----";
-
     let mut num_parsed = 0;
     let mut total_time = Duration::new(0, 0);
 

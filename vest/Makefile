@@ -1,5 +1,5 @@
 NAME = vest
-TARGETS = libvest.rlib
+TYPE = lib
 
 CARGO_DEPS =
 VERUS_DEPS =

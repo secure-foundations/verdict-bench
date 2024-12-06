@@ -1,6 +1,6 @@
 mod common;
-mod chrome;
-mod firefox;
-mod openssl;
+pub mod chrome;
+pub mod firefox;
+pub mod openssl;
 
 pub use common::*;

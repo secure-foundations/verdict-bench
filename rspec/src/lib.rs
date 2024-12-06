@@ -824,6 +824,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
                 // By default, we just clone the same binary operation
                 _ => Ok(Expr::Binary(ExprBinary {
+                    attrs: Vec::new(),
                     left: Box::new(compile_expr(ctx, local, &expr_binary.left)?),
                     right: Box::new(compile_expr(ctx, local, &expr_binary.right)?),
                     ..expr_binary.clone()
@@ -871,7 +872,6 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                                 let mut #quant_var = _lower;
 
                                 if _lower < _upper {
-                                    #[verifier::loop_isolation(false)]
                                     while #quant_var < _upper
                                         invariant
                                             _lower <= #quant_var <= _upper,
@@ -904,7 +904,6 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                                 let mut #quant_var = _lower;
 
                                 if _lower < _upper {
-                                    #[verifier::loop_isolation(false)]
                                     while #quant_var < _upper
                                         invariant
                                             _lower <= #quant_var <= _upper,
@@ -938,6 +937,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
                 // TODO: filter unsupported ops
                 UnOp::Deref(..) | UnOp::Neg(..) | UnOp::Not(..) =>
                     Ok(Expr::Unary(ExprUnary {
+                        attrs: Vec::new(),
                         expr: Box::new(compile_expr(ctx, local, &expr_unary.expr)?),
                         ..expr_unary.clone()
                     })),
@@ -947,12 +947,14 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
         Expr::Paren(expr_paren) =>
             Ok(Expr::Paren(ExprParen {
+                attrs: Vec::new(),
                 expr: Box::new(compile_expr(ctx, local, &expr_paren.expr)?),
                 ..expr_paren.clone()
             })),
 
         Expr::Block(expr_block) =>
             Ok(Expr::Block(ExprBlock {
+                attrs: Vec::new(),
                 block: compile_block(ctx, local, &expr_block.block)?,
                 ..expr_block.clone()
             })),
@@ -975,6 +977,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
         Expr::If(expr_if) =>
             Ok(Expr::If(ExprIf {
+                attrs: Vec::new(),
                 cond: Box::new(compile_expr(ctx, local, &expr_if.cond)?),
                 then_branch: compile_block(ctx, local, &expr_if.then_branch)?,
                 else_branch: if let Some((tok, expr)) = &expr_if.else_branch {
@@ -988,6 +991,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
         // For field expressions, wrap the result in a reference
         Expr::Field(expr_field) =>
             Ok(Expr::Field(ExprField {
+                attrs: Vec::new(),
                 base: Box::new(compile_expr(ctx, local, &expr_field.base)?),
                 ..expr_field.clone()
             })),
@@ -1007,6 +1011,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
         // TODO: filter unsupported calls
         Expr::Call(expr_call) =>
             Ok(Expr::Call(ExprCall {
+                attrs: Vec::new(),
                 func: Box::new(compile_expr(ctx, local, &expr_call.func)?),
                 args: expr_call.args.iter().map(|arg| compile_expr(ctx, local, arg)).collect::<Result<_, Error>>()?,
                 ..expr_call.clone()
@@ -1089,6 +1094,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
         Expr::Match(expr_match) =>
             Ok(Expr::Match(ExprMatch {
+                attrs: Vec::new(),
                 expr: Box::new(compile_expr(ctx, local, &expr_match.expr)?),
                 arms: expr_match.arms.iter().map(|arm| compile_match_arm(ctx, local, arm)).collect::<Result<_, Error>>()?,
                 ..expr_match.clone()
@@ -1096,6 +1102,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
         Expr::Tuple(expr_tuple) =>
             Ok(Expr::Tuple(ExprTuple {
+                attrs: Vec::new(),
                 elems: expr_tuple.elems.iter().map(|expr| compile_expr(ctx, local, expr)).collect::<Result<_, Error>>()?,
                 ..expr_tuple.clone()
             })),
@@ -1162,6 +1169,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
             match compile_type(ctx, &expr_cast.ty) {
                 // `as <t>` for a supported t will be converted
                 Ok(ty) => Ok(Expr::Cast(ExprCast {
+                    attrs: Vec::new(),
                     expr: Box::new(compile_expr(ctx, local, &expr_cast.expr)?),
                     ty: Box::new(ty),
                     ..expr_cast.clone()
@@ -1174,6 +1182,7 @@ fn compile_expr(ctx: &Context, local: &LocalContext, expr: &Expr) -> Result<Expr
 
         Expr::Reference(expr_reference) =>
             Ok(Expr::Reference(ExprReference {
+                attrs: Vec::new(),
                 expr: Box::new(compile_expr(ctx, local, &expr_reference.expr)?),
                 ..expr_reference.clone()
             })),
@@ -1467,7 +1476,7 @@ fn compile_rspec(items: Items, trace: bool) -> Result<TokenStream2, Error> {
     // For each function, generate an exec version
     for item_fn in ctx.fns.values() {
         let exec_fn = compile_spec_fn(&ctx, item_fn, trace)?;
-        output.push(quote! { #[inline(always)] #exec_fn });
+        output.push(quote! { #[inline(always)] #[verifier::loop_isolation(false)] #exec_fn });
     }
 
     // println!("########################################");

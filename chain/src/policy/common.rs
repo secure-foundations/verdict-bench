@@ -3,22 +3,20 @@ use rspec::rspec;
 use rspec_lib::*;
 use crate::issue;
 
+pub use super::*;
 pub use super::chrome::{
     Environment as ChromeEnvironment,
     ExecEnvironment as ExecChromeEnvironment,
-    valid_chain as chrome_valid_chain,
     exec_valid_chain as exec_chrome_valid_chain,
 };
 pub use super::firefox::{
     Environment as FirefoxEnvironment,
     ExecEnvironment as ExecFirefoxEnvironment,
-    valid_chain as firefox_valid_chain,
     exec_valid_chain as exec_firefox_valid_chain,
 };
 pub use super::openssl::{
     Environment as OpenSSLEnvironment,
     ExecEnvironment as ExecOpenSSLEnvironment,
-    valid_chain as openssl_valid_chain,
     exec_valid_chain as exec_openssl_valid_chain,
 };
 
@@ -282,6 +280,22 @@ pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) ->
 }
 
 } // rspec!
+
+/// Using these wrappers since using `valid_chain as chrome_valid_chain` fails with cargo
+pub closed spec fn chrome_valid_chain(env: &ChromeEnvironment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+{
+    chrome::valid_chain(env, chain, task)
+}
+
+pub closed spec fn firefox_valid_chain(env: &FirefoxEnvironment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+{
+    firefox::valid_chain(env, chain, task)
+}
+
+pub closed spec fn openssl_valid_chain(env: &OpenSSLEnvironment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+{
+    openssl::valid_chain(env, chain, task)
+}
 
 /// NOTE: unspecified
 pub closed spec fn str_lower(s: &SpecString) -> SpecString;

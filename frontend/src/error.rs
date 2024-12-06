@@ -76,9 +76,6 @@ pub enum Error {
     #[error("verdict bench error: {0}")]
     VerdictBenchError(String),
 
-    #[error("task unsupported by harness")]
-    UnsupportedTask,
-
     #[error("failed to decode UTF-8: {0}")]
     UTF8Error(#[from] std::str::Utf8Error),
 

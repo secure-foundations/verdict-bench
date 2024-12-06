@@ -139,7 +139,7 @@ pub fn main(args: Args) -> Result<(), Error>
     let out_csv = args.out_csv.clone();
     workers.push(thread::spawn(move || -> Result<(), Error> {
         // Open the output file if it exists, otherwise use stdout
-        let mut handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
+        let handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
             Box::new(File::create(out_path)?)
         } else {
             Box::new(std::io::stdout())

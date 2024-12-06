@@ -204,7 +204,7 @@ fn worker(args: &Args, mut instance: Box<dyn Instance>, rx_job: Receiver<CTLogEn
 /// Collect validation results from `rx_res` and write them to a CSV file (or stdout if not specified)
 fn reducer(out_csv: Option<String>, rx_res: Receiver<CTLogResult>) -> Result<(), Error> {
     // Open the output file if it exists, otherwise use stdout
-    let mut handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
+    let handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
         Box::new(File::create(out_path)?)
     } else {
         Box::new(std::io::stdout())
@@ -234,8 +234,6 @@ pub fn main(args: Args) -> Result<(), Error> {
 
     let timestamp = args.override_time.unwrap_or(Utc::now().timestamp()) as u64;
     let harness: Box<dyn Harness> = get_harness(&args)?;
-
-    let mut found_hash = false;
 
     let (tx_job, rx_job) = channel::unbounded();
     let (tx_res, rx_res) = channel::unbounded();

@@ -1,5 +1,5 @@
 NAME = test_rspec
-TARGETS = test-rspec
+TYPE = bin
 
 CARGO_DEPS = rspec
 VERUS_DEPS = rspec_lib

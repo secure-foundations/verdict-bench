@@ -1,5 +1,5 @@
 NAME = parser
-TARGETS = libparser.rlib
+TYPE = lib
 
 CARGO_DEPS = der base64 paste macros
 VERUS_DEPS = vest polyfill

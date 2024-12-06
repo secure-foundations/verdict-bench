@@ -5,6 +5,7 @@ use super::*;
 verus! {
 
 /// Macro for generating a mapper
+/// ```
 /// mapper! {
 ///     struct ValidityMapper;
 ///
@@ -27,6 +28,7 @@ verus! {
 ///     exec<'a> <TimeValue<'a>, TimeValue<'a>>
 ///     owned <TimeValueOwned, TimeValueOwned>
 /// }
+/// ```
 #[allow(unused_macros)]
 macro_rules! mapper {
     (

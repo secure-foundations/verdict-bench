@@ -61,7 +61,7 @@ impl VerdictInstance {
                 Ok(validator.validate(&chain, &task)?)
             };
 
-            for i in 0..repeat {
+            for _ in 0..repeat {
                 let start = Instant::now();
                 res = inner();
                 durations.push(start.elapsed().as_micros()

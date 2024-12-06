@@ -58,7 +58,7 @@ pub fn main(args: Args) -> Result<(), Error>
 
     // Read CSV file1 into a HashMap
     let file1 = File::open(&args.file1)?;
-    let mut file1_results: HashMap<String, (CTLogResultLegacy, DiffClass)> =
+    let file1_results: HashMap<String, (CTLogResultLegacy, DiffClass)> =
         ReaderBuilder::new()
             .has_headers(false)
             .from_reader(file1)

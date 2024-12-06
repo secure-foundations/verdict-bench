@@ -10,12 +10,19 @@ vstd = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
 limbo-harness-support = { git = "https://github.com/C2SP/x509-limbo", branch = "main" }
 parser = { path = "../parser" }
 chain = { path = "../chain" }
+rspec-lib = { path = "../rspec_lib" }
 clap = { version = "4.5.21", features = ["derive"] }
 thiserror = "1.0.63"
 csv = "1.3.0"
-serde = { version = "1.0.210", features = ["derive"] }
+serde = { version = "1.0.215", features = ["derive"] }
 chrono = "0.4.38"
 regex = "1.11.0"
 crossbeam = "0.8.4"
-rspec-lib = { path = "../rspec_lib" }
 tempfile = "3.14.0"
+
+[profile.verify]
+inherits = "dev"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

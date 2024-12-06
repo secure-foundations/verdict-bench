@@ -1,5 +1,5 @@
 NAME = chain
-TARGETS = libchain.rlib
+TYPE = lib
 
 CARGO_DEPS = macros libcrux libcrux-hacl chrono aws-lc-rs rspec
 VERUS_DEPS = parser polyfill vest rspec_lib

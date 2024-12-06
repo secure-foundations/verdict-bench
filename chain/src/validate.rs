@@ -241,6 +241,7 @@ impl<'a> Validator<'a> {
     /// Given a simple path through the bundle certificates
     /// and all root issuers of the last certificate in the path,
     /// check if the entire path satisfies the policy
+    #[verifier::loop_isolation(false)]
     fn check_simple_path(
         &self,
         bundle: &VecDeep<CertificateValue>,
@@ -264,7 +265,6 @@ impl<'a> Validator<'a> {
         let root_issuers_len = root_issuers.len();
         let ghost query = self.get_query(bundle@, task.deep_view());
 
-        #[verifier::loop_isolation(false)]
         for i in 0..root_issuers_len
             invariant
                 forall |j| 0 <= j < i ==>
@@ -306,6 +306,7 @@ impl<'a> Validator<'a> {
     }
 
     /// Get indices of root certificates that likely issued the given certificate
+    #[verifier::loop_isolation(false)]
     fn get_root_issuer(&self, cert: &CertificateValue) -> (res: Vec<usize>)
         requires self.wf()
         ensures self.spec_root_issuers(cert@, res@)
@@ -315,7 +316,6 @@ impl<'a> Validator<'a> {
 
         let ghost pred = |j: usize| spec_likely_issued(self.roots@[j as int], cert@);
 
-        #[verifier::loop_isolation(false)]
         for i in 0..roots_len
             invariant
                 forall |i| 0 <= i < res.len() ==> 0 <= #[trigger] res[i] < self.roots@.len(),
@@ -411,7 +411,6 @@ impl<'a> Validator<'a> {
                 }
 
                 // Push any extension of `path` that is still a simple path
-                #[verifier::loop_isolation(false)]
                 for i in 0..bundle_len
                     invariant
                         stack@.len() >= prev_stack.len() - 1,
