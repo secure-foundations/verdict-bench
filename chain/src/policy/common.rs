@@ -3,38 +3,31 @@
 use vstd::prelude::*;
 use rspec::rspec;
 use rspec_lib::*;
+
 use crate::issue;
 
 #[allow(unused_imports)]
 pub use super::*;
-pub use super::chrome::{
-    Environment as ChromeEnvironment,
-    ExecEnvironment as ExecChromeEnvironment,
-    exec_valid_chain as exec_chrome_valid_chain,
-};
-pub use super::firefox::{
-    Environment as FirefoxEnvironment,
-    ExecEnvironment as ExecFirefoxEnvironment,
-    exec_valid_chain as exec_firefox_valid_chain,
-};
-pub use super::openssl::{
-    Environment as OpenSSLEnvironment,
-    ExecEnvironment as ExecOpenSSLEnvironment,
-    exec_valid_chain as exec_openssl_valid_chain,
-};
 
 verus! {
 
+pub trait Policy: Send {
+    // /// User-defined issuing relation without checking signature
+    // spec fn spec_likely_issued(self, issuer: Certificate, subject: Certificate) -> bool;
+
+    // fn likely_issued(&self, issuer: &ExecCertificate, subject: &ExecCertificate) -> (res: bool)
+    //     ensures res == self.spec_likely_issued(issuer.deep_view(), subject.deep_view());
+
+    /// User-defined chain/path validation
+    spec fn spec_valid_chain(&self, chain: Seq<Certificate>, task: Task) -> Result<bool, PolicyError>;
+
+    fn valid_chain(&self, chain: &Vec<ExecCertificate>, task: &ExecTask) -> (res: Result<bool, ExecPolicyError>)
+        ensures res.deep_view() == self.spec_valid_chain(chain.deep_view(), task.deep_view());
+
+    fn get_validation_time(&self) -> u64;
+}
+
 rspec! {
-
-use ExecChromeEnvironment as ChromeEnvironment;
-use exec_chrome_valid_chain as chrome_valid_chain;
-
-use ExecFirefoxEnvironment as FirefoxEnvironment;
-use exec_firefox_valid_chain as firefox_valid_chain;
-
-use ExecOpenSSLEnvironment as OpenSSLEnvironment;
-use exec_openssl_valid_chain as openssl_valid_chain;
 
 /// Corresponds to `AttributeTypeAndValue` in X.509
 pub struct Attribute {
@@ -172,22 +165,8 @@ pub enum Task {
     ChainValidation(Purpose),
 }
 
-pub enum Policy {
-    Chrome(ChromeEnvironment),
-    Firefox(FirefoxEnvironment),
-    OpenSSL(OpenSSLEnvironment),
-}
-
 pub enum PolicyError {
     UnsupportedTask,
-}
-
-pub open spec fn valid_chain(policy: &Policy, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError> {
-    match policy {
-        Policy::Chrome(env) => chrome_valid_chain(env, chain, task),
-        Policy::Firefox(env) => firefox_valid_chain(env, chain, task),
-        Policy::OpenSSL(env) => openssl_valid_chain(env, chain, task),
-    }
 }
 
 /// Match a pattern with wildcard (e.g. "*.example.com") against a string
@@ -283,22 +262,6 @@ pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) ->
 }
 
 } // rspec!
-
-/// Using these wrappers since using `valid_chain as chrome_valid_chain` fails with cargo
-pub closed spec fn chrome_valid_chain(env: &ChromeEnvironment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
-{
-    chrome::valid_chain(env, chain, task)
-}
-
-pub closed spec fn firefox_valid_chain(env: &FirefoxEnvironment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
-{
-    firefox::valid_chain(env, chain, task)
-}
-
-pub closed spec fn openssl_valid_chain(env: &OpenSSLEnvironment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
-{
-    openssl::valid_chain(env, chain, task)
-}
 
 /// NOTE: unspecified
 pub closed spec fn str_lower(s: &SpecString) -> SpecString;

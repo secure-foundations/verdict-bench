@@ -538,6 +538,13 @@ pub fn string_push(s: &mut String, c: char)
 }
 
 #[verifier::external_body]
+pub fn strs_to_strings(strs: &[&str]) -> (res: Vec<String>)
+    ensures res.deep_view() == strs.deep_view()
+{
+    strs.iter().map(|s| s.to_string()).collect()
+}
+
+#[verifier::external_body]
 pub fn format_dbg(a: impl Debug) -> String {
     format!("{:?}", a)
 }

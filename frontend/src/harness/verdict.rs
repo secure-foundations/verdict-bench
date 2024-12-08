@@ -3,8 +3,9 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use chain::policy;
-use chain::policy::{ExecTask, ExecPolicy};
+use clap::ValueEnum;
+
+use chain::policy::{self, Policy, ExecTask};
 use chain::validate::{RootStore, Validator};
 
 use crossbeam::channel;
@@ -12,14 +13,20 @@ use crossbeam::channel::Receiver;
 use crossbeam::channel::Sender;
 use parser::{parse_x509_der, decode_base64, VecDeep};
 
-use crate::validator::Policy;
 use crate::error::*;
 use crate::utils::*;
 
 use super::common::*;
 
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum PolicyName {
+    ChromeHammurabi,
+    FirefoxHammurabi,
+    OpenSSL,
+}
+
 pub struct VerdictHarness {
-    pub policy: Policy,
+    pub policy: PolicyName,
     pub debug: bool,
 }
 
@@ -36,7 +43,7 @@ pub struct VerdictInstance {
 }
 
 impl VerdictInstance {
-    fn worker(roots_base64: Vec<Vec<u8>>, policy: ExecPolicy, rx_job: Receiver<Job>, tx_res: Sender<ValidationResult>) -> Result<(), Error> {
+    fn worker<P: Policy>(roots_base64: Vec<Vec<u8>>, policy: P, rx_job: Receiver<Job>, tx_res: Sender<ValidationResult>) -> Result<(), Error> {
         let store = RootStore::from_base64(&roots_base64)?;
         let validator = Validator::from_root_store(policy, &store)?;
 
@@ -74,19 +81,23 @@ impl Harness for VerdictHarness {
         let roots_base64 = read_pem_file_as_base64(roots_path)?
             .into_iter().map(|base64| base64.into_bytes()).collect();
 
-        let policy = match self.policy {
-            Policy::ChromeHammurabi => policy::ExecPolicy::chrome_hammurabi(timestamp),
-            Policy::FirefoxHammurabi => policy::ExecPolicy::firefox_hammurabi(timestamp),
-            Policy::OpenSSL => policy::ExecPolicy::openssl(timestamp),
-        };
-
         let (tx_job, rx_job) = channel::bounded(1);
         let (tx_res, rx_res) = channel::bounded(1);
+
+        let policy_name = self.policy;
 
         Ok(Box::new(VerdictInstance {
             tx_job: Some(tx_job),
             rx_res: Some(rx_res),
-            handle: Some(thread::spawn(move || VerdictInstance::worker(roots_base64, policy, rx_job, tx_res))),
+            handle: Some(thread::spawn(move ||
+                match policy_name {
+                    PolicyName::ChromeHammurabi =>
+                        VerdictInstance::worker(roots_base64, policy::ChromePolicy::default(timestamp), rx_job, tx_res),
+                    PolicyName::FirefoxHammurabi =>
+                        VerdictInstance::worker(roots_base64, policy::FirefoxPolicy::default(timestamp), rx_job, tx_res),
+                    PolicyName::OpenSSL =>
+                        VerdictInstance::worker(roots_base64, policy::OpenSSLPolicy::default(timestamp), rx_job, tx_res),
+                })),
         }))
     }
 }

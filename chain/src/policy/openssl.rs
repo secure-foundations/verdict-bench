@@ -8,6 +8,33 @@ use super::common::*;
 
 verus! {
 
+pub use internal::ExecPolicy as OpenSSLPolicy;
+
+impl Policy for OpenSSLPolicy {
+    closed spec fn spec_valid_chain(&self, chain: Seq<Certificate>, task: Task) -> Result<bool, PolicyError> {
+        internal::valid_chain(&self.deep_view(), &chain, &task)
+    }
+
+    fn valid_chain(&self, chain: &Vec<ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
+        internal::exec_valid_chain(self, chain, task)
+    }
+
+    fn get_validation_time(&self) -> u64 {
+        self.time
+    }
+}
+
+impl OpenSSLPolicy {
+    /// Create a Firefox policy with the same settings in Hammurabi
+    pub fn default(time: u64) -> Self {
+        OpenSSLPolicy { time }
+    }
+}
+
+mod internal {
+
+use super::*;
+
 rspec! {
 
 use ExecAttribute as Attribute;
@@ -33,7 +60,7 @@ use exec_permit_name as permit_name;
 use exec_clone_dn as clone_dn;
 use exec_clone_string as clone_string;
 
-pub struct Environment {
+pub struct Policy {
     pub time: u64,
 }
 
@@ -65,7 +92,7 @@ pub open spec fn check_cert_key_level(cert: &Certificate) -> bool
 }
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
-pub open spec fn check_cert_time(env: &Environment, cert: &Certificate) -> bool
+pub open spec fn check_cert_time(env: &Policy, cert: &Certificate) -> bool
 {
     &&& cert.not_before < env.time
     &&& cert.not_after > env.time
@@ -132,12 +159,6 @@ pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) ->
     } else {
         cert.all_exts matches None
     }
-}
-
-/// Check if a NameConstraints has a directory name constraint in the permitted list
-pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
-    exists |i: usize| 0 <= i < constraints.permitted.len() &&
-        #[trigger] &constraints.permitted[i as int] matches GeneralName::DirectoryName(_)
 }
 
 /// nc_dns: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L629
@@ -255,7 +276,7 @@ pub open spec fn check_purpose(cert: &Certificate, is_leaf: bool) -> bool
 
 /// Common checks for certificates, this includes checks in
 /// - check_extensions: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
-pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize) -> bool
+pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize) -> bool
 {
     // NOTE: unhandled critical extensions not checked
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L543-L545
@@ -298,21 +319,21 @@ pub open spec fn valid_cert_common(env: &Environment, cert: &Certificate, is_lea
         (bc.path_len matches Some(path_len) ==> depth as i64 <= path_len))
 }
 
-pub open spec fn valid_leaf(env: &Environment, cert: &Certificate) -> bool {
+pub open spec fn valid_leaf(env: &Policy, cert: &Certificate) -> bool {
     valid_cert_common(env, cert, true, false, 0)
 }
 
-pub open spec fn valid_intermediate(env: &Environment, cert: &Certificate, depth: usize) -> bool {
+pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usize) -> bool {
     valid_cert_common(env, cert, false, false, depth)
 }
 
-pub open spec fn valid_root(env: &Environment, cert: &Certificate, depth: usize) -> bool {
+pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> bool {
     valid_cert_common(env, cert, false, true, depth)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
 {
     match task {
         Task::ChainValidation(Purpose::ServerAuth) =>
@@ -328,7 +349,7 @@ pub open spec fn valid_chain(env: &Environment, chain: &Seq<Certificate>, task: 
     }
 }
 
-}
+} // rspec!
 
 pub open spec fn clone_dn(name: &DistinguishedName) -> DistinguishedName {
     *name
@@ -350,5 +371,7 @@ fn exec_clone_string(name: &String) -> (res: String)
 {
     name.clone()
 }
+
+} // mod internal
 
 }

@@ -1,7 +1,6 @@
 mod error;
 mod utils;
 mod ct_logs;
-mod validator;
 mod harness;
 mod cmd;
 
@@ -28,9 +27,6 @@ enum Action {
     /// Parse a specific format of certificates stored in CSVs
     ParseCTLogs(parse_ct_logs::Args),
 
-    /// Validate certificates in the given CT log files
-    ValidateCTLog(validate_ct_logs::Args),
-
     /// Compare the results of two CT logs
     DiffResults(diff_results::Args),
 
@@ -43,7 +39,6 @@ fn main_args(args: Args) -> Result<(), Error> {
         Action::ParseCert(args) => parse_cert::main(args),
         Action::Validate(args) => validate::main(args),
         Action::ParseCTLogs(args) => parse_ct_logs::main(args),
-        Action::ValidateCTLog(args) => validate_ct_logs::main(args),
         Action::DiffResults(args) => diff_results::main(args),
         Action::BenchCTLogs(args) => bench_ct_logs::main(args),
     }

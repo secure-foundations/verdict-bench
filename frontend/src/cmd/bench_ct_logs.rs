@@ -17,7 +17,6 @@ use crate::ct_logs::*;
 use crate::error::*;
 use crate::utils::*;
 use crate::harness::*;
-use crate::validator::Policy;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -153,19 +152,19 @@ fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
 
         BenchHarness::VerdictChrome =>
             Box::new(VerdictHarness {
-                policy: Policy::ChromeHammurabi,
+                policy: verdict::PolicyName::ChromeHammurabi,
                 debug: args.debug,
             }),
 
         BenchHarness::VerdictFirefox =>
             Box::new(VerdictHarness {
-                policy: Policy::FirefoxHammurabi,
+                policy: verdict::PolicyName::FirefoxHammurabi,
                 debug: args.debug,
             }),
 
         BenchHarness::VerdictOpenSSL =>
             Box::new(VerdictHarness {
-                policy: Policy::OpenSSL,
+                policy: verdict::PolicyName::OpenSSL,
                 debug: args.debug,
             }),
     })
