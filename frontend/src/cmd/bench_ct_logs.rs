@@ -1,5 +1,6 @@
 use std::io;
 use std::fs::File;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
@@ -235,8 +236,8 @@ pub fn main(args: Args) -> Result<(), Error> {
     let timestamp = args.override_time.unwrap_or(Utc::now().timestamp()) as u64;
     let harness: Box<dyn Harness> = get_harness(&args)?;
 
-    let (tx_job, rx_job) = channel::unbounded();
-    let (tx_res, rx_res) = channel::unbounded();
+    let (tx_job, rx_job) = channel::bounded(args.num_jobs);
+    let (tx_res, rx_res) = channel::bounded(args.num_jobs);
 
     let mut workers = Vec::new();
 
@@ -255,7 +256,7 @@ pub fn main(args: Args) -> Result<(), Error> {
 
         // Main thread: read the input CSV files and send jobs (CTLogEntry's) to worker threads
         let mut found_hash = false;
-        for path in &args.csv_files {
+        'outer: for path in &args.csv_files {
             let file = File::open(path)?;
             let mut reader = ReaderBuilder::new()
                 .has_headers(false)
@@ -279,7 +280,16 @@ pub fn main(args: Args) -> Result<(), Error> {
                     }
                 }
 
+                // Filter out tasks with empty domain name, IP address, or unicode character that failed to parse
+                if entry.domain.is_empty() || entry.domain.parse::<IpAddr>().is_ok() || entry.domain.contains('\u{FFFD}') {
+                    continue;
+                }
+
                 tx_job.send(entry)?;
+
+                if found_hash {
+                    break 'outer;
+                }
             }
         }
 

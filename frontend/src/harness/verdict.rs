@@ -80,8 +80,8 @@ impl Harness for VerdictHarness {
             Policy::OpenSSL => policy::ExecPolicy::openssl(timestamp),
         };
 
-        let (tx_job, rx_job) = channel::unbounded();
-        let (tx_res, rx_res) = channel::unbounded();
+        let (tx_job, rx_job) = channel::bounded(1);
+        let (tx_res, rx_res) = channel::bounded(1);
 
         Ok(Box::new(VerdictInstance {
             tx_job: Some(tx_job),
