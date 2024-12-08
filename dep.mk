@@ -46,7 +46,7 @@ build-cargo-deps-%:
 
 # For each $dep in VERUS_DEPS_SANITIZED, generate a rule to compile target/$dep.verusdata
 define DEP_TEMPLATE
-../$1/target/%/verify/lib$1.rlib: $$(call rwildcard,../$1/src,*.rs)
+../$1/target/%/verify/lib$1.rlib: $(foreach dep,$(VERUS_DEPS_SANITIZED),$$(call rwildcard,../$(dep)/src,*.rs))
 	@echo "### Verifying Verus dependency $1 (../$1)"
 	cd ../$1 && make target/$$*/verify/lib$1.rlib
 endef

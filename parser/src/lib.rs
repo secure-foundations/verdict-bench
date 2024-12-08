@@ -43,6 +43,12 @@ verus! {
                     &&& other.len() <= usize::MAX
                     &&& #[trigger] spec_parse_x509_der(other) == Some(res@)
                 } ==> other == bytes@
+
+                // Prefix-security
+                &&& forall |suffix: Seq<u8>| {
+                    &&& suffix.len() != 0
+                    &&& bytes@.len() + suffix.len() <= usize::MAX
+                } ==> #[trigger] spec_parse_x509_der(bytes@ + suffix) is None
             },
 
             // Completeness
@@ -70,6 +76,13 @@ verus! {
                 assert(other_ser == other);
                 assert(other == spec_ser);
                 assert(spec_ser == bytes@);
+            }
+
+            assert forall |suffix: Seq<u8>|{
+                &&& suffix.len() != 0
+                &&& bytes@.len() + suffix.len() <= usize::MAX
+            } implies #[trigger] spec_parse_x509_der(bytes@ + suffix) is None by {
+                x509::Certificate.lemma_prefix_secure(bytes@, suffix);
             }
         }
 
