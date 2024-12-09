@@ -4,6 +4,8 @@ use vstd::prelude::*;
 
 #[allow(unused_imports)]
 use parser::{*, x509::*, asn1::BitStringValue};
+#[allow(unused_imports)]
+use polyfill::*;
 
 use crate::policy::{self,Policy, Task, ExecTask};
 use crate::rsa;
@@ -141,15 +143,50 @@ impl<P: Policy> Query<P> {
 pub struct Validator<'a, P: Policy> {
     pub policy: P,
     pub roots: VecDeep<CertificateValue<'a>>,
+
+    /// Cached RSA public keys of each root certificate
     pub roots_rsa_cache: Vec<Option<rsa::RSAPublicKeyInternal>>,
 
-    /// Abstract representation of each certificate
+    /// Abstract representation of each root certificate
     pub roots_abs_cache: Vec<policy::ExecCertificate>,
 }
 
+/// Caches within a particular validation job
+struct ValidatorCache<'a, 'b, 'c> {
+    bundle: &'a VecDeep<CertificateValue<'b>>,
+    task: &'c ExecTask,
+
+    /// Cached abstract representation of each certificate
+    bundle_abs_cache: Vec<policy::ExecCertificate>,
+
+    /// Cached root issuers of each intermediate certificate
+    root_issuers: Vec<Vec<usize>>,
+}
+
+impl<'a, 'b, 'c> ValidatorCache<'a, 'b, 'c> {
+    closed spec fn wf<P: Policy>(&self, validator: &Validator<P>) -> bool {
+        &&& Validator::<P>::is_abs_cache(self.bundle@, self.bundle_abs_cache.deep_view())
+
+        // Valid `root_issuers` cache
+        &&& self.root_issuers@.len() == self.bundle@.len()
+        &&& forall |i| 0 <= i < self.bundle@.len()
+            ==> validator.spec_root_issuers(self.bundle@[i], #[trigger] self.root_issuers@[i]@)
+    }
+
+    closed spec fn get_query<P: Policy>(&self, validator: &Validator<P>) -> Query<P> {
+        Query {
+            policy: validator.policy,
+            roots: validator.roots@,
+            bundle: self.bundle@,
+            task: self.task.deep_view(),
+        }
+    }
+}
+
 impl<'a, P: Policy> Validator<'a, P> {
+    /// Initialize a validator struct from parsed root certificates
     #[verifier::loop_isolation(false)]
-    pub fn new(policy: P, roots: VecDeep<CertificateValue<'a>>) -> (res: Result<Self, ValidationError>)
+    pub fn from_parsed_roots(policy: P, roots: VecDeep<CertificateValue<'a>>) -> (res: Result<Self, ValidationError>)
         ensures
             res matches Ok(res) ==> {
                 &&& res.wf()
@@ -215,7 +252,7 @@ impl<'a, P: Policy> Validator<'a, P> {
             roots.push(parse_x509_der(store.roots_der[i].as_slice())?);
         }
 
-        Self::new(policy, roots)
+        Self::from_parsed_roots(policy, roots)
     }
 
     pub closed spec fn wf(self) -> bool {
@@ -271,51 +308,27 @@ impl<'a, P: Policy> Validator<'a, P> {
         Ok(cache)
     }
 
-    closed spec fn is_prefix_of<T>(s1: Seq<T>, s2: Seq<T>) -> bool {
-        &&& s1.len() <= s2.len()
-        &&& forall |i| 0 <= i < s1.len() ==> #[trigger] s1[i] == #[trigger] s2[i]
-    }
-
-    fn has_node(path: &Vec<usize>, node: usize) -> (res: bool)
-        ensures res == path@.contains(node)
-    {
-        let path_len = path.len();
-
-        for i in 0..path_len
-            invariant
-                path_len == path@.len(),
-                forall |j| 0 <= j < i ==> path@[j] != node,
-        {
-            if path[i] == node {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     fn check_interm_likely_issued(
         &self,
-        bundle: &VecDeep<CertificateValue>,
-        bundle_abs_cache: &Vec<policy::ExecCertificate>,
+        cache: &ValidatorCache,
 
         issuer_idx: usize,
         subject_idx: usize,
     ) -> (res: bool)
         requires
-            Self::is_abs_cache(bundle@, bundle_abs_cache.deep_view()),
-            0 <= issuer_idx < bundle@.len(),
-            0 <= subject_idx < bundle@.len(),
+            cache.wf(self),
+            0 <= issuer_idx < cache.bundle@.len(),
+            0 <= subject_idx < cache.bundle@.len(),
 
         ensures
-            res == Query::issued(self.policy, bundle@[issuer_idx as int], bundle@[subject_idx as int]),
+            res == Query::issued(self.policy, cache.bundle@[issuer_idx as int], cache.bundle@[subject_idx as int]),
     {
         reveal(Query::issued);
-        let ghost _ = bundle_abs_cache.deep_view()[issuer_idx as int];
-        let ghost _ = bundle_abs_cache.deep_view()[subject_idx as int];
+        let ghost _ = cache.bundle_abs_cache.deep_view()[issuer_idx as int];
+        let ghost _ = cache.bundle_abs_cache.deep_view()[subject_idx as int];
 
-        self.policy.likely_issued(&bundle_abs_cache[issuer_idx], &bundle_abs_cache[subject_idx]) &&
-        verify_signature(bundle.get(issuer_idx), bundle.get(subject_idx))
+        self.policy.likely_issued(&cache.bundle_abs_cache[issuer_idx], &cache.bundle_abs_cache[subject_idx]) &&
+        verify_signature(cache.bundle.get(issuer_idx), cache.bundle.get(subject_idx))
     }
 
     /// A specialized version of `likely_issued`
@@ -367,38 +380,22 @@ impl<'a, P: Policy> Validator<'a, P> {
         verify_signature(root, subject)
     }
 
-    pub open spec fn get_query(
-        &self,
-        bundle: Seq<SpecCertificateValue>,
-        task: policy::Task,
-    ) -> Query<P> {
-        Query {
-            policy: self.policy,
-            roots: self.roots@,
-            bundle: bundle,
-            task: task,
-        }
-    }
-
     /// Check if a candidate path satisfies the policy
     #[verifier::loop_isolation(false)]
     fn check_chain_policy(
         &self,
-        #[allow(unused_variables)]
-        bundle: &VecDeep<CertificateValue>,
-        bundle_abs_cache: &Vec<policy::ExecCertificate>,
-        task: &ExecTask,
+        cache: &ValidatorCache,
         path: &Vec<usize>,
         root_idx: usize,
     ) -> (res: Result<bool, ValidationError>)
         requires
             self.wf(),
-            self.get_query(bundle@, task.deep_view()).is_simple_path_to_root(path@, root_idx),
-            Self::is_abs_cache(bundle@, bundle_abs_cache.deep_view()),
+            cache.wf(self),
+            cache.get_query(self).is_simple_path_to_root(path@, root_idx),
 
         ensures
             res matches Ok(res) ==>
-                res == self.get_query(bundle@, task.deep_view()).path_satisfies_policy(path@, root_idx),
+                res == cache.get_query(self).path_satisfies_policy(path@, root_idx),
     {
         let path_len = path.len();
         if path_len == usize::MAX {
@@ -411,14 +408,14 @@ impl<'a, P: Policy> Validator<'a, P> {
         for i in 0..path_len
             invariant
                 path_len == path@.len(),
-                self.get_query(bundle@, task.deep_view()).is_simple_path_to_root(path@, root_idx),
+                cache.get_query(self).is_simple_path_to_root(path@, root_idx),
 
                 candidate@.len() == i,
                 forall |j| #![trigger candidate@[j]] 0 <= j < i ==>
-                    Some(candidate.deep_view()[j]) == policy::Certificate::spec_from(bundle@[path@[j] as int]),
+                    Some(candidate.deep_view()[j]) == policy::Certificate::spec_from(cache.bundle@[path@[j] as int]),
         {
-            let ghost _ = bundle_abs_cache.deep_view()[path@[i as int] as int];
-            candidate.push(&bundle_abs_cache[path[i]]);
+            let ghost _ = cache.bundle_abs_cache.deep_view()[path@[i as int] as int];
+            candidate.push(&cache.bundle_abs_cache[path[i]]);
         }
 
         // Append the root certificate
@@ -426,10 +423,10 @@ impl<'a, P: Policy> Validator<'a, P> {
         candidate.push(&self.roots_abs_cache[root_idx]);
 
         assert(candidate.deep_view() =~=
-            (path@.map_values(|i| bundle@[i as int]) + seq![self.roots@[root_idx as int]])
+            (path@.map_values(|i| cache.bundle@[i as int]) + seq![self.roots@[root_idx as int]])
                 .map_values(|cert| policy::Certificate::spec_from(cert).unwrap()));
 
-        match self.policy.valid_chain(&candidate, task) {
+        match self.policy.valid_chain(&candidate, &cache.task) {
             Ok(res) => Ok(res),
             Err(err) => Err(ValidationError::PolicyError(err)),
         }
@@ -441,37 +438,34 @@ impl<'a, P: Policy> Validator<'a, P> {
     #[verifier::loop_isolation(false)]
     fn check_simple_path(
         &self,
-        bundle: &VecDeep<CertificateValue>,
-        bundle_abs_cache: &Vec<policy::ExecCertificate>,
-
-        task: &policy::ExecTask,
-
+        cache: &ValidatorCache,
         path: &Vec<usize>,
-        root_issuers: &Vec<usize>,
     ) -> (res: Result<bool, ValidationError>)
         requires
             self.wf(),
-            self.get_query(bundle@, task.deep_view()).is_simple_path(path@),
-            self.spec_root_issuers(bundle@[path@.last() as int], root_issuers@),
-            Self::is_abs_cache(bundle@, bundle_abs_cache.deep_view()),
+            cache.wf(self),
+            cache.get_query(self).is_simple_path(path@),
 
         ensures
             res matches Ok(res) ==>
                 res == exists |root_idx: usize|
-                    #[trigger] self.get_query(bundle@, task.deep_view()).is_simple_path_to_root(path@, root_idx) &&
-                    self.get_query(bundle@, task.deep_view()).path_satisfies_policy(path@, root_idx)
+                    #[trigger] cache.get_query(self).is_simple_path_to_root(path@, root_idx) &&
+                    cache.get_query(self).path_satisfies_policy(path@, root_idx)
     {
         reveal(Validator::spec_root_issuers);
 
+        let last = path[path.len() - 1];
+
+        let root_issuers = &cache.root_issuers[last];
         let root_issuers_len = root_issuers.len();
-        let ghost query = self.get_query(bundle@, task.deep_view());
+        let ghost query = cache.get_query(self);
 
         for i in 0..root_issuers_len
             invariant
                 forall |j| 0 <= j < i ==>
                     !query.path_satisfies_policy(path@, #[trigger] root_issuers@[j]),
         {
-            if self.check_chain_policy(bundle, bundle_abs_cache, task, &path, root_issuers[i])? {
+            if self.check_chain_policy(cache, &path, root_issuers[i])? {
                 // Found a valid chain
                 return Ok(true);
             }
@@ -485,10 +479,6 @@ impl<'a, P: Policy> Validator<'a, P> {
         }
 
         Ok(false)
-    }
-
-    closed spec fn get_root_indices(self) -> Seq<usize> {
-        Seq::new(self.roots@.len() as nat, |i| i as usize)
     }
 
     #[verifier::opaque]
@@ -524,12 +514,13 @@ impl<'a, P: Policy> Validator<'a, P> {
         let mut res = Vec::with_capacity(1); // usually there is only 1 root issuer
         let roots_len = self.roots.len();
 
+        let ghost root_indices = Seq::new(self.roots@.len() as nat, |i| i as usize);
         let ghost pred = |j: usize| Query::issued(self.policy, self.roots@[j as int], bundle@[idx as int]);
 
         for i in 0..roots_len
             invariant
                 forall |i| 0 <= i < res.len() ==> 0 <= #[trigger] res[i] < self.roots@.len(),
-                res@ =~= self.get_root_indices().take(i as int).filter(pred),
+                res@ =~= root_indices.take(i as int).filter(pred),
         {
             reveal_with_fuel(Seq::<_>::filter, 1);
 
@@ -537,18 +528,18 @@ impl<'a, P: Policy> Validator<'a, P> {
                 res.push(i);
             }
 
-            assert(self.get_root_indices().take(i + 1).drop_last() =~= self.get_root_indices().take(i as int));
+            assert(root_indices.take(i + 1).drop_last() =~= root_indices.take(i as int));
         }
 
-        assert(self.get_root_indices().take(roots_len as int) == self.get_root_indices());
+        assert(root_indices.take(roots_len as int) == root_indices);
 
         assert forall |i|
             0 <= i < self.roots@.len() &&
             Query::issued(self.policy, self.roots@[i as int], bundle@[idx as int])
             implies #[trigger] res@.contains(i)
         by {
-            assert(self.get_root_indices()[i as int] == i);
-            assert(pred(self.get_root_indices()[i as int]));
+            assert(root_indices[i as int] == i);
+            assert(pred(root_indices[i as int]));
         }
 
         reveal(Validator::spec_root_issuers);
@@ -556,22 +547,20 @@ impl<'a, P: Policy> Validator<'a, P> {
         res
     }
 
-    /// Validate a leaf certificate (bundle[0]) against
-    /// a task and try to build a valid chain through
-    /// the `bundle` of intermediate certificates
+    /// Initialize a validator cache for later validation
     #[verifier::loop_isolation(false)]
-    pub fn validate(
+    fn new_cache<'b, 'c, 'd>(
         &self,
-        bundle: &VecDeep<CertificateValue>,
-        task: &policy::ExecTask,
-    ) -> (res: Result<bool, ValidationError>)
-        requires
-            self.wf(),
-            bundle@.len() != 0,
-
+        bundle: &'b VecDeep<CertificateValue<'c>>,
+        task: &'d policy::ExecTask,
+    ) -> (res: Result<ValidatorCache<'b, 'c, 'd>, ValidationError>)
+        requires self.wf(),
         ensures
-            // Soundness & completeness (modulo ValidationError)
-            res matches Ok(res) ==> res == self.get_query(bundle@, task.deep_view()).valid(),
+            res matches Ok(res) ==> {
+                &&& res.wf(self)
+                &&& res.bundle == bundle
+                &&& res.task == task
+            },
     {
         let bundle_len = bundle.len();
 
@@ -591,7 +580,40 @@ impl<'a, P: Policy> Validator<'a, P> {
             root_issuers.push(self.get_root_issuer(bundle, &bundle_abs_cache, i));
         }
 
-        let ghost query = self.get_query(bundle@, task.deep_view());
+        Ok(ValidatorCache {
+            bundle: bundle,
+            task: task,
+            bundle_abs_cache: bundle_abs_cache,
+            root_issuers: root_issuers,
+        })
+    }
+
+    /// Validate a leaf certificate (bundle[0]) against
+    /// a task and try to build a valid chain through
+    /// the `bundle` of intermediate certificates
+    #[verifier::loop_isolation(false)]
+    pub fn validate(
+        &self,
+        bundle: &VecDeep<CertificateValue>,
+        task: &policy::ExecTask,
+    ) -> (res: Result<bool, ValidationError>)
+        requires
+            self.wf(),
+            bundle@.len() != 0,
+
+        ensures
+            // Soundness & completeness (modulo ValidationError)
+            res matches Ok(res) ==> res == (Query {
+                policy: self.policy,
+                roots: self.roots@,
+                bundle: bundle@,
+                task: task.deep_view(),
+            }).valid(),
+    {
+        let cache = self.new_cache(bundle, task)?;
+
+        let bundle_len = bundle.len();
+        let ghost query = cache.get_query(self);
 
         // DFS from bundle[0] to try to reach a root
         // Stack of path prefices to explore
@@ -609,7 +631,7 @@ impl<'a, P: Policy> Validator<'a, P> {
                 forall |path: Seq<usize>, root_idx: usize|
                     #[trigger] query.is_simple_path_to_root(path, root_idx) &&
                     (forall |i| 0 <= i < stack.len() ==>
-                        !Self::is_prefix_of(#[trigger] stack@[i]@, path))
+                        !is_prefix_of(#[trigger] stack@[i]@, path))
                     ==>
                     !query.path_satisfies_policy(path, root_idx),
         {
@@ -618,7 +640,7 @@ impl<'a, P: Policy> Validator<'a, P> {
             if let Some(cur_path) = stack.pop() {
                 let last = cur_path[cur_path.len() - 1];
 
-                if self.check_simple_path(bundle, &bundle_abs_cache, task, &cur_path, &root_issuers[last])? {
+                if self.check_simple_path(&cache, &cur_path)? {
                     return Ok(true);
                 }
 
@@ -633,47 +655,47 @@ impl<'a, P: Policy> Validator<'a, P> {
                         // either `path` is prefixed by some path in the stack
                         // or `path`'s next node >= i
                         forall |path: Seq<usize>|
-                            #[trigger] Self::is_prefix_of(cur_path@, path) &&
+                            #[trigger] is_prefix_of(cur_path@, path) &&
                             query.is_simple_path(path) &&
                             path.len() > cur_path@.len() &&
                             path[cur_path@.len() as int] < i
                             ==>
-                            exists |j| 0 <= j < stack@.len() && Self::is_prefix_of(#[trigger] stack@[j]@, path),
+                            exists |j| 0 <= j < stack@.len() && is_prefix_of(#[trigger] stack@[j]@, path),
 
                         // Stack invariant: all paths in the stack are simple paths
                         forall |i| 0 <= i < stack.len() ==> query.is_simple_path(#[trigger] stack@[i]@),
                 {
                     let ghost prev_stack = stack@;
 
-                    if !Self::has_node(&cur_path, i) && self.check_interm_likely_issued(bundle, &bundle_abs_cache, i, last) {
+                    if !vec_contains(&cur_path, &i) && self.check_interm_likely_issued(&cache, i, last) {
                         let mut next_path = Clone::clone(&cur_path);
                         next_path.push(i);
                         stack.push(next_path);
                     }
 
                     assert forall |path: Seq<usize>|
-                        #[trigger] Self::is_prefix_of(cur_path@, path) &&
+                        #[trigger] is_prefix_of(cur_path@, path) &&
                         query.is_simple_path(path) &&
                         path.len() > cur_path@.len() &&
                         path[cur_path@.len() as int] < i + 1
                         implies
-                        exists |j| 0 <= j < stack@.len() && Self::is_prefix_of(#[trigger] stack@[j]@, path)
+                        exists |j| 0 <= j < stack@.len() && is_prefix_of(#[trigger] stack@[j]@, path)
                     by {
                         if path[cur_path@.len() as int] == i {
                             if cur_path@.contains(i) {
                                 // Not a simple path
                                 let k = choose |k| 0 <= k < cur_path@.len() && cur_path@[k] == i;
                                 assert(path[k] == i);
-                            } else if !Query::issued(self.policy, bundle@[i as int], bundle@[last as int]) {
+                            } else if !Query::issued(self.policy, cache.bundle@[i as int], cache.bundle@[last as int]) {
                                 // Not a path
                                 assert(path[cur_path@.len() - 1] == i);
                             } else {
                                 // Path was just added
-                                assert(Self::is_prefix_of(stack@[stack@.len() - 1]@, path));
+                                assert(is_prefix_of(stack@[stack@.len() - 1]@, path));
                             }
                         } else {
                             // By loop invariant
-                            let k = choose |k| 0 <= k < prev_stack.len() && Self::is_prefix_of(#[trigger] prev_stack[k]@, path);
+                            let k = choose |k| 0 <= k < prev_stack.len() && is_prefix_of(#[trigger] prev_stack[k]@, path);
                             assert(stack@[k] == prev_stack[k]);
                         }
                     }
@@ -687,14 +709,14 @@ impl<'a, P: Policy> Validator<'a, P> {
                 assert forall |path: Seq<usize>, root_idx: usize|
                     #[trigger] query.is_simple_path_to_root(path, root_idx) &&
                     (forall |i| 0 <= i < stack.len() ==>
-                        !Self::is_prefix_of(#[trigger] stack@[i]@, path))
+                        !is_prefix_of(#[trigger] stack@[i]@, path))
                     implies
                     // No valid simple path to root
                     !query.path_satisfies_policy(path, root_idx)
                 by {
-                    if !Self::is_prefix_of(cur_path@, path) {
+                    if !is_prefix_of(cur_path@, path) {
                         assert(forall |i| 0 <= i < prev_stack.len()
-                            ==> !Self::is_prefix_of(#[trigger] prev_stack[i]@, path));
+                            ==> !is_prefix_of(#[trigger] prev_stack[i]@, path));
                     } else {
                         if path.len() <= cur_path@.len() {
                             assert(path =~= cur_path@);
@@ -722,10 +744,12 @@ impl<'a, P: Policy> Validator<'a, P> {
         ensures
             // Soundness & completeness (modulo ValidationError)
             res matches Ok(res) ==>
-                res == self.get_query(
-                    bundle@.map_values(|der: Vec<u8>| spec_parse_x509_der(der@).unwrap()),
-                    task.deep_view(),
-                ).valid(),
+                res == (Query {
+                    policy: self.policy,
+                    roots: self.roots@,
+                    bundle: bundle@.map_values(|der: Vec<u8>| spec_parse_x509_der(der@).unwrap()),
+                    task: task.deep_view(),
+                }).valid(),
     {
         let bundle_len = bundle.len();
         let mut bundle_parsed: VecDeep<CertificateValue> = VecDeep::with_capacity(bundle_len);
@@ -752,10 +776,12 @@ impl<'a, P: Policy> Validator<'a, P> {
         ensures
             // Soundness & completeness (modulo ValidationError)
             res matches Ok(res) ==>
-                res == self.get_query(
-                    bundle@.map_values(|base64: Vec<u8>| spec_parse_x509_base64(base64@).unwrap()),
-                    task.deep_view(),
-                ).valid(),
+                res == (Query {
+                    policy: self.policy,
+                    roots: self.roots@,
+                    bundle: bundle@.map_values(|base64: Vec<u8>| spec_parse_x509_base64(base64@).unwrap()),
+                    task: task.deep_view(),
+                }).valid(),
     {
         let bundle_len = bundle.len();
         let mut bundle_der: Vec<Vec<u8>> = Vec::with_capacity(bundle_len);

@@ -306,6 +306,18 @@ pub fn vec_reverse<T: DeepView>(v: &mut Vec<&T>)
     }
 }
 
+#[verifier::external_body]
+pub fn vec_contains<T: PartialEq>(v: &Vec<T>, elem: &T) -> (res: bool)
+    ensures res == v@.contains(*elem),
+{
+    v.contains(elem)
+}
+
+pub open spec fn is_prefix_of<T>(s1: Seq<T>, s2: Seq<T>) -> bool {
+    &&& s1.len() <= s2.len()
+    &&& forall |i| 0 <= i < s1.len() ==> #[trigger] s1[i] == #[trigger] s2[i]
+}
+
 /// Join elements of list by sep
 pub open spec fn seq_join<T>(list: Seq<Seq<T>>, sep: Seq<T>) -> Seq<T>
     decreases list.len(),
