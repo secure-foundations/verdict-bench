@@ -13,16 +13,20 @@ verus! {
 pub use internal::ExecPolicy as FirefoxPolicy;
 
 impl Policy for FirefoxPolicy {
+    closed spec fn spec_likely_issued(&self, issuer: Certificate, subject: Certificate) -> bool {
+        internal::likely_issued(&issuer, &subject)
+    }
+
+    fn likely_issued(&self, issuer: &ExecCertificate, subject: &ExecCertificate) -> (res: bool) {
+        internal::exec_likely_issued(issuer, subject)
+    }
+
     closed spec fn spec_valid_chain(&self, chain: Seq<Certificate>, task: Task) -> Result<bool, PolicyError> {
         internal::valid_chain(&self.deep_view(), &chain, &task)
     }
 
-    fn valid_chain(&self, chain: &Vec<ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
+    fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
-    }
-
-    fn get_validation_time(&self) -> u64 {
-        self.time
     }
 }
 
@@ -71,7 +75,7 @@ use exec_match_name as match_name;
 use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
-// use rspec_debug as debug;
+use exec_same_dn as same_dn;
 
 pub struct EVPolicy {
     pub oid: SpecString,
@@ -194,12 +198,12 @@ pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
 // }
 
 pub open spec fn match_common_name_domain(cert: &Certificate, domain: &SpecString) -> bool {
-    exists |i: usize| #![trigger cert.subject_name.0[i as int]]
-        0 <= i < cert.subject_name.0.len() &&
-    exists |j: usize| #![trigger cert.subject_name.0[i as int][j as int]]
-        0 <= j < cert.subject_name.0[i as int].len() &&
+    exists |i: usize| #![trigger cert.subject.0[i as int]]
+        0 <= i < cert.subject.0.len() &&
+    exists |j: usize| #![trigger cert.subject.0[i as int][j as int]]
+        0 <= j < cert.subject.0[i as int].len() &&
         {
-            let name = &cert.subject_name.0[i as int][j as int];
+            let name = &cert.subject.0[i as int][j as int];
             &&& &name.oid == "2.5.4.3"@ // common name
             &&& valid_name(&name.value)
             &&& match_name(&name.value, &domain)
@@ -225,10 +229,10 @@ pub open spec fn match_san_domain(san: &SubjectAltName, domain: &SpecString) -> 
 // }
 
 // pub open spec fn has_subject_name(cert: &Certificate, oid: &SpecString, value: &SpecString) -> bool {
-//     exists |i: usize| #![trigger cert.subject_name.0[i as int]] 0 <= i < cert.subject_name.0.len() &&
-//     exists |j: usize| 0 <= j < cert.subject_name.0[i as int].len() &&
+//     exists |i: usize| #![trigger cert.subject.0[i as int]] 0 <= i < cert.subject.0.len() &&
+//     exists |j: usize| 0 <= j < cert.subject.0[i as int].len() &&
 //         {
-//             let name = #[trigger] &cert.subject_name.0[i as int][j as int];
+//             let name = #[trigger] &cert.subject.0[i as int][j as int];
 //             &name.oid == oid &&
 //             &name.value == value
 //         }
@@ -288,10 +292,10 @@ pub open spec fn match_san_domain(san: &SubjectAltName, domain: &SpecString) -> 
 //     &&& &leaf.ext_subject_alt_name matches Some(san) ==> is_international_invalid_san(&cert, san)
 
 //     // No common name is invalid
-//     &&& forall |i: usize| #![trigger leaf.subject_name.0[i as int]] 0 <= i < leaf.subject_name.0.len() ==>
-//         forall |j: usize| 0 <= j < leaf.subject_name.0[i as int].len() ==>
+//     &&& forall |i: usize| #![trigger leaf.subject.0[i as int]] 0 <= i < leaf.subject.0.len() ==>
+//         forall |j: usize| 0 <= j < leaf.subject.0[i as int].len() ==>
 //         !{
-//             let name = #[trigger] &leaf.subject_name.0[i as int][j as int];
+//             let name = #[trigger] &leaf.subject.0[i as int][j as int];
 //             &&& &name.oid == "2.5.4.3"@
 //             &&& is_international_invalid_name(&cert, &name.value)
 //         }
@@ -370,14 +374,14 @@ pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints:
     &&& directory_name_enabled ==>
             exists |j: usize| 0 <= j < constraints.permitted.len() && {
                 &&& #[trigger] &constraints.permitted[j as int] matches GeneralName::DirectoryName(permitted_name)
-                &&& is_subtree_of(&permitted_name, &leaf.subject_name, false)
+                &&& is_subtree_of(&permitted_name, &leaf.subject, false)
             }
 
     // Not explicitly excluded
     &&& forall |j: usize| #![trigger &constraints.excluded[j as int]]
             0 <= j < constraints.excluded.len() ==> {
                 &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name)
-                ==> !is_subtree_of(&excluded_name, &leaf.subject_name, false)
+                ==> !is_subtree_of(&excluded_name, &leaf.subject, false)
             }
 }
 
@@ -438,10 +442,10 @@ pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &
 }
 
 pub open spec fn check_common_name_constraints(cert: &Certificate, constraints: &NameConstraints) -> bool {
-    forall |i: usize| #![trigger cert.subject_name.0[i as int]] 0 <= i < cert.subject_name.0.len() ==>
-    forall |j: usize| 0 <= j < cert.subject_name.0[i as int].len() ==>
+    forall |i: usize| #![trigger cert.subject.0[i as int]] 0 <= i < cert.subject.0.len() ==>
+    forall |j: usize| 0 <= j < cert.subject.0[i as int].len() ==>
         {
-            let name = #[trigger] &cert.subject_name.0[i as int][j as int];
+            let name = #[trigger] &cert.subject.0[i as int][j as int];
             &&& &name.oid == "2.5.4.3"@ // common name
             &&& check_dns_name_constraints(&name.value, &constraints)
         }
@@ -508,7 +512,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
     match task {
         Task::DomainValidation(domain) => {
@@ -526,6 +530,12 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task
         }
         _ => Err(PolicyError::UnsupportedTask),
     }
+}
+
+pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool
+{
+    &&& same_dn(&issuer.subject, &subject.issuer, false)
+    &&& check_auth_key_id(issuer, subject)
 }
 
 } // rspec!

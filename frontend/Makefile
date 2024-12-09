@@ -14,7 +14,7 @@ include ../dep.mk
 DOMAINS = github.com google.com outlook.com slack.com verus.rs
 
 .PHONY: test-policy-%
-test-policy-%: target/debug/frontend
+test-policy-%: debug
 # For each domain in DOMAINS, remove the suffix, then find the corresponding pem
 	@set -e; \
 	for domain in $(DOMAINS); do \

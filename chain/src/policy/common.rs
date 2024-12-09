@@ -12,19 +12,17 @@ pub use super::*;
 verus! {
 
 pub trait Policy: Send {
-    // /// User-defined issuing relation without checking signature
-    // spec fn spec_likely_issued(self, issuer: Certificate, subject: Certificate) -> bool;
+    /// User-defined issuing relation without checking signature
+    spec fn spec_likely_issued(&self, issuer: Certificate, subject: Certificate) -> bool;
 
-    // fn likely_issued(&self, issuer: &ExecCertificate, subject: &ExecCertificate) -> (res: bool)
-    //     ensures res == self.spec_likely_issued(issuer.deep_view(), subject.deep_view());
+    fn likely_issued(&self, issuer: &ExecCertificate, subject: &ExecCertificate) -> (res: bool)
+        ensures res == self.spec_likely_issued(issuer.deep_view(), subject.deep_view());
 
     /// User-defined chain/path validation
     spec fn spec_valid_chain(&self, chain: Seq<Certificate>, task: Task) -> Result<bool, PolicyError>;
 
-    fn valid_chain(&self, chain: &Vec<ExecCertificate>, task: &ExecTask) -> (res: Result<bool, ExecPolicyError>)
+    fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> (res: Result<bool, ExecPolicyError>)
         ensures res.deep_view() == self.spec_valid_chain(chain.deep_view(), task.deep_view());
-
-    fn get_validation_time(&self) -> u64;
 }
 
 rspec! {
@@ -135,8 +133,8 @@ pub struct Certificate {
     pub not_after: u64,
     pub not_before: u64,
 
-    pub issuer_name: DistinguishedName,
-    pub subject_name: DistinguishedName,
+    pub issuer: DistinguishedName,
+    pub subject: DistinguishedName,
     pub subject_key: SubjectKey,
 
     pub issuer_uid: Option<SpecString>,
@@ -241,6 +239,34 @@ pub open spec fn is_subtree_rdn(rdn1: &Seq<Attribute>, rdn2: &Seq<Attribute>, no
 pub open spec fn is_subtree_of(name1: &DistinguishedName, name2: &DistinguishedName, normalize: bool) -> bool {
     &&& name1.0.len() <= name2.0.len()
     &&& forall |i: usize| 0 <= i < name1.0.len() ==> is_subtree_rdn(#[trigger] &name1.0[i as int], &name2.0[i as int], normalize)
+}
+
+pub open spec fn same_attr(attr1: &Attribute, attr2: &Attribute, normalize: bool) -> bool
+{
+    &&& &attr1.oid == &attr2.oid
+    &&& if normalize {
+        &normalize_string(&attr1.value) == &normalize_string(&attr2.value)
+    } else {
+        &attr1.value == &attr2.value
+    }
+}
+
+pub open spec fn same_rdn(rdn1: &Seq<Attribute>, rdn2: &Seq<Attribute>, normalize: bool) -> bool
+{
+    &&& rdn1.len() == rdn2.len()
+    &&& forall |i: usize| 0 <= i < rdn1.len()
+        ==> same_attr(#[trigger] &rdn1[i as int], &rdn2[i as int], normalize)
+}
+
+/// Check if two distinguished names are the same, with/without normalization
+/// References:
+/// - RFC 5280, 4.1.2.4
+/// - https://github.com/openssl/openssl/blob/ed6862328745c51c2afa2b6485cc3e275d543c4e/crypto/x509/x509_cmp.c#L254
+pub open spec fn same_dn(name1: &DistinguishedName, name2: &DistinguishedName, normalize: bool) -> bool
+{
+    &&& name1.0.len() == name2.0.len()
+    &&& forall |i: usize| 0 <= i < name1.0.len()
+        ==> same_rdn(#[trigger] &name1.0[i as int], &name2.0[i as int], normalize)
 }
 
 /// Similar to `match_name`, but used for checking name constraints

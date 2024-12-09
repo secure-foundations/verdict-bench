@@ -7,6 +7,9 @@ verus! {
 /// String as exec impl instead of Vec<char>
 pub type SpecString = Seq<char>;
 
+// A marker to denote that the compiled type should have a reference
+pub type ExecRef<T> = T;
+
 pub struct RSpec;
 
 /// Verus doesn't support exec mode equalities between certain types

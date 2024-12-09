@@ -11,16 +11,20 @@ verus! {
 pub use internal::ExecPolicy as OpenSSLPolicy;
 
 impl Policy for OpenSSLPolicy {
+    closed spec fn spec_likely_issued(&self, issuer: Certificate, subject: Certificate) -> bool {
+        internal::likely_issued(&issuer, &subject)
+    }
+
+    fn likely_issued(&self, issuer: &ExecCertificate, subject: &ExecCertificate) -> (res: bool) {
+        internal::exec_likely_issued(issuer, subject)
+    }
+
     closed spec fn spec_valid_chain(&self, chain: Seq<Certificate>, task: Task) -> Result<bool, PolicyError> {
         internal::valid_chain(&self.deep_view(), &chain, &task)
     }
 
-    fn valid_chain(&self, chain: &Vec<ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
+    fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
-    }
-
-    fn get_validation_time(&self) -> u64 {
-        self.time
     }
 }
 
@@ -51,6 +55,7 @@ use ExecCertificate as Certificate;
 use ExecPurpose as Purpose;
 use ExecTask as Task;
 use ExecPolicyError as PolicyError;
+use ExecDistinguishedName as DistinguishedName;
 
 use exec_str_lower as str_lower;
 use exec_match_name as match_name;
@@ -59,6 +64,7 @@ use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
 use exec_clone_dn as clone_dn;
 use exec_clone_string as clone_string;
+use exec_same_dn as same_dn;
 
 pub struct Policy {
     pub time: u64,
@@ -218,9 +224,9 @@ pub open spec fn check_san_constraints(san: &SubjectAltName, nc: &NameConstraint
 /// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L438C5-L438C30
 pub open spec fn check_common_name_constraints(cert: &Certificate, nc: &NameConstraints) -> bool
 {
-    forall |i: usize| #![trigger cert.subject_name.0[i as int]] 0 <= i < cert.subject_name.0.len() ==>
-    forall |j: usize| #![trigger cert.subject_name.0[i as int][j as int]] 0 <= j < cert.subject_name.0[i as int].len() ==> {
-        let name = &cert.subject_name.0[i as int][j as int];
+    forall |i: usize| #![trigger cert.subject.0[i as int]] 0 <= i < cert.subject.0.len() ==>
+    forall |j: usize| #![trigger cert.subject.0[i as int][j as int]] 0 <= j < cert.subject.0[i as int].len() ==> {
+        let name = &cert.subject.0[i as int][j as int];
 
         &name.oid == "2.5.4.3"@ // CN
         ==> nc_match(&GeneralName::DNSName(clone_string(&name.value)), &nc)
@@ -238,13 +244,13 @@ pub open spec fn check_name_constraints_helper(cert: &Certificate, nc: &NameCons
     // - Email name https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L310-L327
     // - nc_minmax_valid
 
-    &&& nc_match(&GeneralName::DirectoryName(clone_dn(&cert.subject_name)), nc)
+    &&& nc_match(&GeneralName::DirectoryName(clone_dn(&cert.subject)), nc)
     &&& &cert.ext_subject_alt_name matches Some(san) ==> check_san_constraints(san, nc)
     &&& is_leaf ==> check_common_name_constraints(cert, nc)
 }
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L711
-pub open spec fn check_name_constraints(chain: &Seq<Certificate>) -> bool
+pub open spec fn check_name_constraints(chain: &Seq<ExecRef<Certificate>>) -> bool
 {
     forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
         (&chain[i as int].ext_name_constraints matches Some(nc) ==>
@@ -294,8 +300,8 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
     }
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L602-L614
-    &&& cert.issuer_name.0.len() != 0
-    &&& cert.subject_name.0.len() == 0 ==> {
+    &&& cert.issuer.0.len() != 0
+    &&& cert.subject.0.len() == 0 ==> {
         &&& &cert.ext_subject_alt_name matches Some(san)
         &&& san.names.len() != 0
         &&& san.critical
@@ -333,12 +339,11 @@ pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> b
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
     match task {
         Task::ChainValidation(Purpose::ServerAuth) =>
             Ok(chain.len() >= 2 && {
-                &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
                 &&& valid_leaf(env, &chain[0])
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
                 &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
@@ -347,6 +352,12 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task
 
         _ => Err(PolicyError::UnsupportedTask),
     }
+}
+
+pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool
+{
+    &&& same_dn(&issuer.subject, &subject.issuer, true)
+    &&& check_auth_key_id(issuer, subject)
 }
 
 } // rspec!

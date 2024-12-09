@@ -13,16 +13,20 @@ verus! {
 pub use internal::ExecPolicy as ChromePolicy;
 
 impl Policy for ChromePolicy {
+    closed spec fn spec_likely_issued(&self, issuer: Certificate, subject: Certificate) -> bool {
+        internal::likely_issued(&issuer, &subject)
+    }
+
+    fn likely_issued(&self, issuer: &ExecCertificate, subject: &ExecCertificate) -> (res: bool) {
+        internal::exec_likely_issued(issuer, subject)
+    }
+
     closed spec fn spec_valid_chain(&self, chain: Seq<Certificate>, task: Task) -> Result<bool, PolicyError> {
         internal::valid_chain(&self.deep_view(), &chain, &task)
     }
 
-    fn valid_chain(&self, chain: &Vec<ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
+    fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
-    }
-
-    fn get_validation_time(&self) -> u64 {
-        self.time
     }
 }
 
@@ -73,6 +77,7 @@ use exec_match_name as match_name;
 use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
+use exec_same_dn as same_dn;
 
 pub struct Policy {
     pub time: u64,
@@ -339,13 +344,13 @@ pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints:
             exists |j: usize| 0 <= j < constraints.permitted.len() && {
                 &&& #[trigger] &constraints.permitted[j as int]
                         matches GeneralName::DirectoryName(permitted_name)
-                &&& is_subtree_of(&permitted_name, &leaf.subject_name, true)
+                &&& is_subtree_of(&permitted_name, &leaf.subject, true)
             }
 
     // Not explicitly excluded
     &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
             (#[trigger] &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name) ==>
-                !is_subtree_of(&excluded_name, &leaf.subject_name, true))
+                !is_subtree_of(&excluded_name, &leaf.subject, true))
 }
 
 /// Check a leaf certificate against the name constraints in a parent certificate
@@ -401,7 +406,7 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, depth: usi
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
 /// chain.last() must be a trusted root
-pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task) -> Result<bool, PolicyError>
+pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
     match task {
         Task::DomainValidation(domain) => {
@@ -411,7 +416,6 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task
                 let leaf = &chain[0];
                 let root = &chain[chain.len() - 1];
 
-                &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
                 &&& cert_verified_leaf(env, leaf, &domain)
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
                 &&& cert_verified_root(env, root, (chain.len() - 2) as usize, &domain)
@@ -419,6 +423,12 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<Certificate>, task: &Task
         }
         _ => Err(PolicyError::UnsupportedTask),
     }
+}
+
+pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool
+{
+    &&& same_dn(&issuer.subject, &subject.issuer, true)
+    &&& check_auth_key_id(issuer, subject)
 }
 
 } // rspec!

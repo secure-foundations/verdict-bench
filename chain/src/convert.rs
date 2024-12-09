@@ -83,8 +83,8 @@ impl policy::Certificate {
                 not_after: not_after as u64,
                 not_before: not_before as u64,
 
-                issuer_name: policy::DistinguishedName::spec_from(c.cert.issuer),
-                subject_name: policy::DistinguishedName::spec_from(c.cert.subject),
+                issuer: policy::DistinguishedName::spec_from(c.cert.issuer),
+                subject: policy::DistinguishedName::spec_from(c.cert.subject),
                 subject_key,
 
                 issuer_uid: if let OptionDeep::Some(uid) = c.cert.issuer_uid {
@@ -198,8 +198,8 @@ impl policy::Certificate {
             not_after: not_after as u64,
             not_before: not_before as u64,
 
-            issuer_name: policy::DistinguishedName::from(&c.get().cert.get().issuer),
-            subject_name: policy::DistinguishedName::from(&c.get().cert.get().subject),
+            issuer: policy::DistinguishedName::from(&c.get().cert.get().issuer),
+            subject: policy::DistinguishedName::from(&c.get().cert.get().subject),
             subject_key,
 
             issuer_uid: if let OptionDeep::Some(uid) = &c.get().cert.get().issuer_uid {

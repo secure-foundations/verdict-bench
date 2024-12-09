@@ -34,9 +34,6 @@ pub enum Error {
     #[error("channel receive error: {0}")]
     RecvError(String),
 
-    #[error("failed to validate domain")]
-    DomainValidationError,
-
     #[error("repeat number must be positive")]
     ZeroRepeat,
 

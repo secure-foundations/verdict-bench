@@ -366,6 +366,12 @@ fn compile_type(ctx: &Context, ty: &Type) -> Result<Type, Error> {
                 // TODO: do we want this?
                 // "int" => Ok(param_type!("i64")),
 
+                // ExecRef<T> => &T
+                "ExecRef" => {
+                    let param = get_simple_type_param(ty, 0)?;
+                    Ok(new_type_ref(compile_type(ctx, &param)?))
+                }
+
                 // Option<T> => Option<exec(T)>
                 "Option" => {
                     let param = get_simple_type_param(ty, 0)?;
