@@ -28,6 +28,10 @@ impl Policy for FirefoxPolicy {
     fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
     }
+
+    open spec fn validation_time(&self) -> u64 {
+        self.time
+    }
 }
 
 impl FirefoxPolicy {

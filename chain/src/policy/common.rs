@@ -11,7 +11,7 @@ pub use super::*;
 
 verus! {
 
-pub trait Policy: Send {
+pub trait Policy {
     /// User-defined issuing relation without checking signature
     spec fn spec_likely_issued(&self, issuer: Certificate, subject: Certificate) -> bool;
 
@@ -23,6 +23,8 @@ pub trait Policy: Send {
 
     fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> (res: Result<bool, ExecPolicyError>)
         ensures res.deep_view() == self.spec_valid_chain(chain.deep_view(), task.deep_view());
+
+    spec fn validation_time(&self) -> u64;
 }
 
 rspec! {

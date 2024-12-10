@@ -7,6 +7,7 @@ use rspec::rspec;
 use rspec_lib::*;
 
 use super::common::*;
+use super::rfc;
 
 verus! {
 
@@ -28,7 +29,49 @@ impl Policy for ChromePolicy {
     fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
     }
+
+    open spec fn validation_time(&self) -> u64 {
+        self.time
+    }
 }
+
+impl rfc::NoExpiration for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
+        assert(chain[0].not_before < self.time < chain[0].not_after);
+    }
+}
+
+impl rfc::OuterInnerSigMatch for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::KeyUsageNonEmpty for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::IssuerSubjectUIDVersion for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::PathLenNonNegative for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::PathLenConstraint for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::NonLeafMustBeCA for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::NonLeafHasKeyCertSign for ChromePolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+// impl rfc::NonEmptySAN for ChromePolicy {
+//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+// }
 
 impl ChromePolicy {
     /// Create a Chrome policy with the same settings in Hammurabi
