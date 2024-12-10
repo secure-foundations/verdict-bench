@@ -50,13 +50,13 @@ impl rfc::KeyUsageNonEmpty for OpenSSLPolicy {
 //     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
 // }
 
-// impl rfc::PathLenNonNegative for OpenSSLPolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
+impl rfc::PathLenNonNegative for OpenSSLPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
 
-// impl rfc::PathLenConstraint for OpenSSLPolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
+impl rfc::PathLenConstraint for OpenSSLPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
 
 impl rfc::NonLeafMustBeCA for OpenSSLPolicy {
     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
@@ -361,10 +361,14 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
 
     &&& check_auth_subject_key_id(cert, is_root)
 
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L443-L444
+    &&& &cert.ext_basic_constraints matches Some(bc) ==>
+        (bc.path_len matches Some(path_len) ==> path_len >= 0)
+
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L648-L651
     &&& !is_leaf ==>
         (&cert.ext_basic_constraints matches Some(bc) ==>
-        (bc.path_len matches Some(path_len) ==> depth as i64 <= path_len))
+        (bc.path_len matches Some(path_len) ==> depth <= path_len as usize))
 }
 
 pub open spec fn valid_leaf(env: &Policy, cert: &Certificate) -> bool {

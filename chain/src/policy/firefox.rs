@@ -34,6 +34,49 @@ impl Policy for FirefoxPolicy {
     }
 }
 
+impl rfc::NoExpiration for FirefoxPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
+        assert(chain[0].not_before < self.time < chain[0].not_after);
+    }
+}
+
+impl rfc::OuterInnerSigMatch for FirefoxPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::KeyUsageNonEmpty for FirefoxPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+// TODO: check
+// impl rfc::IssuerSubjectUIDVersion for FirefoxPolicy {
+//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+// }
+
+// Firefox/NSS allows negative PathLenConstraints
+// https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certt.h#L591-L598
+// impl rfc::PathLenNonNegative for FirefoxPolicy {
+//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+// }
+
+impl rfc::PathLenConstraint for FirefoxPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::NonLeafMustBeCA for FirefoxPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+impl rfc::NonLeafHasKeyCertSign for FirefoxPolicy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+}
+
+// https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certdb.c#L1432
+// TODO: check
+// impl rfc::NonEmptySAN for FirefoxPolicy {
+//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+// }
+
 impl FirefoxPolicy {
     /// Create a Firefox policy with the same settings in Hammurabi
     pub fn default(time: u64) -> Self {

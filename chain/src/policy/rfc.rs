@@ -77,10 +77,11 @@ pub trait PathLenConstraint: Policy {
         requires self.spec_valid_chain(chain, task) matches Ok(res) && res
         ensures
             forall |i: usize| #![trigger chain[i as int]]
-                0 <= i < chain.len() ==> {
+                1 <= i < chain.len() ==> {
                     &chain[i as int].ext_basic_constraints matches Some(bc) ==> {
                         bc.path_len matches Some(limit) ==> {
-                            bc.is_ca && (chain[i as int].ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign)
+                            bc.is_ca &&
+                            (chain[i as int].ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign)
                             ==>
                             (i - 1) <= limit as usize
                         }
@@ -117,6 +118,5 @@ pub trait NonEmptySAN: Policy {
                 0 <= i < chain.len() ==>
                 (chain[i as int].ext_subject_alt_name matches Some(san) ==> san.names.len() > 0);
 }
-
 
 }
