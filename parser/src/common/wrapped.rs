@@ -228,7 +228,7 @@ macro_rules! wrap_combinator_impls {
                     let res = $inner_expr.parse(s);
                     #[cfg(trace)] {
                         use polyfill::*;
-                        println_join!("[", stringify!($name), "] ", format_dbg(&res));
+                        eprintln_join!("[", stringify!($name), "] ", format_dbg(&res));
                     }
                     res
                 }
