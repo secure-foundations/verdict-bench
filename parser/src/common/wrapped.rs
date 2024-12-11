@@ -226,7 +226,7 @@ macro_rules! wrap_combinator_impls {
                 fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
                     $(let $field_name: $field_type = self.$field_name;)*
                     let res = $inner_expr.parse(s);
-                    #[cfg(parser_trace)] {
+                    #[cfg(trace)] {
                         use polyfill::*;
                         println_join!("[", stringify!($name), "] ", format_dbg(&res));
                     }

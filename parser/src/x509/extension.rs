@@ -53,10 +53,10 @@ mapper! {
     pub struct ExtensionMapper;
 
     for <Id, Param>
-    from ExtensionFrom where type ExtensionFrom<Id, Param> = (Id, PairValue<bool, Param>);
+    from ExtensionFrom where type ExtensionFrom<Id, Param> = (Id, PairValue<OptionDeep<bool>, Param>);
     to ExtensionPoly where pub struct ExtensionPoly<Id, Param> {
         pub id: Id,
-        pub critical: bool,
+        pub critical: OptionDeep<bool>,
         pub param: Param,
     }
 
@@ -84,16 +84,16 @@ pub struct ExtensionCont;
 
 impl ExtensionCont {
     pub open spec fn spec_apply(i: SpecObjectIdentifierValue) -> <ExtensionCont as Continuation>::Output {
-        Default(false, spec_new_wrapped(ASN1(Boolean)), ExtensionParamCont::spec_apply(i))
+        Optional(spec_new_wrapped(ASN1(Boolean)), ExtensionParamCont::spec_apply(i))
     }
 }
 
 impl Continuation for ExtensionCont {
     type Input<'a> = ObjectIdentifierValue;
-    type Output = Default<bool, Wrapped<ASN1<Boolean>>, <ExtensionParamCont as Continuation>::Output>;
+    type Output = Optional<Wrapped<ASN1<Boolean>>, <ExtensionParamCont as Continuation>::Output>;
 
     fn apply<'a>(&self, i: Self::Input<'a>) -> (o: Self::Output) {
-        Default(false, new_wrapped(ASN1(Boolean)), ExtensionParamCont.apply(i))
+        Optional(new_wrapped(ASN1(Boolean)), ExtensionParamCont.apply(i))
     }
 
     open spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {

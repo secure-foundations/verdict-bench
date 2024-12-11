@@ -24,11 +24,18 @@ VERUS_DEPS_SANITIZED = $(subst -,_,$(VERUS_DEPS))
 
 .PHONY: debug
 debug: target/debug/verify/$(NAME).verusdata
-	cargo build
+	RUSTFLAGS=$(RUSTFLAGS) cargo build
 
 .PHONY: release
 release: target/release/verify/$(NAME).verusdata
-	cargo build --release
+	RUSTFLAGS=$(RUSTFLAGS) cargo build --release
+
+# Same as debug/release, but enabled the tracing flag
+debug-trace: RUSTFLAGS += --cfg trace
+debug-trace: debug
+
+release-trace: RUSTFLAGS += --cfg trace
+release-trace: release
 
 .PHONY: test
 test: $(TEST_TARGETS)

@@ -281,6 +281,7 @@ pub fn main(args: Args) -> Result<(), Error> {
 
                 // Filter out tasks with empty domain name, IP address, or unicode character that failed to parse
                 if entry.domain.is_empty() || entry.domain.parse::<IpAddr>().is_ok() || entry.domain.contains('\u{FFFD}') {
+                    eprintln!("Skipping {} due to unsupported domain name \"{}\"", &entry.hash, &entry.domain);
                     continue;
                 }
 

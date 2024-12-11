@@ -10,6 +10,20 @@ pub enum OptionDeep<T> {
     None,
 }
 
+impl<T: Clone + View> Clone for OptionDeep<T> {
+    #[verifier::external_body]
+    fn clone(&self) -> (res: OptionDeep<T>)
+        ensures res@ == self@
+    {
+        match self {
+            OptionDeep::Some(t) => OptionDeep::Some(t.clone()),
+            OptionDeep::None => OptionDeep::None,
+        }
+    }
+}
+
+impl<T: Copy + View> Copy for OptionDeep<T> {}
+
 impl<T> OptionDeep<T> {
     pub open spec fn spec_unwrap_or(self, default: T) -> T {
         match self {

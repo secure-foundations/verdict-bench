@@ -1,7 +1,8 @@
 #![allow(unused_parens)]
 
 use vstd::prelude::*;
-use rspec::rspec;
+#[cfg(trace)] use rspec::rspec_trace as rspec;
+#[cfg(not(trace))] use rspec::rspec;
 use rspec_lib::*;
 
 use super::common::*;

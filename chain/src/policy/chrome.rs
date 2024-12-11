@@ -3,7 +3,8 @@
 use vstd::prelude::*;
 
 use polyfill::strs_to_strings;
-use rspec::rspec;
+#[cfg(trace)] use rspec::rspec_trace as rspec;
+#[cfg(not(trace))] use rspec::rspec;
 use rspec_lib::*;
 
 use super::common::*;
