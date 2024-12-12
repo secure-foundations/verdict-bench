@@ -40,6 +40,7 @@ pub struct DistinguishedName(pub Seq<Seq<Attribute>>);
 pub enum GeneralName {
     DNSName(SpecString),
     DirectoryName(DistinguishedName),
+    Other,
 }
 
 pub enum SubjectKey {

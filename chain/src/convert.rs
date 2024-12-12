@@ -744,26 +744,26 @@ impl policy::CertificatePolicies {
 /// Conversions from/to GeneralName and related structures
 impl policy::GeneralName {
     /// Convert each general name to a list of policy::GeneralName's
-    pub open spec fn spec_from(name: SpecGeneralNameValue) -> Option<policy::GeneralName> {
+    pub open spec fn spec_from(name: SpecGeneralNameValue) -> policy::GeneralName {
         match name {
             SpecGeneralNameValue::DNS(s) =>
-                Some(policy::GeneralName::DNSName(s)),
+                policy::GeneralName::DNSName(s),
             SpecGeneralNameValue::Directory(dir_names) =>
-                Some(policy::GeneralName::DirectoryName(policy::DistinguishedName::spec_from(dir_names))),
-            _ => None,
+                policy::GeneralName::DirectoryName(policy::DistinguishedName::spec_from(dir_names)),
+            _ => policy::GeneralName::Other,
         }
     }
 
     /// Exec version of spec_from
-    pub fn from(name: &GeneralNameValue) -> (res: Option<policy::ExecGeneralName>)
+    pub fn from(name: &GeneralNameValue) -> (res: policy::ExecGeneralName)
         ensures res.deep_view() =~= Self::spec_from(name@),
     {
         match name {
             GeneralNameValue::DNS(s) =>
-                Some(policy::ExecGeneralName::DNSName((*s).to_string())),
+                policy::ExecGeneralName::DNSName((*s).to_string()),
             GeneralNameValue::Directory(dir_names) =>
-                Some(policy::ExecGeneralName::DirectoryName(policy::DistinguishedName::from(dir_names))),
-            _ => None,
+                policy::ExecGeneralName::DirectoryName(policy::DistinguishedName::from(dir_names)),
+            _ => policy::ExecGeneralName::Other,
         }
     }
 
@@ -774,10 +774,8 @@ impl policy::GeneralName {
         if names.len() == 0 {
             seq![]
         } else {
-            match Self::spec_from(names.first()) {
-                Some(name) => seq![name] + Self::spec_from_names(names.drop_first()),
-                None => Self::spec_from_names(names.drop_first()),
-            }
+            seq![Self::spec_from(names.first())] +
+            Self::spec_from_names(names.drop_first())
         }
     }
 
@@ -795,11 +793,7 @@ impl policy::GeneralName {
                 len == names@.len(),
                 Self::spec_from_names(names@) =~= gen_names.deep_view() + Self::spec_from_names(names@.skip(i as int)),
         {
-            match Self::from(names.get(i)) {
-                Some(name) => gen_names.push(name),
-                None => (),
-            }
-
+            gen_names.push(Self::from(names.get(i)));
             assert(names@.skip(i + 1) == names@.skip(i as int).drop_first());
         }
 
@@ -814,10 +808,8 @@ impl policy::GeneralName {
         if subtrees.len() == 0 {
             seq![]
         } else {
-            match Self::spec_from(subtrees.first().base) {
-                Some(name) => seq![name] + Self::spec_from_general_subtrees(subtrees.drop_first()),
-                None => Self::spec_from_general_subtrees(subtrees.drop_first()),
-            }
+            seq![Self::spec_from(subtrees.first().base)] +
+            Self::spec_from_general_subtrees(subtrees.drop_first())
         }
     }
 
@@ -836,11 +828,7 @@ impl policy::GeneralName {
                 Self::spec_from_general_subtrees(subtrees@) =~=
                     names.deep_view() + Self::spec_from_general_subtrees(subtrees@.skip(i as int)),
         {
-            match Self::from(&subtrees.get(i).base) {
-                Some(name) => names.push(name),
-                None => (),
-            }
-
+            names.push(Self::from(&subtrees.get(i).base));
             assert(subtrees@.skip(i + 1) == subtrees@.skip(i as int).drop_first());
         }
 
