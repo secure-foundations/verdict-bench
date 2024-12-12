@@ -447,13 +447,16 @@ pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, le
 }
 
 /// NOTE: badSymantec in Hammurabi
-pub open spec fn is_bad_symantec_root(env: &Policy, cert: &Certificate) -> bool {
-    &&& exists |i: usize| 0 <= i < env.symantec_roots.len() && &cert.fingerprint == &env.symantec_roots[i as int]
-    &&& forall |i: usize| 0 <= i < env.symantec_exceptions.len() ==> &cert.fingerprint != &env.symantec_exceptions[i as int]
-    &&& {
-        ||| cert.not_before < 1464739200 // June 2016
-        ||| cert.not_before > 1512086400 // Dec 2017
-    }
+pub open spec fn is_bad_symantec_root(env: &Policy, root: &Certificate, interm: &Certificate) -> bool {
+    &&& exists |i: usize| 0 <= i < env.symantec_roots.len() && &root.fingerprint == &env.symantec_roots[i as int]
+    &&& forall |i: usize| 0 <= i < env.symantec_exceptions.len() ==> &interm.fingerprint != &env.symantec_exceptions[i as int]
+
+    // See IsUntrustedSymantecCert in Chromium
+    // NOTE: removed from Hammurabi, since this is only enabled if kLegacySymantecPKIEnforcement is false, which is not the case by default
+    // &&& {
+    //     ||| root.not_before < 1464739200 // June 2016
+    //     ||| root.not_before > 1512086400 // Dec 2017
+    // }
 }
 
 /// NOTE: fingerprintValid in Hammurabi
@@ -467,13 +470,13 @@ pub open spec fn valid_root_fingerprint(env: &Policy, cert: &Certificate, domain
     &&& is_anssi_fingerprint ==> exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && match_name(&env.anssi_domains[i as int], &domain)
 }
 
-pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, depth: usize, domain: &SpecString) -> bool {
+pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &Certificate, depth: usize, domain: &SpecString) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
 
     &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.crl_sign
 
     &&& valid_root_fingerprint(env, cert, domain)
-    &&& !is_bad_symantec_root(env, cert)
+    &&& !is_bad_symantec_root(env, cert, interm)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
@@ -490,7 +493,7 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
 
                 &&& cert_verified_leaf(env, leaf, &domain)
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-                &&& cert_verified_root(env, root, (chain.len() - 2) as usize, &domain)
+                &&& cert_verified_root(env, root, &chain[chain.len() - 2], (chain.len() - 2) as usize, &domain)
             })
         }
         _ => Err(PolicyError::UnsupportedTask),

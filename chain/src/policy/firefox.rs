@@ -369,10 +369,10 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
 }
 
 /// See CheckForSymantecDistrust in Firefox
-pub open spec fn is_bad_symantec_root(env: &Policy, cert: &Certificate) -> bool {
-    &&& exists |i: usize| 0 <= i < env.symantec_roots.len() && &cert.fingerprint == &env.symantec_roots[i as int]
-    &&& forall |i: usize| 0 <= i < env.symantec_exceptions.len() ==> &cert.fingerprint != &env.symantec_exceptions[i as int]
-    &&& cert.not_before < 1464739200
+pub open spec fn is_bad_symantec_root(env: &Policy, root: &Certificate, interm: &Certificate) -> bool {
+    &&& exists |i: usize| 0 <= i < env.symantec_roots.len() && &root.fingerprint == &env.symantec_roots[i as int]
+    &&& forall |i: usize| 0 <= i < env.symantec_exceptions.len() ==> &interm.fingerprint != &env.symantec_exceptions[i as int]
+    &&& root.not_before < 1464739200
 }
 
 pub open spec fn is_international_valid_name(env: &Policy, cert: &Certificate, name: &SpecString) -> bool {
@@ -404,9 +404,9 @@ pub open spec fn is_international_valid(env: &Policy, cert: &Certificate, leaf: 
     ==> is_international_valid_san(env, cert, san)
 }
 
-pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
+pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &Certificate, leaf: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(env, cert, leaf, depth)
-    &&& !is_bad_symantec_root(env, cert)
+    &&& !is_bad_symantec_root(env, cert, interm)
     &&& is_international_valid(env, cert, leaf)
 }
 
@@ -576,7 +576,7 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
                 &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
                 &&& cert_verified_leaf(env, leaf, &domain, false) // EV chains are not yet supported
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
-                &&& cert_verified_root(env, root, leaf, (chain.len() - 2) as usize)
+                &&& cert_verified_root(env, root, &chain[chain.len() - 2], leaf, (chain.len() - 2) as usize)
             })
         }
         _ => Err(PolicyError::UnsupportedTask),
