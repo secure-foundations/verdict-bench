@@ -242,14 +242,13 @@ pub open spec fn clean_name(name: &SpecString) -> SpecString {
     }
 }
 
-pub open spec fn valid_name(env: &Policy, name: &SpecString) -> bool {
+pub open spec fn valid_name(name: &SpecString) -> bool {
     if name.has_char('*') {
         &&& name.len() > 2
         &&& name.char_at(0) == '*'
         &&& name.char_at(1) == '.'
         &&& name.char_at(name.len() - 1) != '.'
-        &&& forall |i: usize| 0 <= i < env.public_suffix.len() ==>
-            !match_name(&name, #[trigger] &env.public_suffix[i as int])
+        &&& name.skip(2).has_char('.') // at least two components
     } else {
         &&& name.len() > 0
         &&& name.char_at(0) != '.'
@@ -257,27 +256,39 @@ pub open spec fn valid_name(env: &Policy, name: &SpecString) -> bool {
     }
 }
 
-pub open spec fn valid_san(env: &Policy, san: &SubjectAltName) -> bool {
+pub open spec fn valid_san(san: &SubjectAltName) -> bool {
     &&& san.names.len() > 0
     &&& forall |i: usize| #![trigger &san.names[i as int]]
             0 <= i < san.names.len() ==> {
                 &san.names[i as int] matches GeneralName::DNSName(dns_name)
-                ==> valid_name(&env, &clean_name(dns_name))
+                ==> valid_name(&clean_name(dns_name))
             }
 }
 
-pub open spec fn match_san(san: &SubjectAltName, name: &SpecString) -> bool {
-    exists |i: usize| 0 <= i < san.names.len() && {
-        &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
-        &&& match_name(&clean_name(dns_name), &name)
+pub open spec fn match_san(env: &Policy, san: &SubjectAltName, name: &SpecString) -> bool {
+    // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/x509_certificate.cc#L456
+    let allow_wildcard = forall |i: usize| 0 <= i < env.public_suffix.len()
+        ==> !match_name(&name, #[trigger] &env.public_suffix[i as int]);
+
+    if allow_wildcard {
+        exists |i: usize| 0 <= i < san.names.len() && {
+            &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
+            &&& match_name(&clean_name(dns_name), &name)
+        }
+    } else {
+        // If the domain name is an effective TLD, we only allow exact matches without wildcards
+        exists |i: usize| 0 <= i < san.names.len() && {
+            &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
+            &&& &clean_name(dns_name) == &name
+        }
     }
 }
 
 /// Domain matches one of the SANs
 pub open spec fn match_san_domain(env: &Policy, cert: &Certificate, domain: &SpecString) -> bool {
     &&& &cert.ext_subject_alt_name matches Some(san)
-    &&& valid_san(env, san)
-    &&& match_san(san, domain)
+    &&& valid_san(san)
+    &&& match_san(env, san, domain)
 }
 
 pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &SpecString) -> bool {
