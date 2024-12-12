@@ -496,6 +496,9 @@ function main(args) {
         throw "Usage: verify.js <roots.pem> <time>";
     }
 
+    // Services.prefs.setBoolPref("security.ssl.enable_ocsp_must_staple", false);
+    // Services.prefs.setBoolPref("security.ssl.enable_ocsp_stapling", false);
+
     let roots_path = args[0];
     let timestamp = parseInt(args[1]);
 
@@ -588,6 +591,7 @@ function main(args) {
 
             let result;
 
+            certdb.clearOCSPCache();
             result = certdb.benchVerifyCertAtTime(
                 leaf_base64,
                 interm_base64,
