@@ -235,7 +235,7 @@ impl policy::Certificate {
     {
         exts.map_values(|ext: SpecExtensionValue| policy::Extension {
             oid: Self::spec_oid_to_string(ext.id),
-            critical: ext.critical.unwrap_or(false),
+            critical: ext.critical.to_opt(),
         })
     }
 
@@ -245,12 +245,12 @@ impl policy::Certificate {
         vec_map(exts.to_vec(), |ext: &ExtensionValue| -> (res: policy::ExecExtension)
             ensures res.deep_view() == (policy::Extension {
                 oid: Self::spec_oid_to_string(ext@.id),
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
             })
         {
             policy::ExecExtension {
                 oid: Self::oid_to_string(&ext.id),
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
             }
         })
     }
@@ -401,7 +401,7 @@ impl policy::AuthorityKeyIdentifier {
         if_let! {
             let SpecExtensionParamValue::AuthorityKeyIdentifier(akid) = ext.param;
             Some(policy::AuthorityKeyIdentifier {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 key_id: match akid.key_id {
                     OptionDeep::Some(key_id) => Some(hash::spec_to_hex_upper(key_id)),
                     OptionDeep::None => None,
@@ -420,7 +420,7 @@ impl policy::AuthorityKeyIdentifier {
     {
         if let ExtensionParamValue::AuthorityKeyIdentifier(akid) = &ext.param {
             Ok(policy::ExecAuthorityKeyIdentifier {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 key_id: match akid.key_id {
                     OptionDeep::Some(key_id) => Some(hash::to_hex_upper(key_id)),
                     OptionDeep::None => None,
@@ -441,7 +441,7 @@ impl policy::SubjectKeyIdentifier {
         if_let! {
             let SpecExtensionParamValue::SubjectKeyIdentifier(skid) = ext.param;
             Some(policy::SubjectKeyIdentifier {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 key_id: hash::spec_to_hex_upper(skid),
             })
         }
@@ -453,7 +453,7 @@ impl policy::SubjectKeyIdentifier {
     {
         if let ExtensionParamValue::SubjectKeyIdentifier(skid) = &ext.param {
             Ok(policy::ExecSubjectKeyIdentifier {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 key_id: hash::to_hex_upper(skid),
             })
         } else {
@@ -467,7 +467,7 @@ impl policy::ExtendedKeyUsage {
         if_let! {
             let SpecExtensionParamValue::ExtendedKeyUsage(usages) = ext.param;
             Some(policy::ExtendedKeyUsage {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 usages: usages.map_values(|oid| Self::spec_oid_to_key_usage_type(oid)),
             })
         }
@@ -487,7 +487,7 @@ impl policy::ExtendedKeyUsage {
             assert(usage_types.deep_view() =~= usages@.map_values(|oid| Self::spec_oid_to_key_usage_type(oid)));
 
             Ok(policy::ExecExtendedKeyUsage {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 usages: usage_types,
             })
         } else {
@@ -543,7 +543,7 @@ impl policy::BasicConstraints {
         if_let! {
             let SpecExtensionParamValue::BasicConstraints(bc) = ext.param;
             Some(policy::BasicConstraints {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 is_ca: bc.is_ca,
                 path_len: match bc.path_len {
                     OptionDeep::Some(len) => Some(len as i64),
@@ -560,7 +560,7 @@ impl policy::BasicConstraints {
     {
         if let ExtensionParamValue::BasicConstraints(bc) = &ext.param {
             Ok(policy::ExecBasicConstraints {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 is_ca: bc.is_ca,
                 path_len: match bc.path_len {
                     OptionDeep::Some(len) => Some(len as i64),
@@ -578,7 +578,7 @@ impl policy::KeyUsage {
         if_let! {
             let SpecExtensionParamValue::KeyUsage(usage) = ext.param;
             Some(policy::KeyUsage {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 digital_signature: BitStringValue::spec_has_bit(usage, 0),
                 non_repudiation: BitStringValue::spec_has_bit(usage, 1),
                 key_encipherment: BitStringValue::spec_has_bit(usage, 2),
@@ -598,7 +598,7 @@ impl policy::KeyUsage {
     {
         if let ExtensionParamValue::KeyUsage(usage) = &ext.param {
             Ok(policy::ExecKeyUsage {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 digital_signature: BitStringValue::has_bit(usage, 0),
                 non_repudiation: BitStringValue::has_bit(usage, 1),
                 key_encipherment: BitStringValue::has_bit(usage, 2),
@@ -620,7 +620,7 @@ impl policy::SubjectAltName {
         if_let! {
             let SpecExtensionParamValue::SubjectAltName(names) = ext.param;
             Some(policy::SubjectAltName {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 names: policy::GeneralName::spec_from_names(names),
             })
         }
@@ -633,7 +633,7 @@ impl policy::SubjectAltName {
     {
         if let ExtensionParamValue::SubjectAltName(names) = &ext.param {
             Ok(policy::ExecSubjectAltName {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 names: policy::GeneralName::from_names(names),
             })
         } else {
@@ -647,7 +647,7 @@ impl policy::NameConstraints {
         if_let! {
             let SpecExtensionParamValue::NameConstraints(constraints) = ext.param;
             Some(policy::NameConstraints {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 // Flattened list of permitted/excluded names
                 permitted: if let OptionDeep::Some(permitted) = constraints.permitted {
                     policy::GeneralName::spec_from_general_subtrees(permitted)
@@ -693,7 +693,7 @@ impl policy::NameConstraints {
             });
 
             Ok(policy::ExecNameConstraints {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 permitted,
                 excluded,
             })
@@ -709,7 +709,7 @@ impl policy::CertificatePolicies {
             let SpecExtensionParamValue::CertificatePolicies(policies) = ext.param;
 
             Some(policy::CertificatePolicies {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 policies: policies.map_values(|policy: SpecPolicyInfoValue|
                     policy::Certificate::spec_oid_to_string(policy.policy_id)),
             })
@@ -732,7 +732,7 @@ impl policy::CertificatePolicies {
                 policy::Certificate::spec_oid_to_string(policy.policy_id)));
 
             Ok(policy::ExecCertificatePolicies {
-                critical: ext.critical.unwrap_or(false),
+                critical: ext.critical.to_opt(),
                 policies: policy_oid_strings,
             })
         } else {

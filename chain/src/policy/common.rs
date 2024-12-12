@@ -55,13 +55,13 @@ pub enum SubjectKey {
 }
 
 pub struct AuthorityKeyIdentifier {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub key_id: Option<SpecString>,
     pub serial: Option<SpecString>,
 }
 
 pub struct SubjectKeyIdentifier {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub key_id: SpecString,
 }
 
@@ -77,18 +77,18 @@ pub enum ExtendedKeyUsageType {
 }
 
 pub struct ExtendedKeyUsage {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub usages: Seq<ExtendedKeyUsageType>,
 }
 
 pub struct BasicConstraints {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub is_ca: bool,
     pub path_len: Option<i64>,
 }
 
 pub struct KeyUsage {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub digital_signature: bool,
     pub non_repudiation: bool,
     pub key_encipherment: bool,
@@ -101,18 +101,18 @@ pub struct KeyUsage {
 }
 
 pub struct SubjectAltName {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub names: Seq<GeneralName>,
 }
 
 pub struct NameConstraints {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub permitted: Seq<GeneralName>,
     pub excluded: Seq<GeneralName>,
 }
 
 pub struct CertificatePolicies {
-    pub critical: bool,
+    pub critical: Option<bool>,
     pub policies: Seq<SpecString>,
 }
 
@@ -123,7 +123,7 @@ pub struct SignatureAlgorithm {
 
 pub struct Extension {
     pub oid: SpecString,
-    pub critical: bool,
+    pub critical: Option<bool>,
 }
 
 pub struct Certificate {

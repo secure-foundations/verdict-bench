@@ -175,7 +175,7 @@ pub open spec fn check_basic_constraints(cert: &Certificate) -> bool
             &&& &cert.ext_key_usage matches Some(key_usage)
             &&& key_usage.key_cert_sign
         }
-        &&& bc.is_ca ==> bc.critical
+        &&& bc.is_ca ==> (bc.critical matches Some(c) && c)
     }
 }
 
@@ -198,8 +198,8 @@ pub open spec fn check_san(cert: &Certificate) -> bool
 pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) -> bool
 {
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L622-L627
-    &&& &cert.ext_authority_key_id matches Some(akid) ==> !akid.critical
-    &&& &cert.ext_subject_key_id matches Some(skid) ==> !skid.critical
+    &&& &cert.ext_authority_key_id matches Some(akid) ==> !match akid.critical { Some(t) => t, None => false }
+    &&& &cert.ext_subject_key_id matches Some(skid) ==> !match skid.critical { Some(t) => t, None => false }
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L628-L642
     &&& if cert.version >= 2 {
@@ -347,7 +347,7 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
     &&& cert.subject.0.len() == 0 ==> {
         &&& &cert.ext_subject_alt_name matches Some(san)
         &&& san.names.len() != 0
-        &&& san.critical
+        &&& san.critical matches Some(c) && c
         &&& &cert.ext_basic_constraints matches Some(bc) ==> !bc.is_ca
         &&& &cert.ext_key_usage matches Some(ku) ==> !ku.key_cert_sign
     }

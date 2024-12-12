@@ -291,6 +291,14 @@ pub open spec fn match_san_domain(env: &Policy, cert: &Certificate, domain: &Spe
     &&& match_san(env, san, domain)
 }
 
+/// Chrome requires ext.critical to be omitted if false
+/// https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/parse_certificate.cc#L618-L619
+pub open spec fn check_ext_critical(cert: &Certificate) -> bool {
+    &cert.all_exts matches Some(all_exts) ==>
+        forall |i: usize| #![trigger all_exts[i as int]] 0 <= i < all_exts.len()
+        ==> (&all_exts[i as int].critical matches Some(t) ==> *t)
+}
+
 pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &SpecString) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
@@ -307,6 +315,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
+    &&& check_ext_critical(cert)
 
     &&& &cert.ext_basic_constraints matches Some(bc) ==> (bc.path_len matches Some(limit) ==> limit >= 0)
     &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
@@ -325,6 +334,7 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, depth:
     &&& bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
+    &&& check_ext_critical(cert)
 
     &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
 }

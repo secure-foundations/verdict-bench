@@ -78,6 +78,24 @@ impl<T> OptionDeep<T> {
             None => OptionDeep::None,
         }
     }
+
+    pub open spec fn spec_to_opt(self) -> Option<T> {
+        match self {
+            OptionDeep::Some(t) => Some(t),
+            OptionDeep::None => None,
+        }
+    }
+
+    #[verifier::when_used_as_spec(spec_to_opt)]
+    #[inline(always)]
+    pub fn to_opt(self) -> (res: Option<T>)
+        ensures res == self.spec_to_opt()
+    {
+        match self {
+            OptionDeep::Some(t) => Some(t),
+            OptionDeep::None => None,
+        }
+    }
 }
 
 }
