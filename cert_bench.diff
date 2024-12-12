@@ -259,7 +259,7 @@ index 6135c24fe8..9b358fe566 100644
  }
  
 diff --git a/net/cert/cert_verify_proc_builtin.cc b/net/cert/cert_verify_proc_builtin.cc
-index 34c9987a29..65fd4ecaec 100644
+index 34c9987a29..b6c184b11c 100644
 --- a/net/cert/cert_verify_proc_builtin.cc
 +++ b/net/cert/cert_verify_proc_builtin.cc
 @@ -52,61 +52,61 @@ DEFINE_CERT_ERROR_ID(kPathLacksEVPolicy, "Path does not have an EV policy");
@@ -398,20 +398,38 @@ index 34c9987a29..65fd4ecaec 100644
  
  // Enum for whether path building is attempting to verify a certificate as EV or
  // as DV.
-@@ -398,9 +398,9 @@ void AddIntermediatesToIssuerSource(X509Certificate* x509_cert,
+@@ -389,7 +389,7 @@ scoped_refptr<ParsedCertificate> ParseCertificateFromBuffer(
+                                    errors);
+ }
+ 
+-void AddIntermediatesToIssuerSource(X509Certificate* x509_cert,
++bool AddIntermediatesToIssuerSource(X509Certificate* x509_cert,
+                                     CertIssuerSourceStatic* intermediates,
+                                     const NetLogWithSource& net_log) {
+   for (const auto& intermediate : x509_cert->intermediate_buffers()) {
+@@ -398,12 +398,17 @@ void AddIntermediatesToIssuerSource(X509Certificate* x509_cert,
          ParseCertificateFromBuffer(intermediate.get(), &errors);
      // TODO(crbug.com/634484): this duplicates the logging of the input chain
      // maybe should only log if there is a parse error/warning?
 -    net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_INPUT_CERT, [&] {
 -      return NetLogCertParams(intermediate.get(), errors);
 -    });
+-    if (cert)
 +    // net_log.AddEvent(NetLogEventType::CERT_VERIFY_PROC_INPUT_CERT, [&] {
 +    //   return NetLogCertParams(intermediate.get(), errors);
 +    // });
-     if (cert)
++    if (cert) {
        intermediates->AddCert(std::move(cert));
++    } else {
++      return false;
++    }
    }
-@@ -694,9 +694,9 @@ int CertVerifyProcBuiltin::VerifyInternal(
++
++  return true;
+ }
+ 
+ // Appends the SHA256 hashes of |spki_bytes| to |*hashes|.
+@@ -694,9 +699,9 @@ int CertVerifyProcBuiltin::VerifyInternal(
          ParseCertificateFromBuffer(input_cert->cert_buffer(), &parsing_errors);
      // TODO(crbug.com/634484): this duplicates the logging of the input chain
      // maybe should only log if there is a parse error/warning?
@@ -424,7 +442,17 @@ index 34c9987a29..65fd4ecaec 100644
      if (!target) {
        verify_result->cert_status |= CERT_STATUS_INVALID;
        return ERR_CERT_INVALID;
-@@ -720,10 +720,10 @@ int CertVerifyProcBuiltin::VerifyInternal(
+@@ -705,7 +710,8 @@ int CertVerifyProcBuiltin::VerifyInternal(
+ 
+   // Parse the provided intermediates.
+   CertIssuerSourceStatic intermediates;
+-  AddIntermediatesToIssuerSource(input_cert, &intermediates, net_log);
++  if (!AddIntermediatesToIssuerSource(input_cert, &intermediates, net_log))
++    return ERR_CERT_INVALID;
+ 
+   // Parse the additional trust anchors and setup trust store.
+   std::unique_ptr<SystemTrustStore> ssl_trust_store =
+@@ -720,10 +726,10 @@ int CertVerifyProcBuiltin::VerifyInternal(
      // TODO(crbug.com/634484): this duplicates the logging of the
      // additional_trust_anchors maybe should only log if there is a parse
      // error/warning?
@@ -439,7 +467,7 @@ index 34c9987a29..65fd4ecaec 100644
    }
  
    // Get the global dependencies.
-@@ -743,8 +743,8 @@ int CertVerifyProcBuiltin::VerifyInternal(
+@@ -743,8 +749,8 @@ int CertVerifyProcBuiltin::VerifyInternal(
  
    // First try EV validation. Can skip this if the leaf certificate has no
    // chance of verifying as EV (lacks an EV policy).
@@ -450,7 +478,7 @@ index 34c9987a29..65fd4ecaec 100644
  
    // Next try DV validation.
    attempts.emplace_back(VerificationType::kDV);
-@@ -758,15 +758,15 @@ int CertVerifyProcBuiltin::VerifyInternal(
+@@ -758,15 +764,15 @@ int CertVerifyProcBuiltin::VerifyInternal(
         ++cur_attempt_index) {
      const auto& cur_attempt = attempts[cur_attempt_index];
      verification_type = cur_attempt.verification_type;
@@ -475,7 +503,7 @@ index 34c9987a29..65fd4ecaec 100644
  
      // If a previous attempt used up most/all of the deadline, extend the
      // deadline a little bit to give this verification attempt a chance at
-@@ -783,13 +783,13 @@ int CertVerifyProcBuiltin::VerifyInternal(
+@@ -783,13 +789,13 @@ int CertVerifyProcBuiltin::VerifyInternal(
  
      // TODO(crbug.com/634484): Log these in path_builder.cc so they include
      // correct timing information.
@@ -495,7 +523,7 @@ index 34c9987a29..65fd4ecaec 100644
  
      if (result.HasValidPath())
        break;
-@@ -832,10 +832,10 @@ int CertVerifyProcBuiltin::VerifyInternal(
+@@ -832,10 +838,10 @@ int CertVerifyProcBuiltin::VerifyInternal(
    int error = AssignVerifyResult(
        input_cert, hostname, result, verification_type,
        checked_revocation_for_some_path, ssl_trust_store.get(), verify_result);
