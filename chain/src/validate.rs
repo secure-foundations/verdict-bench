@@ -841,3 +841,81 @@ impl RootStore {
 }
 
 }
+
+impl<'a, P: Policy> Validator<'a, P> {
+    /// Debug utility to print some information about the chain being validated
+    pub fn print_debug_info(&self, chain_base64: &Vec<Vec<u8>>, task: &ExecTask)
+        -> Result<(), ValidationError> {
+        eprintln!("=================== task info ===================");
+        // Print some general information about the certs
+        eprintln!("{} root certificate(s)", self.roots.len());
+        eprintln!("{} chain certificate(s)", chain_base64.len());
+
+        let chain_der = chain_base64.iter().map(|base64| decode_base64(base64)).collect::<Result<Vec<_>, _>>()?;
+        let chain = chain_der.iter().map(|der| parse_x509_der(der)).collect::<Result<Vec<_>, _>>()?;
+        let chain_abs = chain.iter().map(|cert| policy::Certificate::from(cert)).collect::<Result<Vec<_>, _>>()?;
+
+        // Check that for each i, cert[i + 1] issued cert[i]
+        for i in 0..chain.len() - 1 {
+            if self.policy.likely_issued(&chain_abs[i + 1], &chain_abs[i]) {
+                eprintln!("cert {} issued cert {}", i + 1, i);
+            }
+        }
+
+        let mut used_roots = Vec::new();
+
+        // Check if root cert issued any of the chain certs
+        for (i, root) in self.roots_abs_cache.iter().enumerate() {
+            let mut used = false;
+
+            for (j, chain_cert) in chain_abs.iter().enumerate() {
+                if self.policy.likely_issued(root, chain_cert) {
+                    used = true;
+                    eprintln!("root cert {} issued cert {}", i, j);
+                }
+            }
+
+            if used {
+                used_roots.push(i);
+            }
+        }
+
+        let print_cert = |cert: &x509::CertificateValue| {
+            eprintln!("  subject: {}", cert.get().cert.get().subject);
+            eprintln!("  issued by: {}", cert.get().cert.get().issuer);
+            eprintln!("  signed with: {:?}", cert.get().sig_alg);
+            eprintln!("  subject key: {:?}", cert.get().cert.get().subject_key.alg);
+        };
+
+        for (i, cert) in chain.iter().enumerate() {
+            eprintln!("cert {}:", i);
+            print_cert(cert);
+        }
+
+        for i in used_roots.iter() {
+            eprintln!("root cert {}:", i);
+            print_cert(self.roots.get(*i));
+        }
+
+        eprintln!("task: {:?}", task);
+
+        // eprintln!("timestamp: {} ({})", now, match DateTime::<Utc>::from_timestamp(now as i64, 0) {
+        //     Some(dt) => dt.to_string(),
+        //     None => "invalid".to_string(),
+        // });
+
+        for (i, cert) in chain_abs.iter().enumerate() {
+            eprintln!("abstract cert {}:", i);
+            eprintln!("  {:?}", cert);
+        }
+
+        for i in used_roots.iter() {
+            eprintln!("abstract root cert {}:", i);
+            eprintln!("  {:?}", &self.roots_abs_cache[*i]);
+        }
+
+        eprintln!("=================== end task info ===================");
+
+        Ok(())
+    }
+}
