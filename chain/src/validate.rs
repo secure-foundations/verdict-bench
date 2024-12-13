@@ -885,6 +885,8 @@ impl<'a, P: Policy> Validator<'a, P> {
             eprintln!("  issued by: {}", cert.get().cert.get().issuer);
             eprintln!("  signed with: {:?}", cert.get().sig_alg);
             eprintln!("  subject key: {:?}", cert.get().cert.get().subject_key.alg);
+            eprintln!("  from: {:?}", cert.get().cert.get().validity.not_before);
+            eprintln!("  to: {:?}", cert.get().cert.get().validity.not_after);
         };
 
         for (i, cert) in chain.iter().enumerate() {
