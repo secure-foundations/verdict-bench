@@ -2,8 +2,10 @@ use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, ChildStdout};
 
 use chain::policy::{ExecTask, ExecPurpose};
+use clap::{Parser, ValueEnum};
 
 use crate::error::*;
+use super::*;
 
 #[derive(Debug)]
 pub struct ValidationResult {
@@ -108,4 +110,117 @@ impl Drop for CommonBenchInstance {
         self.child.kill().unwrap();
         self.child.wait().unwrap();
     }
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum HarnessName {
+    Chrome,
+    Firefox,
+    OpenSSL,
+    Armor,
+    HammurabiChrome,
+    HammurabiFirefox,
+    VerdictChrome,
+    VerdictFirefox,
+    VerdictOpenSSL,
+}
+
+/// Arguments to load a harness
+#[derive(Parser, Debug)]
+pub struct HarnessArgs {
+    /// X509 validator used for benchmarking
+    name: HarnessName,
+
+    /// Path to the Chrome build repo with cert_bench
+    #[clap(long)]
+    chrome_repo: Option<String>,
+
+    /// Path to the Firefox build repo
+    #[clap(long)]
+    firefox_repo: Option<String>,
+
+    /// Path to the OpenSSL harness repo
+    #[clap(long)]
+    openssl_repo: Option<String>,
+
+    /// Path to the ARMOR repo
+    #[clap(long)]
+    armor_repo: Option<String>,
+
+    /// Path to the Hammurabi repo
+    #[clap(long)]
+    hammurabi_repo: Option<String>,
+
+    /// Path to libfaketime.so
+    #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
+    faketime_lib: String,
+}
+
+/// Generate a dynamic Harness according the given arguments
+pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn Harness>, Error> {
+    Ok(match args.name {
+        HarnessName::Chrome =>
+            Box::new(ChromeHarness {
+                repo: args.chrome_repo.clone()
+                    .ok_or(Error::CommonBenchError("chrome repo not specified".to_string()))?,
+                faketime_lib: args.faketime_lib.clone(),
+                debug,
+            }),
+
+        HarnessName::Firefox =>
+            Box::new(FirefoxHarness {
+                repo: args.firefox_repo.clone()
+                    .ok_or(Error::CommonBenchError("firefox repo not specified".to_string()))?,
+                    debug,
+            }),
+
+        HarnessName::OpenSSL =>
+            Box::new(OpenSSLHarness {
+                repo: args.openssl_repo.clone()
+                    .ok_or(Error::CommonBenchError("openssl repo not specified".to_string()))?,
+                debug,
+            }),
+
+        HarnessName::Armor =>
+            Box::new(ArmorHarness {
+                repo: args.armor_repo.clone()
+                    .ok_or(Error::CommonBenchError("armor repo not specified".to_string()))?,
+                faketime_lib: args.faketime_lib.clone(),
+                debug,
+            }),
+
+        HarnessName::HammurabiChrome =>
+            Box::new(HammurabiHarness {
+                repo: args.hammurabi_repo.clone()
+                    .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
+                policy: HammurabiPolicy::Chrome,
+                debug,
+            }),
+
+        HarnessName::HammurabiFirefox =>
+            Box::new(HammurabiHarness {
+                repo: args.hammurabi_repo.clone()
+                    .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
+                policy: HammurabiPolicy::Firefox,
+                debug,
+            }),
+
+        HarnessName::VerdictChrome =>
+            Box::new(VerdictHarness {
+                policy: verdict::PolicyName::ChromeHammurabi,
+                debug,
+            }),
+
+        HarnessName::VerdictFirefox =>
+            Box::new(VerdictHarness {
+                policy: verdict::PolicyName::FirefoxHammurabi,
+                debug,
+            }),
+
+        HarnessName::VerdictOpenSSL =>
+            Box::new(VerdictHarness {
+                policy: verdict::PolicyName::OpenSSL,
+                debug,
+            }),
+    })
 }

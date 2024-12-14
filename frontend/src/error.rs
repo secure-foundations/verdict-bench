@@ -78,6 +78,12 @@ pub enum Error {
 
     #[error("failed to decode UTF-8: {0}")]
     StringUTF8Error(#[from] std::string::FromUtf8Error),
+
+    #[error("JSON parsing error: {0}")]
+    JSONError(#[from] serde_json::Error),
+
+    #[error("Limbo test error: {0}")]
+    LimboError(String),
 }
 
 impl From<X509ParseError> for Error {

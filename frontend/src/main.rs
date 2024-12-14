@@ -32,6 +32,9 @@ enum Action {
 
     /// Benchmark CT logs on multiple clients
     BenchCTLogs(bench_ct_logs::Args),
+
+    /// Run differential tests on x509-limbo
+    Limbo(limbo::Args),
 }
 
 fn main_args(args: Args) -> Result<(), Error> {
@@ -41,6 +44,7 @@ fn main_args(args: Args) -> Result<(), Error> {
         Action::ParseCTLogs(args) => parse_ct_logs::main(args),
         Action::DiffResults(args) => diff_results::main(args),
         Action::BenchCTLogs(args) => bench_ct_logs::main(args),
+        Action::Limbo(args) => limbo::main(args),
     }
 }
 

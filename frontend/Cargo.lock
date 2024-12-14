@@ -472,6 +472,7 @@ dependencies = [
  "regex",
  "rspec-lib",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "vstd",

@@ -6,7 +6,7 @@ use std::thread;
 use std::time::Instant;
 
 use chrono::Utc;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use crossbeam::channel;
 use crossbeam::channel::Receiver;
 use crossbeam::channel::Sender;
@@ -21,7 +21,8 @@ use crate::harness::*;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// X509 validator used for benchmarking
-    agent: BenchHarness,
+    #[clap(flatten)]
+    harness: HarnessArgs,
 
     /// Path to the root certificates
     roots: String,
@@ -48,30 +49,6 @@ pub struct Args {
     #[clap(short = 'l', long)]
     limit: Option<usize>,
 
-    /// Path to the Chrome build repo with cert_bench
-    #[clap(long)]
-    chrome_repo: Option<String>,
-
-    /// Path to the Firefox build repo
-    #[clap(long)]
-    firefox_repo: Option<String>,
-
-    /// Path to the OpenSSL harness repo
-    #[clap(long)]
-    openssl_repo: Option<String>,
-
-    /// Path to the ARMOR repo
-    #[clap(long)]
-    armor_repo: Option<String>,
-
-    /// Path to the Hammurabi repo
-    #[clap(long)]
-    hammurabi_repo: Option<String>,
-
-    /// Path to libfaketime.so
-    #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
-    faketime_lib: String,
-
     /// Repeat validation of each certificate for benchmarking
     #[clap(short = 'n', long, default_value = "1")]
     repeat: usize,
@@ -87,87 +64,6 @@ pub struct Args {
     /// Do chain validation only without domain
     #[arg(long, default_value_t = false)]
     no_domain: bool,
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-pub enum BenchHarness {
-    Chrome,
-    Firefox,
-    OpenSSL,
-    Armor,
-    HammurabiChrome,
-    HammurabiFirefox,
-    VerdictChrome,
-    VerdictFirefox,
-    VerdictOpenSSL,
-}
-
-fn get_harness(args: &Args) -> Result<Box<dyn Harness>, Error> {
-    Ok(match args.agent {
-        BenchHarness::Chrome =>
-            Box::new(ChromeHarness {
-                repo: args.chrome_repo.clone()
-                    .ok_or(Error::CommonBenchError("chrome repo not specified".to_string()))?,
-                faketime_lib: args.faketime_lib.clone(),
-                debug: args.debug,
-            }),
-
-        BenchHarness::Firefox =>
-            Box::new(FirefoxHarness {
-                repo: args.firefox_repo.clone()
-                    .ok_or(Error::CommonBenchError("firefox repo not specified".to_string()))?,
-                debug: args.debug,
-            }),
-
-        BenchHarness::OpenSSL =>
-            Box::new(OpenSSLHarness {
-                repo: args.openssl_repo.clone()
-                    .ok_or(Error::CommonBenchError("openssl repo not specified".to_string()))?,
-                debug: args.debug,
-            }),
-
-        BenchHarness::Armor =>
-            Box::new(ArmorHarness {
-                repo: args.armor_repo.clone()
-                    .ok_or(Error::CommonBenchError("armor repo not specified".to_string()))?,
-                faketime_lib: args.faketime_lib.clone(),
-                debug: args.debug,
-            }),
-
-        BenchHarness::HammurabiChrome =>
-            Box::new(HammurabiHarness {
-                repo: args.hammurabi_repo.clone()
-                    .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
-                policy: HammurabiPolicy::Chrome,
-                debug: args.debug,
-            }),
-
-        BenchHarness::HammurabiFirefox =>
-            Box::new(HammurabiHarness {
-                repo: args.hammurabi_repo.clone()
-                    .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
-                policy: HammurabiPolicy::Firefox,
-                debug: args.debug,
-            }),
-
-        BenchHarness::VerdictChrome =>
-            Box::new(VerdictHarness {
-                policy: verdict::PolicyName::ChromeHammurabi,
-                debug: args.debug,
-            }),
-
-        BenchHarness::VerdictFirefox =>
-            Box::new(VerdictHarness {
-                policy: verdict::PolicyName::FirefoxHammurabi,
-                debug: args.debug,
-            }),
-
-        BenchHarness::VerdictOpenSSL =>
-            Box::new(VerdictHarness {
-                policy: verdict::PolicyName::OpenSSL,
-                debug: args.debug,
-            }),
-    })
 }
 
 /// Each worker thread waits for CTLogEntry's, does the validation, and then sends back CTLogResult's
@@ -233,7 +129,7 @@ pub fn main(args: Args) -> Result<(), Error> {
     }
 
     let timestamp = args.override_time.unwrap_or(Utc::now().timestamp()) as u64;
-    let harness: Box<dyn Harness> = get_harness(&args)?;
+    let harness: Box<dyn Harness> = get_harness_from_args(&args.harness, args.debug)?;
 
     let (tx_job, rx_job) = channel::bounded(args.num_jobs);
     let (tx_res, rx_res) = channel::bounded(args.num_jobs);

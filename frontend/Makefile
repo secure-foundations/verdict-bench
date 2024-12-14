@@ -1,7 +1,7 @@
 NAME = frontend
 TARGETS = frontend
 
-CARGO_DEPS = macros clap thiserror csv serde chrono regex crossbeam tempfile limbo-harness-support
+CARGO_DEPS = macros clap thiserror csv serde serde_json chrono regex crossbeam tempfile limbo-harness-support
 VERUS_DEPS = parser polyfill vest chain rspec_lib
 TEST_TARGETS =
 VERUS_FLAGS = --no-lifetime

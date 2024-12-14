@@ -162,26 +162,26 @@ pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
 /// NOTE: leafDurationValid in Hammurabi
 pub open spec fn leaf_duration_valid(cert: &Certificate) -> bool {
     &&& cert.not_before <= cert.not_after
-    &&& {
-        let duration = cert.not_after - cert.not_before;
+    // &&& {
+    //     let duration = cert.not_after - cert.not_before;
 
-        let july_2012 = 1341100800u64;
-        let april_2015 = 1427846400u64;
-        let march_2018 = 1519862400u64;
-        let july_2019 = 1561939200u64;
-        let sep_2020 = 1598918400u64;
-        let ten_years = 315532800u64;
-        let sixty_months = 157852800u64;
-        let thirty_nine_months = 102643200u64;
-        let eight_twenty_five_days = 71280000u64;
-        let three_ninety_eight_days = 34387200u64;
+    //     let july_2012 = 1341100800u64;
+    //     let april_2015 = 1427846400u64;
+    //     let march_2018 = 1519862400u64;
+    //     let july_2019 = 1561939200u64;
+    //     let sep_2020 = 1598918400u64;
+    //     let ten_years = 315532800u64;
+    //     let sixty_months = 157852800u64;
+    //     let thirty_nine_months = 102643200u64;
+    //     let eight_twenty_five_days = 71280000u64;
+    //     let three_ninety_eight_days = 34387200u64;
 
-        ||| cert.not_before < july_2012 && cert.not_after < july_2019 && duration <= ten_years
-        ||| cert.not_before >= july_2012 && cert.not_before < april_2015 && duration <= sixty_months
-        ||| cert.not_before >= april_2015 && cert.not_before < march_2018 && duration <= thirty_nine_months
-        ||| cert.not_before >= march_2018 && cert.not_before < sep_2020 && duration <= eight_twenty_five_days
-        ||| cert.not_before >= sep_2020 && duration <= three_ninety_eight_days
-    }
+    //     ||| cert.not_before < july_2012 && cert.not_after < july_2019 && duration <= ten_years
+    //     ||| cert.not_before >= july_2012 && cert.not_before < april_2015 && duration <= sixty_months
+    //     ||| cert.not_before >= april_2015 && cert.not_before < march_2018 && duration <= thirty_nine_months
+    //     ||| cert.not_before >= march_2018 && cert.not_before < sep_2020 && duration <= eight_twenty_five_days
+    //     ||| cert.not_before >= sep_2020 && duration <= three_ninety_eight_days
+    // }
 }
 
 pub open spec fn not_in_crl(env: &Policy, cert: &Certificate) -> bool {
@@ -473,7 +473,7 @@ pub open spec fn valid_root_fingerprint(env: &Policy, cert: &Certificate, domain
 pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &Certificate, depth: usize, domain: &SpecString) -> bool {
     &&& cert_verified_non_leaf(env, cert, depth)
 
-    &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.crl_sign
+    &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign
 
     &&& valid_root_fingerprint(env, cert, domain)
     &&& !is_bad_symantec_root(env, cert, interm)

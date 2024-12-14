@@ -47,19 +47,25 @@ fn hacl_new_rsapss_load_pkey(
     e_bits: u32,
     nb: &[u8],
     eb: &[u8],
-) -> RSAPublicKeyInternal
+) -> Option<RSAPublicKeyInternal>
 {
-    RSAPublicKeyInternal {
-        n_bits: mod_bits,
-        e_bits: e_bits,
-        key: unsafe {
-            libcrux_hacl::Hacl_RSAPSS_new_rsapss_load_pkey(
-                mod_bits,
-                e_bits,
-                nb.as_ptr() as _,
-                eb.as_ptr() as _,
-            )
-        },
+    let key = unsafe {
+        libcrux_hacl::Hacl_RSAPSS_new_rsapss_load_pkey(
+            mod_bits,
+            e_bits,
+            nb.as_ptr() as _,
+            eb.as_ptr() as _,
+        )
+    };
+
+    if key.is_null() {
+        None
+    } else {
+        Some(RSAPublicKeyInternal {
+            n_bits: mod_bits,
+            e_bits: e_bits,
+            key,
+        })
     }
 }
 
@@ -243,9 +249,9 @@ pub fn pkcs1_v1_5_load_pub_key(pub_key: &[u8]) -> (res: Result<RSAPublicKeyInter
     }
 
     // Load the public key into hacl*
-    Ok(hacl_new_rsapss_load_pkey(
+    hacl_new_rsapss_load_pkey(
         usize_into_u32(n_len), usize_into_u32(e_len), n, e,
-    ))
+    ).ok_or(RSAError::InvalidPublicKey)
 }
 
 }
