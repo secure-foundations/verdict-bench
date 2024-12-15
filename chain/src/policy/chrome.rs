@@ -334,6 +334,9 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
+    // Per x509-limbo:webpki::forbidden-dsa-leaf
+    &&& !(cert.subject_key matches SubjectKey::DSA { .. })
+
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
 
     // Time comparison is inclusive
@@ -361,6 +364,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
     &&& check_ext_critical(cert)
+    &&& check_unhandled_extensions(cert)
 
     &&& &cert.ext_basic_constraints matches Some(bc) ==> (bc.path_len matches Some(limit) ==> limit >= 0)
     &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
@@ -484,6 +488,26 @@ pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate
     }
 }
 
+/// Check for critical extensions unsupported by Chrome
+/// https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L26
+pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
+    &cert.all_exts matches Some(all_exts) ==>
+    forall |i: usize| #![trigger all_exts[i as int]]
+        0 <= i < all_exts.len() ==>
+        (all_exts[i as int].critical matches Some(c) && c) ==>
+        {
+            ||| &all_exts[i as int].oid == "2.5.29.19"@ // BasicConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.15"@ // KeyUsage
+            ||| &all_exts[i as int].oid == "2.5.29.37"@ // ExtKeyUsage
+            ||| &all_exts[i as int].oid == "2.5.29.30"@ // NameConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.17"@ // SubjectAltName
+            ||| &all_exts[i as int].oid == "2.5.29.32"@ // CertificatePolicies
+            ||| &all_exts[i as int].oid == "2.5.29.33"@ // PolicyMappings
+            ||| &all_exts[i as int].oid == "2.5.29.36"@ // PolicyConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.54"@ // InhibitAnyPolicy
+        }
+}
+
 pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(cert, depth)
 
@@ -502,6 +526,7 @@ pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, de
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid(cert)
     &&& extended_key_usage_valid(cert)
+    &&& check_unhandled_extensions(cert)
 }
 
 /// NOTE: badSymantec in Hammurabi
@@ -538,9 +563,13 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &C
 
     // Per x509-limbo:webpki::aki::root-with-aki-*
     &&& &cert.ext_authority_key_id matches Some(aki) ==> {
-        &&& aki.key_id matches Some(..)
-        &&& aki.issuer matches None
-        &&& aki.serial matches None
+        // Not checked in Chrome
+        // &&& aki.key_id matches Some(..)
+
+        // Chrome only enforces that either both are present or absent
+        // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/parse_certificate.cc#L1031
+        // instead of that they should both not be present (per CABF)
+        &&& (aki.issuer matches None) == (aki.serial matches None)
     }
 
     &&& valid_root_fingerprint(env, cert, domain)
