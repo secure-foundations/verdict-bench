@@ -1,12 +1,16 @@
 use std::fs::File;
 use std::io::{self, BufWriter, BufReader, Write};
+use std::thread;
 
 use chain::policy::{ExecPurpose, ExecTask};
 use chrono::Utc;
 use clap::Parser;
+use crossbeam::channel::{self, Receiver, Sender};
+use csv::WriterBuilder;
 use limbo_harness_support::models::{ExpectedResult, Testcase};
 use limbo_harness_support::models::{Limbo, PeerKind, ValidationKind};
 use tempfile::NamedTempFile;
+use serde::{Deserialize, Serialize};
 
 use crate::error::*;
 use crate::harness::*;
@@ -45,6 +49,15 @@ pub struct Args {
     repeat: usize,
 }
 
+/// x509-limbo resultsw
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LimboResult {
+    pub id: String,
+    pub expected: bool,
+    pub valid: bool,
+    pub err_msg: String,
+}
+
 /// Strip -----BEGIN CERTIFICATE----- and -----END CERTIFICATE-----
 /// and remove any whitespaces
 fn strip_pem(s: &str) -> Option<String>
@@ -57,7 +70,7 @@ fn strip_pem(s: &str) -> Option<String>
         .collect())
 }
 
-fn test_limbo(args: &Args, harness: &Box<dyn Harness>, testcase: &Testcase) -> Result<bool, Error>
+fn test_limbo(args: &Args, harness: &Box<dyn Harness>, testcase: &Testcase) -> Result<LimboResult, Error>
 {
     let tmp_root_file = NamedTempFile::new()?;
     let tmp_root_path = tmp_root_file.path().to_str()
@@ -94,21 +107,56 @@ fn test_limbo(args: &Args, harness: &Box<dyn Harness>, testcase: &Testcase) -> R
         ExecTask::ChainValidation(ExecPurpose::ServerAuth)
     };
 
-    let (valid, err) = match instance.validate(&bundle, &task, args.repeat) {
+    let (valid, err_msg) = match instance.validate(&bundle, &task, args.repeat) {
         Ok(res) => (res.valid, res.err),
         Err(e) => (false, e.to_string()),
     };
 
-    let expected = testcase.expected_result == ExpectedResult::Success;
-    println!("{} (expect {}): {}, {}", testcase.id.to_string(), expected, valid, err);
+    Ok(LimboResult {
+        id: testcase.id.to_string(),
+        expected: testcase.expected_result == ExpectedResult::Success,
+        valid,
+        err_msg,
+    })
+}
 
-    Ok(expected == valid)
+fn worker(args: &Args, rx_job: Receiver<&Testcase>, tx_res: Sender<LimboResult>) -> Result<(), Error>
+{
+    let harness = get_harness_from_args(&args.harness, args.debug)?;
+
+    while let Ok(testcase) = rx_job.recv() {
+        tx_res.send(test_limbo(args, &harness, testcase)?)?;
+    }
+
+    Ok(())
+}
+
+/// Collect results and write to stdout
+fn reducer(rx_res: Receiver<LimboResult>) -> Result<(), Error>
+{
+    let mut output_writer =
+        WriterBuilder::new().has_headers(false).from_writer(std::io::stdout());
+
+    let mut total = 0;
+    let mut conformant = 0;
+
+    while let Ok(res) = rx_res.recv() {
+        total += 1;
+        if res.expected == res.valid {
+            conformant += 1;
+        }
+
+        output_writer.serialize(res)?;
+        output_writer.flush()?;
+    }
+
+    eprintln!("{}/{} conformant ({} errors)", conformant, total, total - conformant);
+
+    Ok(())
 }
 
 pub fn main(args: Args) -> Result<(), Error>
 {
-    let harness = get_harness_from_args(&args.harness, args.debug)?;
-
     let limbo: Limbo = serde_json::from_reader(BufReader::new(File::open(&args.path)?))?;
     eprintln!("loaded {} testcases", limbo.testcases.len());
 
@@ -118,24 +166,31 @@ pub fn main(args: Args) -> Result<(), Error>
         (args.no_domain || (t.expected_peer_name.is_some() && t.expected_peer_name.as_ref().unwrap().kind == PeerKind::Dns)) &&
         if let Some(id) = &args.test_id { &t.id.to_string() == id } else { true };
 
-    let mut total = 0;
-    let mut conformant = 0;
+    let (tx_job, rx_job) = channel::bounded(args.num_jobs);
+    let (tx_res, rx_res) = channel::bounded(args.num_jobs);
 
-    for (i, testcase) in limbo.testcases.iter().filter(filter).enumerate() {
-        if let Some(limit) = args.limit {
-            if i >= limit {
-                break;
+    thread::scope(|scope| -> Result<(), Error> {
+        for _ in 0..args.num_jobs {
+            let tx_res = tx_res.clone();
+            let rx_job = rx_job.clone();
+            scope.spawn(|| worker(&args, rx_job, tx_res));
+        }
+
+        scope.spawn(|| reducer(rx_res));
+
+        for (i, testcase) in limbo.testcases.iter().filter(filter).enumerate() {
+            if let Some(limit) = args.limit {
+                if i >= limit {
+                    break;
+                }
             }
+
+            tx_job.send(testcase)?;
         }
 
-        total += 1;
+        drop(tx_job);
+        drop(tx_res);
 
-        if test_limbo(&args, &harness, testcase)? {
-            conformant += 1;
-        }
-    }
-
-    eprintln!("{}/{} conformant ({} errors)", conformant, total, total - conformant);
-
-    Ok(())
+        Ok(())
+    })
 }

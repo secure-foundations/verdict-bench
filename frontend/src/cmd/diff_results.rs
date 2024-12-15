@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, BufReader};
 use std::fs::File;
 use std::collections::HashMap;
 
@@ -6,7 +6,6 @@ use clap::Parser;
 use regex::Regex;
 use csv::ReaderBuilder;
 
-use crate::ct_logs::*;
 use crate::error::*;
 
 #[derive(Parser, Debug)]
@@ -20,6 +19,12 @@ pub struct Args {
     /// The second CSV file to compare
     /// If this is optional, we read from stdin
     file2: Option<String>,
+
+    #[clap(short = 'k', long = "key", default_value = "0")]
+    key_column: usize,
+
+    #[clap(short = 'v', long = "value", default_value = "2")]
+    value_column: usize,
 
     /// Regex expressions specifying classes of results
     /// e.g. if file1 uses OK for success, while file2 uses true, then
@@ -57,25 +62,26 @@ pub fn main(args: Args) -> Result<(), Error>
         .map(|pat| Regex::new(pat)).collect::<Result<Vec<_>, _>>()?;
 
     // Read CSV file1 into a HashMap
-    let file1 = File::open(&args.file1)?;
-    let file1_results: HashMap<String, (CTLogResultLegacy, DiffClass)> =
+    let file1 = BufReader::new(File::open(&args.file1)?);
+    let file1_results: HashMap<String, (String, DiffClass)> =
         ReaderBuilder::new()
             .has_headers(false)
             .from_reader(file1)
-            .deserialize::<CTLogResultLegacy>()
+            .records()
             .map(|res| {
                 let res = res?;
-                let class = DiffClass::get(&classes, &res.result);
+                let value = &res[args.value_column];
+                let class = DiffClass::get(&classes, value);
                 Ok::<_, csv::Error>((
-                    res.hash.clone(),
-                    (res, class),
+                    res[args.key_column].to_string(),
+                    (value.to_string(), class),
                 ))
             })
             .collect::<Result<_, _>>()?;
 
     // Create a reader on file2 or stdin
     let file2: Box<dyn io::Read> = if let Some(file2) = args.file2 {
-        Box::new(File::open(file2)?)
+        Box::new(BufReader::new(File::open(file2)?))
     } else {
         Box::new(std::io::stdin())
     };
@@ -86,17 +92,19 @@ pub fn main(args: Args) -> Result<(), Error>
 
     // For each result entry in file2, check if the corresponding one exists in file1
     // Otherwise report
-    for result in file2_reader.deserialize() {
-        let result: CTLogResultLegacy = result?;
+    for res in file2_reader.records() {
+        let res = res?;
+        let key = &res[args.key_column];
+        let value = &res[args.value_column];
 
-        if let Some((file1_result, file1_class)) = file1_results.get(&result.hash) {
-            let file2_class = DiffClass::get(&classes, &result.result);
+        if let Some((file1_result, file1_class)) = file1_results.get(key) {
+            let file2_class = DiffClass::get(&classes, value);
 
             if file1_class != &file2_class {
-                println!("mismatch at {}: {} vs {}", &result.hash, &file1_result.result, &result.result);
+                println!("mismatch at {}: {} vs {}", key, file1_result, value);
             }
         } else {
-            println!("{} does not exist in {}", &result.hash, &args.file1);
+            println!("{} does not exist in {}", key, &args.file1);
         }
     }
 
