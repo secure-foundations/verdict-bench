@@ -1,7 +1,8 @@
 #![allow(unused_parens)]
 
 use vstd::prelude::*;
-use rspec::rspec;
+#[cfg(trace)] use rspec::rspec_trace as rspec;
+#[cfg(not(trace))] use rspec::rspec;
 use rspec_lib::*;
 
 use crate::issue;
@@ -41,7 +42,8 @@ pub enum GeneralName {
     DNSName(SpecString),
     DirectoryName(DistinguishedName),
     IPAddr(Seq<u8>),
-    Other,
+    OtherName,
+    Unsupported,
 }
 
 pub enum SubjectKey {

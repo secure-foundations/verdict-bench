@@ -752,7 +752,8 @@ impl policy::GeneralName {
                 policy::GeneralName::DirectoryName(policy::DistinguishedName::spec_from(dir_names)),
             SpecGeneralNameValue::IP(addr) =>
                 policy::GeneralName::IPAddr(addr),
-            _ => policy::GeneralName::Other,
+            SpecGeneralNameValue::Other(..) => policy::GeneralName::OtherName,
+            _ => policy::GeneralName::Unsupported,
         }
     }
 
@@ -770,7 +771,8 @@ impl policy::GeneralName {
                 assert(copied.deep_view() =~= addr@);
                 policy::ExecGeneralName::IPAddr(copied)
             }
-            _ => policy::ExecGeneralName::Other,
+            GeneralNameValue::Other(..) => policy::ExecGeneralName::OtherName,
+            _ => policy::ExecGeneralName::Unsupported,
         }
     }
 

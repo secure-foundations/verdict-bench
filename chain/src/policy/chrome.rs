@@ -36,11 +36,13 @@ impl Policy for ChromePolicy {
     }
 }
 
-impl rfc::NoExpiration for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
-        assert(chain[0].not_before < self.time < chain[0].not_after);
-    }
-}
+// Not checked for root in Chrome:
+// https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
+// impl rfc::NoExpiration for ChromePolicy {
+//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
+//         assert(chain[0].not_before <= self.time <= chain[0].not_after);
+//     }
+// }
 
 impl rfc::OuterInnerSigMatch for ChromePolicy {
     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
@@ -264,7 +266,9 @@ pub open spec fn valid_name(name: &SpecString) -> bool {
         &&& name.skip(2).has_char('.') // at least two components
     } else {
         &&& name.len() > 0
-        &&& name.char_at(0) != '.'
+        // Chrome doesn't check for preceding dot
+        // per x509-limbo:rfc5280::nc::nc-permits-invalid-dns-san
+        // &&& name.char_at(0) != '.'
         &&& name.char_at(name.len() - 1) != '.'
     }
 }
@@ -321,14 +325,21 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& is_valid_pki(cert)
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
-    &&& cert.not_before < env.time
-    &&& cert.not_after > env.time
+
+    // Time comparison is inclusive
+    // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
+    &&& cert.not_before <= env.time
+    &&& cert.not_after >= env.time
 
     &&& match_san_domain(env, cert, domain)
 
     // Only check if the root is a known root
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/cert_verify_proc.cc#L680
     &&& is_known_root(env, root) ==> leaf_duration_valid(cert)
+
+    // Per x509-limbo:rfc5280::san::noncritical-with-empty-subject
+    &&& cert.subject.0.len() == 0
+        ==> (&cert.ext_subject_alt_name matches Some(san) && (san.critical matches Some(c) && c))
 
     &&& not_in_crl(env, cert)
     &&& strong_signature(&cert.sig_alg_inner.id)
@@ -340,13 +351,11 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
 }
 
-pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, depth: usize) -> bool {
+pub open spec fn cert_verified_non_leaf(cert: &Certificate, depth: usize) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
-    &&& cert.not_before < env.time
-    &&& cert.not_after > env.time
 
     &&& &cert.ext_basic_constraints matches Some(bc)
     &&& bc.is_ca
@@ -438,29 +447,38 @@ pub open spec fn check_san_name_constraints(constraints: &NameConstraints, san: 
             GeneralName::DNSName(name) => check_dns_name_constraints(&constraints, &clean_name(name)),
             GeneralName::DirectoryName(name) => check_directory_name_constraints(&constraints, name),
             GeneralName::IPAddr(addr) => check_ip_addr_name_constraints(&constraints, addr),
+
+            // We consider all OtherName in SAN to be unrecognized, therefore reject
+            // added due to rfc5280::nc::nc-forbids-othername
+            GeneralName::OtherName => false,
+
             _ => true,
         }
 }
 
 /// Check a leaf certificate against the name constraints in a parent certificate
-pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) -> bool {
+pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate) -> bool {
     &cert.ext_name_constraints matches Some(constraints) ==> {
         &&& valid_dns_name_constraints(&constraints)
         &&& constraints.permitted.len() != 0 || constraints.excluded.len() != 0
 
         // Check SAN section against name constraints
-        &&& &leaf.ext_subject_alt_name matches Some(leaf_san)
-        &&& check_san_name_constraints(constraints, leaf_san)
+        &&& &target.ext_subject_alt_name matches Some(san) ==> check_san_name_constraints(constraints, san)
 
-        &&& check_directory_name_constraints(constraints, &leaf.subject)
+        &&& check_directory_name_constraints(constraints, &target.subject)
     }
 }
 
-pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
-    &&& cert_verified_non_leaf(env, cert, depth)
+pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, depth: usize) -> bool {
+    &&& cert_verified_non_leaf(cert, depth)
+
+    // Time comparison is inclusive
+    // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
+    &&& cert.not_before <= env.time
+    &&& cert.not_after >= env.time
+
     &&& not_in_crl(env, cert)
     &&& strong_signature(&cert.sig_alg_inner.id)
-    &&& check_name_constraints(cert, leaf)
 }
 
 /// NOTE: badSymantec in Hammurabi
@@ -488,12 +506,24 @@ pub open spec fn valid_root_fingerprint(env: &Policy, cert: &Certificate, domain
 }
 
 pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &Certificate, depth: usize, domain: &SpecString) -> bool {
-    &&& cert_verified_non_leaf(env, cert, depth)
+    // NOTE: many checks are not done for root in chrome
+    // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L1271
+
+    &&& cert_verified_non_leaf(cert, depth)
 
     &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign
 
     &&& valid_root_fingerprint(env, cert, domain)
     &&& !is_bad_symantec_root(env, cert, interm)
+}
+
+/// Check name constraints of each certificate against all certs down the path
+pub open spec fn check_all_name_constraints(chain: &Seq<ExecRef<Certificate>>) -> bool
+{
+    &&& chain.len() > 0
+    &&& forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() - 1 ==>
+        forall |j: usize| #![trigger chain[j as int]] 0 <= j < i ==>
+            check_name_constraints(&chain[i as int], &chain[j as int])
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
@@ -509,8 +539,9 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
                 let root = &chain[chain.len() - 1];
 
                 &&& cert_verified_leaf(env, leaf, root, &domain)
-                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
+                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
                 &&& cert_verified_root(env, root, &chain[chain.len() - 2], (chain.len() - 2) as usize, &domain)
+                &&& check_all_name_constraints(chain)
             })
         }
         _ => Err(PolicyError::UnsupportedTask),
@@ -520,7 +551,7 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
 pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool
 {
     &&& same_dn(&issuer.subject, &subject.issuer, true)
-    &&& check_auth_key_id(issuer, subject)
+    // &&& check_auth_key_id(issuer, subject)
 }
 
 } // rspec!

@@ -465,6 +465,8 @@ impl<'a, P: Policy> Validator<'a, P> {
                 forall |j| 0 <= j < i ==>
                     !query.path_satisfies_policy(path@, #[trigger] root_issuers@[j]),
         {
+            #[cfg(trace)] eprintln_join!("checking path: ", format_dbg(path), " w/ root ", root_issuers[i]);
+
             if self.check_chain_policy(cache, &path, root_issuers[i])? {
                 // Found a valid chain
                 return Ok(true);
@@ -856,9 +858,11 @@ impl<'a, P: Policy> Validator<'a, P> {
         let chain_abs = chain.iter().map(|cert| policy::Certificate::from(cert)).collect::<Result<Vec<_>, _>>()?;
 
         // Check that for each i, cert[i + 1] issued cert[i]
-        for i in 0..chain.len() - 1 {
-            if self.policy.likely_issued(&chain_abs[i + 1], &chain_abs[i]) {
-                eprintln!("cert {} issued cert {}", i + 1, i);
+        for i in 0..chain.len() {
+            for j in 0..chain.len() {
+                if self.policy.likely_issued(&chain_abs[i], &chain_abs[j]) {
+                    eprintln!("cert {} issued cert {}", i, j);
+                }
             }
         }
 

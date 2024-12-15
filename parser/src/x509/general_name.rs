@@ -28,7 +28,7 @@ verus! {
 //     partyName               [1]     DirectoryString }
 asn1! {
     choice GeneralName {
-        Other(placeholder!(IMPLICIT 0)): placeholder_type!(),
+        Other(placeholder!(EXPLICIT 0)): placeholder_type!(),
         RFC822(ASN1(ImplicitTag(tag_of!(IMPLICIT 1), IA5String))): ASN1<ImplicitTag<IA5String>>,
         DNS(ASN1(ImplicitTag(tag_of!(IMPLICIT 2), IA5String))): ASN1<ImplicitTag<IA5String>>,
         X400(placeholder!(IMPLICIT 3)): placeholder_type!(),
