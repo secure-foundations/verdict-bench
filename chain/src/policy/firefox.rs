@@ -119,6 +119,7 @@ use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 use ExecTask as Task;
 use ExecPolicyError as PolicyError;
+use ExecDistinguishedName as DistinguishedName;
 
 use exec_str_lower as str_lower;
 use exec_match_name as match_name;
@@ -126,6 +127,11 @@ use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
 use exec_same_dn as same_dn;
+
+use exec_ip_addr_in_range as ip_addr_in_range;
+use exec_has_directory_name_constraint as has_directory_name_constraint;
+use exec_has_dns_name_constraint as has_dns_name_constraint;
+use exec_has_ip_addr_name_constraint as has_ip_addr_name_constraint;
 
 pub struct EVPolicy {
     pub oid: SpecString,
@@ -410,32 +416,6 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &C
     &&& is_international_valid(env, cert, leaf)
 }
 
-/// Check if a NameConstraints has a directory name constraint in the permitted list
-pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
-    exists |i: usize| 0 <= i < constraints.permitted.len() &&
-        #[trigger] &constraints.permitted[i as int] matches GeneralName::DirectoryName(_)
-}
-
-/// Check subject names in the leaf cert against name constraints
-/// See https://searchfox.org/mozilla-central/source/security/nss/lib/mozpkix/lib/pkixnames.cpp#829
-/// TODO: right now this is done using the same code as Chrome, update it to match Firefox's impl
-pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
-    let directory_name_enabled = has_directory_name_constraint(constraints);
-
-    &&& directory_name_enabled ==>
-            exists |j: usize| 0 <= j < constraints.permitted.len() && {
-                &&& #[trigger] &constraints.permitted[j as int] matches GeneralName::DirectoryName(permitted_name)
-                &&& is_subtree_of(&permitted_name, &leaf.subject, false)
-            }
-
-    // Not explicitly excluded
-    &&& forall |j: usize| #![trigger &constraints.excluded[j as int]]
-            0 <= j < constraints.excluded.len() ==> {
-                &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name)
-                ==> !is_subtree_of(&excluded_name, &leaf.subject, false)
-            }
-}
-
 /// Different from Chrome, Firefox does not clean name first
 pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
     &&& name.len() > 0
@@ -458,17 +438,29 @@ pub open spec fn valid_dns_name_constraints(constraints: &NameConstraints) -> bo
             }
 }
 
-pub open spec fn has_permitted_dns_name(constraints: &NameConstraints) -> bool {
-    exists |j: usize|
-        0 <= j < constraints.permitted.len() &&
-        #[trigger] constraints.permitted[j as int] matches GeneralName::DNSName(_)
+/// Check subject names in the leaf cert against name constraints
+/// See https://searchfox.org/mozilla-central/source/security/nss/lib/mozpkix/lib/pkixnames.cpp#829
+/// TODO: right now this is done using the same code as Chrome, update it to match Firefox's impl
+pub open spec fn check_directory_name_constraints(constraints: &NameConstraints, name: &DistinguishedName) -> bool {
+    &&& has_directory_name_constraint(constraints) ==>
+            exists |j: usize| 0 <= j < constraints.permitted.len() && {
+                &&& #[trigger] &constraints.permitted[j as int] matches GeneralName::DirectoryName(permitted_name)
+                &&& is_subtree_of(&permitted_name, &name, false)
+            }
+
+    // Not explicitly excluded
+    &&& forall |j: usize| #![trigger &constraints.excluded[j as int]]
+            0 <= j < constraints.excluded.len() ==> {
+                &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name)
+                ==> !is_subtree_of(&excluded_name, &name, false)
+            }
 }
 
 /// Check a (cleaned) DNS name against name constraints
 /// NOTE: no name cleaning like in Chrome
-pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &NameConstraints) -> bool {
+pub open spec fn check_dns_name_constraints(constraints: &NameConstraints, name: &SpecString) -> bool {
     // Check that `name` is permitted by some name constraint in `permitted`
-    &&& !has_permitted_dns_name(constraints) ||
+    &&& has_dns_name_constraint(constraints) ==>
         exists |i: usize| 0 <= i < constraints.permitted.len() && {
             &&& #[trigger] &constraints.permitted[i as int] matches GeneralName::DNSName(permitted_name)
             &&& permit_name(permitted_name, &name)
@@ -482,13 +474,30 @@ pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &Nam
             }
 }
 
+pub open spec fn check_ip_addr_name_constraints(constraints: &NameConstraints, addr: &Seq<u8>) -> bool {
+    &&& has_ip_addr_name_constraint(constraints) ==>
+            exists |j: usize| 0 <= j < constraints.permitted.len() && {
+                &&& #[trigger] &constraints.permitted[j as int]
+                        matches GeneralName::IPAddr(permitted)
+                &&& ip_addr_in_range(permitted, &addr)
+            }
+
+    // Not explicitly excluded
+    &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+            (#[trigger] &constraints.excluded[j as int] matches GeneralName::IPAddr(excluded) ==>
+                !ip_addr_in_range(excluded, &addr))
+}
+
 /// Check the entire SAN section against name constraints
 /// NOTE: factored out due to a proof issue related to nested matches
 pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &NameConstraints) -> bool {
     forall |i: usize| #![trigger &san.names[i as int]]
-        0 <= i < san.names.len() ==> {
-            &san.names[i as int] matches GeneralName::DNSName(dns_name)
-                ==> check_dns_name_constraints(dns_name, &constraints)
+        0 <= i < san.names.len() ==>
+        match &san.names[i as int] {
+            GeneralName::DNSName(name) => check_dns_name_constraints(&constraints, name),
+            GeneralName::DirectoryName(name) => check_directory_name_constraints(&constraints, name),
+            GeneralName::IPAddr(addr) => check_ip_addr_name_constraints(&constraints, addr),
+            _ => true,
         }
 }
 
@@ -498,7 +507,7 @@ pub open spec fn check_common_name_constraints(cert: &Certificate, constraints: 
         {
             let name = #[trigger] &cert.subject.0[i as int][j as int];
             &&& &name.oid == "2.5.4.3"@ // common name
-            &&& check_dns_name_constraints(&name.value, &constraints)
+            &&& check_dns_name_constraints(&constraints, &name.value)
         }
 }
 
@@ -516,7 +525,7 @@ pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) 
             None => check_common_name_constraints(leaf, constraints),
         }
 
-        &&& check_subject_name_constraints(leaf, constraints)
+        &&& check_directory_name_constraints(constraints, &leaf.subject)
     }
 }
 

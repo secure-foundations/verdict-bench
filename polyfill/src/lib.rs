@@ -420,6 +420,15 @@ pub fn slice_take<V>(s: &[V], n: usize) -> (res: &[V])
     &s[..n]
 }
 
+#[verifier::external_body]
+pub fn slice_to_vec<V: Clone + Eq>(s: &[V]) -> (res: Vec<V>)
+    ensures
+        res@.len() == s@.len(),
+        forall |i| 0 <= i < res@.len() ==> res@[i] == s@[i],
+{
+    s.to_vec()
+}
+
 #[verifier::external_type_specification]
 #[verifier::external_body]
 pub struct ExtTryFromIntError(TryFromIntError);

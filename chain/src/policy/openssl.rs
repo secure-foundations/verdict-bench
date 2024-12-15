@@ -108,6 +108,7 @@ use exec_permit_name as permit_name;
 use exec_clone_dn as clone_dn;
 use exec_clone_string as clone_string;
 use exec_same_dn as same_dn;
+use exec_ip_addr_in_range as ip_addr_in_range;
 
 pub struct Policy {
     pub time: u64,
@@ -227,6 +228,7 @@ pub open spec fn is_general_subtree_of(name1: &GeneralName, name2: &GeneralName)
     match (name1, name2) {
         (GeneralName::DNSName(name1), GeneralName::DNSName(name2)) => match_dns_name(name1, name2),
         (GeneralName::DirectoryName(name1), GeneralName::DirectoryName(name2)) => is_subtree_of(name1, name2, true),
+        (GeneralName::IPAddr(range), GeneralName::IPAddr(addr)) => ip_addr_in_range(range, addr),
         _ => false,
     }
 }
@@ -237,6 +239,7 @@ pub open spec fn has_general_name_constraint(name: &GeneralName, nc: &NameConstr
         match (name, #[trigger] &nc.permitted[i as int]) {
             (GeneralName::DNSName(..), GeneralName::DNSName(..)) => true,
             (GeneralName::DirectoryName(..), GeneralName::DirectoryName(..)) => true,
+            (GeneralName::IPAddr(..), GeneralName::IPAddr(..)) => true,
             _ => false,
         }
     }

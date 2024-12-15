@@ -40,6 +40,7 @@ pub struct DistinguishedName(pub Seq<Seq<Attribute>>);
 pub enum GeneralName {
     DNSName(SpecString),
     DirectoryName(DistinguishedName),
+    IPAddr(Seq<u8>),
     Other,
 }
 
@@ -211,6 +212,7 @@ pub open spec fn check_auth_key_id(issuer: &Certificate, subject: &Certificate) 
 }
 
 use exec_normalize_string as normalize_string;
+use exec_bv_and_u8 as bv_and_u8;
 
 /// We offer a switch `normalize` since:
 /// - Chrome does string normalization (folding the ASCII space and lower casing (ASCII-only))
@@ -290,6 +292,45 @@ pub open spec fn permit_name(name_constraint: &SpecString, name: &SpecString) ->
     }
 }
 
+/// Check if the IP address `addr` fall into `range`
+/// See RFC 5280, 4.2.1.10. Name Constraints
+pub open spec fn ip_addr_in_range(range: &Seq<u8>, addr: &Seq<u8>) -> bool {
+    // Both IPv4
+    ||| {
+        &&& range.len() == 8
+        &&& addr.len() == 4
+        &&& forall |i: usize| 0 <= i < 4 ==>
+                bv_and_u8(&range[i as int], &range[i + 4]) == bv_and_u8(&addr[i as int], &range[i + 4])
+    }
+
+    // Both IPv6
+    ||| {
+        &&& range.len() == 32
+        &&& addr.len() == 16
+        &&& forall |i: usize| 0 <= i < 16 ==>
+                bv_and_u8(&range[i as int], &range[i + 16]) == bv_and_u8(&addr[i as int], &range[i + 16])
+    }
+}
+
+/// Check if a NameConstraints has a directory name constraint in the permitted list
+pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
+    exists |i: usize| 0 <= i < constraints.permitted.len() &&
+        #[trigger] &constraints.permitted[i as int] matches GeneralName::DirectoryName(_)
+}
+
+/// Same check for DNS name
+pub open spec fn has_dns_name_constraint(constraints: &NameConstraints) -> bool {
+    exists |j: usize|
+        0 <= j < constraints.permitted.len() &&
+        #[trigger] constraints.permitted[j as int] matches GeneralName::DNSName(_)
+}
+
+/// Same check for IP addresses
+pub open spec fn has_ip_addr_name_constraint(constraints: &NameConstraints) -> bool {
+    exists |i: usize| 0 <= i < constraints.permitted.len() &&
+        #[trigger] &constraints.permitted[i as int] matches GeneralName::IPAddr(_)
+}
+
 } // rspec!
 
 /// NOTE: unspecified
@@ -322,6 +363,11 @@ pub fn exec_normalize_string(s: &String) -> (res: String)
 {
     issue::normalize_string(s.as_str())
 }
+
+pub open spec fn bv_and_u8(a: &u8, b: &u8) -> u8 { *a & *b }
+pub fn exec_bv_and_u8(a: &u8, b: &u8) -> (res: u8)
+    ensures res.deep_view() == bv_and_u8(&a.deep_view(), &b.deep_view())
+{ *a & *b }
 
 impl Clone for ExecTask {
     fn clone(&self) -> (res: Self)

@@ -750,6 +750,8 @@ impl policy::GeneralName {
                 policy::GeneralName::DNSName(s),
             SpecGeneralNameValue::Directory(dir_names) =>
                 policy::GeneralName::DirectoryName(policy::DistinguishedName::spec_from(dir_names)),
+            SpecGeneralNameValue::IP(addr) =>
+                policy::GeneralName::IPAddr(addr),
             _ => policy::GeneralName::Other,
         }
     }
@@ -763,6 +765,11 @@ impl policy::GeneralName {
                 policy::ExecGeneralName::DNSName((*s).to_string()),
             GeneralNameValue::Directory(dir_names) =>
                 policy::ExecGeneralName::DirectoryName(policy::DistinguishedName::from(dir_names)),
+            GeneralNameValue::IP(addr) => {
+                let copied = slice_to_vec(addr);
+                assert(copied.deep_view() =~= addr@);
+                policy::ExecGeneralName::IPAddr(copied)
+            }
             _ => policy::ExecGeneralName::Other,
         }
     }

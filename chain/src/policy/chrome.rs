@@ -118,6 +118,7 @@ use ExecCertificatePolicies as CertificatePolicies;
 use ExecCertificate as Certificate;
 use ExecTask as Task;
 use ExecPolicyError as PolicyError;
+use ExecDistinguishedName as DistinguishedName;
 
 use exec_str_lower as str_lower;
 use exec_match_name as match_name;
@@ -125,6 +126,11 @@ use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
 use exec_same_dn as same_dn;
+
+use exec_ip_addr_in_range as ip_addr_in_range;
+use exec_has_directory_name_constraint as has_directory_name_constraint;
+use exec_has_dns_name_constraint as has_dns_name_constraint;
+use exec_has_ip_addr_name_constraint as has_ip_addr_name_constraint;
 
 pub struct Policy {
     pub time: u64,
@@ -350,12 +356,6 @@ pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
     &&& !name.has_char('*')
 }
 
-pub open spec fn has_permitted_dns_name(constraints: &NameConstraints) -> bool {
-    exists |j: usize|
-        0 <= j < constraints.permitted.len() &&
-        #[trigger] constraints.permitted[j as int] matches GeneralName::DNSName(_)
-}
-
 /// All (permitted/excluded) DNS name constraints are valid
 pub open spec fn valid_dns_name_constraints(constraints: &NameConstraints) -> bool {
     &&& forall |i: usize| #![trigger &constraints.permitted[i as int]]
@@ -372,11 +372,11 @@ pub open spec fn valid_dns_name_constraints(constraints: &NameConstraints) -> bo
 }
 
 /// Check a (cleaned) DNS name against name constraints
-pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &NameConstraints) -> bool {
+pub open spec fn check_dns_name_constraints(constraints: &NameConstraints, name: &SpecString) -> bool {
     let name = clean_name(name);
 
     // Check that `name` is permitted by some name constraint in `permitted`
-    &&& has_permitted_dns_name(constraints) ==>
+    &&& has_dns_name_constraint(constraints) ==>
         exists |i: usize| 0 <= i < constraints.permitted.len() && {
             &&& #[trigger] &constraints.permitted[i as int] matches GeneralName::DNSName(permitted_name)
             &&& permit_name(&permitted_name, &name)
@@ -390,39 +390,47 @@ pub open spec fn check_dns_name_constraints(name: &SpecString, constraints: &Nam
             }
 }
 
-/// Check the entire SAN section against name constraints
-/// NOTE: factored out due to a proof issue related to nested matches
-pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &NameConstraints) -> bool {
-    forall |i: usize| #![trigger &san.names[i as int]]
-        0 <= i < san.names.len() ==> {
-            &san.names[i as int] matches GeneralName::DNSName(dns_name)
-            ==>
-            check_dns_name_constraints(&clean_name(dns_name), &constraints)
-        }
-}
+pub open spec fn check_ip_addr_name_constraints(constraints: &NameConstraints, addr: &Seq<u8>) -> bool {
+    &&& has_ip_addr_name_constraint(constraints) ==>
+            exists |j: usize| 0 <= j < constraints.permitted.len() && {
+                &&& #[trigger] &constraints.permitted[j as int]
+                        matches GeneralName::IPAddr(permitted)
+                &&& ip_addr_in_range(permitted, &addr)
+            }
 
-/// Check if a NameConstraints has a directory name constraint in the permitted list
-pub open spec fn has_directory_name_constraint(constraints: &NameConstraints) -> bool {
-    exists |i: usize| 0 <= i < constraints.permitted.len() &&
-        #[trigger] &constraints.permitted[i as int] matches GeneralName::DirectoryName(_)
+    // Not explicitly excluded
+    &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
+            (#[trigger] &constraints.excluded[j as int] matches GeneralName::IPAddr(excluded) ==>
+                !ip_addr_in_range(excluded, &addr))
 }
 
 /// Check subject names in the leaf cert against name constraints
 /// See https://github.com/google/boringssl/blob/571c76e919c0c48219ced35bef83e1fc83b00eed/pki/name_constraints.cc#L663
-pub open spec fn check_subject_name_constraints(leaf: &Certificate, constraints: &NameConstraints) -> bool {
-    let directory_name_enabled = has_directory_name_constraint(constraints);
-
-    &&& directory_name_enabled ==>
+pub open spec fn check_directory_name_constraints(constraints: &NameConstraints, name: &DistinguishedName) -> bool {
+    &&& has_directory_name_constraint(constraints) ==>
             exists |j: usize| 0 <= j < constraints.permitted.len() && {
                 &&& #[trigger] &constraints.permitted[j as int]
                         matches GeneralName::DirectoryName(permitted_name)
-                &&& is_subtree_of(&permitted_name, &leaf.subject, true)
+                &&& is_subtree_of(&permitted_name, &name, true)
             }
 
     // Not explicitly excluded
     &&& forall |j: usize| 0 <= j < constraints.excluded.len() ==>
             (#[trigger] &constraints.excluded[j as int] matches GeneralName::DirectoryName(excluded_name) ==>
-                !is_subtree_of(&excluded_name, &leaf.subject, true))
+                !is_subtree_of(&excluded_name, &name, true))
+}
+
+/// Check the entire SAN section against name constraints
+/// NOTE: factored out due to a proof issue related to nested matches
+pub open spec fn check_san_name_constraints(constraints: &NameConstraints, san: &SubjectAltName) -> bool {
+    forall |i: usize| #![trigger &san.names[i as int]]
+        0 <= i < san.names.len() ==>
+        match &san.names[i as int] {
+            GeneralName::DNSName(name) => check_dns_name_constraints(&constraints, &clean_name(name)),
+            GeneralName::DirectoryName(name) => check_directory_name_constraints(&constraints, name),
+            GeneralName::IPAddr(addr) => check_ip_addr_name_constraints(&constraints, addr),
+            _ => true,
+        }
 }
 
 /// Check a leaf certificate against the name constraints in a parent certificate
@@ -433,9 +441,9 @@ pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) 
 
         // Check SAN section against name constraints
         &&& &leaf.ext_subject_alt_name matches Some(leaf_san)
-        &&& check_san_name_constraints(leaf_san, constraints)
+        &&& check_san_name_constraints(constraints, leaf_san)
 
-        &&& check_subject_name_constraints(leaf, constraints)
+        &&& check_directory_name_constraints(constraints, &leaf.subject)
     }
 }
 
