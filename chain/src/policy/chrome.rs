@@ -64,9 +64,10 @@ impl rfc::PathLenConstraint for ChromePolicy {
     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
 }
 
-impl rfc::NonLeafMustBeCA for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+// Not checked for root certificate
+// impl rfc::NonLeafMustBeCA for ChromePolicy {
+//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+// }
 
 impl rfc::NonLeafHasKeyCertSign for ChromePolicy {
     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
@@ -320,6 +321,15 @@ pub open spec fn check_ext_critical(cert: &Certificate) -> bool {
         ==> (&all_exts[i as int].critical matches Some(t) ==> *t)
 }
 
+/// Check that there is no two extensions with the same OID
+pub open spec fn check_duplicate_extensions(cert: &Certificate) -> bool
+{
+    &cert.all_exts matches Some(all_exts) ==>
+    forall |i: usize| #![trigger all_exts[i as int]] 0 <= i < all_exts.len() ==>
+    forall |j: usize| #![trigger all_exts[j as int]] 0 <= j < i ==>
+        &all_exts[i as int].oid != &all_exts[j as int].oid
+}
+
 pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Certificate, domain: &SpecString) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
@@ -332,6 +342,11 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& cert.not_after >= env.time
 
     &&& match_san_domain(env, cert, domain)
+    &&& check_duplicate_extensions(cert)
+
+    // Per x509-limbo:rfc5280::ee-critical-aia-invalid
+    &&& &cert.ext_authority_info_access matches Some(aia)
+        ==> (aia.critical matches Some(c) ==> !c)
 
     // Only check if the root is a known root
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/cert_verify_proc.cc#L680
@@ -354,15 +369,15 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
 pub open spec fn cert_verified_non_leaf(cert: &Certificate, depth: usize) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
+    &&& check_ext_critical(cert)
+    &&& check_duplicate_extensions(cert)
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
 
-    &&& &cert.ext_basic_constraints matches Some(bc)
-    &&& bc.is_ca
-    &&& bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize
-    &&& key_usage_valid(cert)
-    &&& extended_key_usage_valid(cert)
-    &&& check_ext_critical(cert)
+    &&& &cert.ext_basic_constraints matches Some(bc) ==>
+        (bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize)
+
+    &&& cert.subject.0.len() != 0
 
     &&& (cert.issuer_uid matches Some(_) || cert.subject_uid matches Some(_)) ==> cert.version == 2 || cert.version == 3
 }
@@ -472,13 +487,21 @@ pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate
 pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(cert, depth)
 
+    &&& &cert.ext_basic_constraints matches Some(bc)
+    &&& bc.is_ca
+
     // Time comparison is inclusive
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
     &&& cert.not_before <= env.time
     &&& cert.not_after >= env.time
 
+    &&& &cert.ext_authority_info_access matches Some(aia)
+        ==> (aia.critical matches Some(c) ==> !c)
+
     &&& not_in_crl(env, cert)
     &&& strong_signature(&cert.sig_alg_inner.id)
+    &&& key_usage_valid(cert)
+    &&& extended_key_usage_valid(cert)
 }
 
 /// NOTE: badSymantec in Hammurabi
@@ -512,6 +535,13 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &C
     &&& cert_verified_non_leaf(cert, depth)
 
     &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign
+
+    // Per x509-limbo:webpki::aki::root-with-aki-*
+    &&& &cert.ext_authority_key_id matches Some(aki) ==> {
+        &&& aki.key_id matches Some(..)
+        &&& aki.issuer matches None
+        &&& aki.serial matches None
+    }
 
     &&& valid_root_fingerprint(env, cert, domain)
     &&& !is_bad_symantec_root(env, cert, interm)

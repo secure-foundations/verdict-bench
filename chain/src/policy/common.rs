@@ -61,6 +61,7 @@ pub enum SubjectKey {
 pub struct AuthorityKeyIdentifier {
     pub critical: Option<bool>,
     pub key_id: Option<SpecString>,
+    pub issuer: Option<SpecString>,
     pub serial: Option<SpecString>,
 }
 
@@ -120,6 +121,11 @@ pub struct CertificatePolicies {
     pub policies: Seq<SpecString>,
 }
 
+pub struct AuthorityInfoAccess {
+    pub critical: Option<bool>,
+    // Other info is not encoded
+}
+
 pub struct SignatureAlgorithm {
     pub id: SpecString,
     pub bytes: SpecString,
@@ -154,6 +160,7 @@ pub struct Certificate {
     pub ext_subject_alt_name: Option<SubjectAltName>,
     pub ext_name_constraints: Option<NameConstraints>,
     pub ext_certificate_policies: Option<CertificatePolicies>,
+    pub ext_authority_info_access: Option<AuthorityInfoAccess>,
 
     // All extensions without parameters
     pub all_exts: Option<Seq<Extension>>,

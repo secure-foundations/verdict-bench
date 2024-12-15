@@ -65,6 +65,7 @@ impl policy::Certificate {
             let Some(ext_subject_alt_name) = spec_get_extension!(c, SUBJECT_ALT_NAME, policy::SubjectAltName::spec_from);
             let Some(ext_name_constraints) = spec_get_extension!(c, NAME_CONSTRAINTS, policy::NameConstraints::spec_from);
             let Some(ext_certificate_policies) = spec_get_extension!(c, CERT_POLICIES, policy::CertificatePolicies::spec_from);
+            let Some(ext_authority_info_access) = spec_get_extension!(c, AUTH_INFO_ACCESS, policy::AuthorityInfoAccess::spec_from);
 
             Some(policy::Certificate {
                 fingerprint: hash::spec_to_hex_upper(hash::spec_sha256_digest(ser_cert)),
@@ -106,6 +107,7 @@ impl policy::Certificate {
                 ext_subject_alt_name,
                 ext_name_constraints,
                 ext_certificate_policies,
+                ext_authority_info_access,
 
                 all_exts: if let OptionDeep::Some(exts) = c.cert.extensions {
                     Some(Self::spec_from_exts(exts))
@@ -181,6 +183,12 @@ impl policy::Certificate {
             None
         };
 
+        let ext_authority_info_access = if let Some(ext) = Self::get_extension(c, &oid!(AUTH_INFO_ACCESS)) {
+            Some(policy::AuthorityInfoAccess::from(ext)?)
+        } else {
+            None
+        };
+
         Ok(policy::ExecCertificate {
             fingerprint: hash::to_hex_upper(&hash::sha256_digest(c.serialize())),
             version: c.get().cert.get().version as u32,
@@ -221,6 +229,7 @@ impl policy::Certificate {
             ext_subject_alt_name,
             ext_name_constraints,
             ext_certificate_policies,
+            ext_authority_info_access,
 
             all_exts: if let OptionDeep::Some(exts) = &c.get().cert.get().extensions {
                 Some(Self::from_exts(exts))
@@ -406,6 +415,10 @@ impl policy::AuthorityKeyIdentifier {
                     OptionDeep::Some(key_id) => Some(hash::spec_to_hex_upper(key_id)),
                     OptionDeep::None => None,
                 },
+                issuer: match akid.auth_cert_issuer {
+                    OptionDeep::Some(issuer) => Some(hash::spec_to_hex_upper(issuer)),
+                    OptionDeep::None => None,
+                },
                 serial: match akid.auth_cert_serial {
                     OptionDeep::Some(serial) => Some(hash::spec_to_hex_upper(serial)),
                     OptionDeep::None => None,
@@ -423,6 +436,10 @@ impl policy::AuthorityKeyIdentifier {
                 critical: ext.critical.to_opt(),
                 key_id: match akid.key_id {
                     OptionDeep::Some(key_id) => Some(hash::to_hex_upper(key_id)),
+                    OptionDeep::None => None,
+                },
+                issuer: match akid.auth_cert_issuer {
+                    OptionDeep::Some(issuer) => Some(hash::to_hex_upper(issuer)),
                     OptionDeep::None => None,
                 },
                 serial: match &akid.auth_cert_serial {
@@ -734,6 +751,31 @@ impl policy::CertificatePolicies {
             Ok(policy::ExecCertificatePolicies {
                 critical: ext.critical.to_opt(),
                 policies: policy_oid_strings,
+            })
+        } else {
+            Err(ValidationError::UnexpectedExtParam)
+        }
+    }
+}
+
+impl policy::AuthorityInfoAccess {
+    pub open spec fn spec_from(ext: SpecExtensionValue) -> Option<policy::AuthorityInfoAccess> {
+        if_let! {
+            let SpecExtensionParamValue::AuthorityInfoAccess(..) = ext.param;
+
+            Some(policy::AuthorityInfoAccess {
+                critical: ext.critical.to_opt(),
+            })
+        }
+    }
+
+    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecAuthorityInfoAccess, ValidationError>)
+        ensures
+            res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
+    {
+        if let ExtensionParamValue::AuthorityInfoAccess(..) = &ext.param {
+            Ok(policy::ExecAuthorityInfoAccess {
+                critical: ext.critical.to_opt(),
             })
         } else {
             Err(ValidationError::UnexpectedExtParam)

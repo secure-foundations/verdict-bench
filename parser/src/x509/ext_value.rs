@@ -72,10 +72,23 @@ asn1! {
 
     seq of GeneralSubtrees(ASN1(GeneralSubtree)): ASN1<GeneralSubtree>;
 
+    // AuthorityInfoAccessSyntax  ::=
+    //         SEQUENCE SIZE (1..MAX) OF AccessDescription
+
+    // AccessDescription  ::=  SEQUENCE {
+    //         accessMethod          OBJECT IDENTIFIER,
+    //         accessLocation        GeneralName  }
     seq GeneralSubtree {
         base: GeneralName = GeneralName,
         #[default(0i64)] min: ASN1<ImplicitTag<Integer>> = ASN1(ImplicitTag(tag_of!(IMPLICIT 0), Integer)),
         #[optional] max: ASN1<ImplicitTag<Integer>> = ASN1(ImplicitTag(tag_of!(IMPLICIT 1), Integer)),
+    }
+
+    seq of AuthorityInfoAccess(ASN1(AccessDescription)): ASN1<AccessDescription>;
+
+    seq AccessDescription {
+        method: ASN1<ObjectIdentifier> = ASN1(ObjectIdentifier),
+        location: GeneralName = GeneralName,
     }
 }
 
@@ -104,6 +117,9 @@ oid_match_continuation! {
 
         oid(NAME_CONSTRAINTS) =>
             NameConstraints(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(NameConstraints)))): ASN1<ExplicitTag<ASN1<NameConstraints>>>,
+
+        oid(AUTH_INFO_ACCESS) =>
+            AuthorityInfoAccess(ASN1(ExplicitTag(tag_of!(OCTET_STRING), ASN1(AuthorityInfoAccess)))): ASN1<ExplicitTag<ASN1<AuthorityInfoAccess>>>,
 
         _ => Other(ASN1(OctetString)): ASN1<OctetString>,
     }

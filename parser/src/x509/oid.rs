@@ -23,6 +23,7 @@ macro_rules! oid_name {
     (CERT_POLICIES)         => { [2, 5, 29, 32] };
     (AUTH_KEY_IDENT)        => { [2, 5, 29, 35] };
     (EXTENDED_KEY_USAGE)    => { [2, 5, 29, 37] };
+    (AUTH_INFO_ACCESS)      => { [1, 3, 6, 1, 5, 5, 7, 1, 1] };
 
     // Signature algorithms
     (RSA_SIGNATURE_MD2)     => { [1, 2, 840, 113549, 1, 1, 2] };
