@@ -166,6 +166,7 @@ pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     }
 }
 
+/// Defined at https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/root_cert_list_generated.h
 pub open spec fn is_known_root(env: &Policy, root: &Certificate) -> bool {
     exists |i: usize| 0 <= i < env.trusted.len() &&
         &root.fingerprint == #[trigger] &env.trusted[i as int]
@@ -326,7 +327,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& match_san_domain(env, cert, domain)
 
     // Only check if the root is a known root
-    // See HasTooLongValidity in Chromium
+    // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/cert_verify_proc.cc#L680
     &&& is_known_root(env, root) ==> leaf_duration_valid(cert)
 
     &&& not_in_crl(env, cert)
