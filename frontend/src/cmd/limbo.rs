@@ -72,7 +72,7 @@ fn strip_pem(s: &str) -> Option<String>
 
 fn test_limbo(args: &Args, harness: &Box<dyn Harness>, testcase: &Testcase) -> Result<LimboResult, Error>
 {
-    let tmp_root_file = NamedTempFile::new()?;
+    let tmp_root_file = NamedTempFile::with_suffix(".pem")?;
     let tmp_root_path = tmp_root_file.path().to_str()
         .ok_or(io::Error::other("failed to convert path to str"))?
         .to_string();
@@ -109,7 +109,7 @@ fn test_limbo(args: &Args, harness: &Box<dyn Harness>, testcase: &Testcase) -> R
 
     let (valid, err_msg) = match instance.validate(&bundle, &task, args.repeat) {
         Ok(res) => (res.valid, res.err),
-        Err(e) => (false, e.to_string()),
+        Err(e) => (false, format!("{}", e).replace("\n", "")),
     };
 
     Ok(LimboResult {
@@ -163,7 +163,7 @@ pub fn main(args: Args) -> Result<(), Error>
     // Only perform server authentication and DNS name validation (if enabled)
     let filter = |t: &&Testcase|
         t.validation_kind == ValidationKind::Server &&
-        (args.no_domain || (t.expected_peer_name.is_some() && t.expected_peer_name.as_ref().unwrap().kind == PeerKind::Dns)) &&
+        (t.expected_peer_name.is_some() && t.expected_peer_name.as_ref().unwrap().kind == PeerKind::Dns) &&
         if let Some(id) = &args.test_id { &t.id.to_string() == id } else { true };
 
     let (tx_job, rx_job) = channel::bounded(args.num_jobs);

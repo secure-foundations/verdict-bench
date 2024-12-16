@@ -37,7 +37,7 @@ pub struct Args {
 }
 
 /// Used for comparing results represented as different strings (e.g. OK vs true)
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 enum DiffClass {
     Class(usize),
     Singleton(String),
@@ -90,6 +90,8 @@ pub fn main(args: Args) -> Result<(), Error>
         .has_headers(false)
         .from_reader(file2);
 
+    let mut class_count = HashMap::new();
+
     // For each result entry in file2, check if the corresponding one exists in file1
     // Otherwise report
     for res in file2_reader.records() {
@@ -102,10 +104,16 @@ pub fn main(args: Args) -> Result<(), Error>
 
             if file1_class != &file2_class {
                 println!("mismatch at {}: {} vs {}", key, file1_result, value);
+            } else {
+                *class_count.entry(file1_class).or_insert(0) += 1;
             }
         } else {
             println!("{} does not exist in {}", key, &args.file1);
         }
+    }
+
+    for (class, count) in class_count {
+        println!("matching class {:?}: {}", class, count);
     }
 
     Ok(())

@@ -1,3 +1,7 @@
+"""
+Generate a boxplot of performance comparison between implementations
+"""
+
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -19,17 +23,18 @@ mpl.rcParams["legend.fontsize"] = 18
 
 # List of implementations and their corresponding CSV file paths
 implementations = [
-    ("ARMOR", "/home/zhengyao/work/x509/frontend/perf-results/results-armor-part-2.txt"),
-    ("Hammurabi", "/home/zhengyao/work/x509/frontend/perf-results/results-hammurabi-part-2.txt"),
+    ("ARMOR", "../frontend/perf-results/results-armor-part-2.txt"),
+    ("Hammurabi", "../frontend/perf-results/results-hammurabi-part-2.txt"),
 
-    ("OpenSSL", "/home/zhengyao/work/x509/frontend/perf-results/results-openssl-part-2.txt"),
+    ("OpenSSL", "../frontend/perf-results/results-openssl-part-2.txt"),
 
-    ("Verdict/Chrome", "/home/zhengyao/work/x509/frontend/perf-results/results-verdict-chrome-part-2.txt"),
-    ("Verdict/Firefox", "/home/zhengyao/work/x509/frontend/perf-results/results-verdict-firefox-part-2.txt"),
-    ("Verdict/OpenSSL", "/home/zhengyao/work/x509/frontend/perf-results/results-verdict-openssl-part-2-refactor-2.txt"),
+    # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2.txt"),
+    ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v2.txt"),
+    ("Verdict/Firefox", "../frontend/perf-results/results-verdict-firefox-part-2.txt"),
+    ("Verdict/OpenSSL", "../frontend/perf-results/results-verdict-openssl-part-2-refactor-2.txt"),
 
-    ("Firefox", "/home/zhengyao/work/x509/frontend/perf-results/results-firefox-part-2.txt"),
-    ("Chrome", "/home/zhengyao/work/x509/frontend/perf-results/results-chrome-part-2.txt"),
+    ("Firefox", "../frontend/perf-results/results-firefox-part-2.txt"),
+    ("Chrome", "../frontend/perf-results/results-chrome-part-2.txt"),
 ]
 
 all_data = []
@@ -58,6 +63,7 @@ for impl_label, csv_file in implementations:
 combined_df = pd.concat(all_data, ignore_index=True)
 
 # Print some stats
+print("\\begin{tabular}{lrrrr}")
 print("Implementation & Mean & Median & Min & Max \\\\")
 print("\\hline")
 for impl in combined_df["impl"].unique():
@@ -72,6 +78,7 @@ for impl in combined_df["impl"].unique():
     print(f"{impl} & {stats_mean} & {stats_median} & {stats_min} & {stats_max} \\\\")
 
     # print(f"{impl}: {true_subset.shape[0]}/{subset.shape[0]} valid certs, mean {round(true_subset["min_time"].mean(), 2) if not true_subset.empty else 'N/A'}μs")
+print("\\end{tabular}")
 
 # Plotting the combined box plot
 combined_df["result"] = combined_df["result"].replace({

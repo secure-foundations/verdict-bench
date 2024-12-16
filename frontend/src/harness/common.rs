@@ -86,7 +86,7 @@ impl Instance for CommonBenchInstance {
 
             Ok(ValidationResult {
                 valid: res_fst == "OK",
-                err: if res_fst == "OK" { "".to_string() } else { res_fst.to_string() },
+                err: if res_fst == "OK" { "".to_string() } else { res_fst.trim().to_string() },
 
                 // Parse the rest as a space separated list of integers (time in microseconds)
                 stats: res.map(|s| s.parse().unwrap()).collect(),
