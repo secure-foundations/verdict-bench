@@ -62,7 +62,7 @@ void replace_str(char *str, char c1, char c2) {
 
 // Parse and validate a given chain in base64
 // Returns 1 on success, otherwise *err is set to the error message from OpenSSL
-int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_t num_certs, char **err) {
+int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_t num_certs, const char *hostname, char **err) {
     X509_VERIFY_PARAM *param = NULL;
     X509_STORE_CTX *ctx = NULL;
     X509 *leaf = NULL;
@@ -112,13 +112,19 @@ int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_
     X509_VERIFY_PARAM_set_purpose(param, X509_PURPOSE_SSL_SERVER);
     X509_VERIFY_PARAM_set_depth(param, MAX_CHAIN_SIZE);
     X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT);
+    if (hostname) {
+        X509_VERIFY_PARAM_set1_host(param, hostname, 0);
+    }
+
     X509_STORE_CTX_set0_param(ctx, param);
 
     res = X509_verify_cert(ctx);
 
-    if (res != 1) {
-        *err = strdup(X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)));
+    int error = X509_STORE_CTX_get_error(ctx);
+    if (res <= 0 || error != X509_V_OK) {
+        *err = strdup(X509_verify_cert_error_string(error));
         replace_str(*err, ' ', '_');
+        res = 0;
     }
 
     // Clean up
@@ -134,6 +140,8 @@ END_VALIDATION:
 }
 
 int main(int argc, char *argv[]) {
+    // fprintf(stderr, "version: %lx\n", OPENSSL_VERSION_NUMBER);
+
     if (argc != 3) {
         fprintf(stderr, "usage: %s <roots.pem> <timestamp>\n", argv[0]);
         return 1;
@@ -161,6 +169,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // X509_STORE_set_verify_cb(roots, cb);
+
     char *line = NULL;
     size_t len = 0;
 
@@ -170,10 +180,16 @@ int main(int argc, char *argv[]) {
     size_t cur_num_certs = 0;
 
     size_t repeat = 1;
+    size_t n_read;
 
     // Main benchmarking loop
-    while (getline(&line, &len, stdin) != -1) {
+    while ((n_read = getline(&line, &len, stdin)) != -1) {
         char *rem = NULL;
+
+        // Remove newline at the end
+        if (n_read > 0 && line[n_read - 1] == '\n') {
+            line[n_read - 1] = '\0';
+        }
 
         if (rem = check_prefix(line, "leaf: ")) {
             if (cur_num_certs != 0) {
@@ -189,7 +205,26 @@ int main(int argc, char *argv[]) {
             }
 
             cert_base64[cur_num_certs++] = strdup(rem);
-        } else if (rem = check_prefix(line, "validate")) {
+        } else if (rem = check_prefix(line, "repeat: ")) {
+            int64_t num = strtol(rem, NULL, 10);
+
+            if (num <= 0 || num > MAX_REPEAT) {
+                printf("error: invalid repeat\n");
+                exit(1);
+            }
+
+            repeat = num;
+        } else {
+            char *hostname = NULL;
+
+            if (rem = check_prefix(line, "validate")) {
+            } else if (rem = check_prefix(line, "domain: ")) {
+                hostname = rem;
+            } else {
+                printf("error: invalid command: %s", line);
+                exit(1);
+            }
+
             if (cur_num_certs == 0) {
                 printf("error: leaf not read yet\n");
                 exit(1);
@@ -209,7 +244,7 @@ int main(int argc, char *argv[]) {
                     exit(1);
                 }
 
-                res = x509_validte(roots, timestamp, cert_base64, cur_num_certs, &err);
+                res = x509_validte(roots, timestamp, cert_base64, cur_num_certs, hostname, &err);
 
                 if (clock_gettime(CLOCK_REALTIME, &end) == -1) {
                     printf("error: failed to get wall-clock time\n");
@@ -242,18 +277,6 @@ int main(int argc, char *argv[]) {
             cur_num_certs = 0;
 
             fflush(stdout);
-        } else if (rem = check_prefix(line, "repeat: ")) {
-            int64_t num = strtol(rem, NULL, 10);
-
-            if (num <= 0 || num > MAX_REPEAT) {
-                printf("error: invalid repeat\n");
-                exit(1);
-            }
-
-            repeat = num;
-        } else {
-            printf("error: invalid command: %s", line);
-            exit(1);
         }
     }
 
