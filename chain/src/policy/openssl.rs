@@ -391,16 +391,15 @@ pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> b
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
-    match task {
-        Task::ChainValidation(Purpose::ServerAuth) =>
-            Ok(chain.len() >= 2 && {
-                &&& valid_leaf(env, &chain[0])
-                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
-                &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
-                &&& check_name_constraints(chain)
-            }),
-
-        _ => Err(PolicyError::UnsupportedTask),
+    if (task.hostname matches None) {
+        Ok(chain.len() >= 2 && {
+            &&& valid_leaf(env, &chain[0])
+            &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
+            &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
+            &&& check_name_constraints(chain)
+        })
+    } else {
+        Err(PolicyError::UnsupportedTask)
     }
 }
 

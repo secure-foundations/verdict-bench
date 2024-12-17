@@ -171,9 +171,9 @@ pub enum Purpose {
     ServerAuth,
 }
 
-pub enum Task {
-    DomainValidation(SpecString),
-    ChainValidation(Purpose),
+pub struct Task {
+    pub hostname: Option<SpecString>,
+    pub purpose: Purpose,
 }
 
 pub enum PolicyError {
@@ -382,9 +382,12 @@ impl Clone for ExecTask {
     fn clone(&self) -> (res: Self)
         ensures res.deep_view() == self.deep_view()
     {
-        match self {
-            ExecTask::DomainValidation(domain) => ExecTask::DomainValidation(domain.clone()),
-            ExecTask::ChainValidation(purpose) => ExecTask::ChainValidation(*purpose),
+        ExecTask {
+            hostname: match &self.hostname {
+                Some(hostname) => Some(hostname.clone()),
+                None => None,
+            },
+            purpose: self.purpose,
         }
     }
 }

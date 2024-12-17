@@ -40,9 +40,9 @@ pub fn main(args: Args) -> Result<(), Error> {
     let mut instance = harness.spawn(&args.roots, timestamp)?;
 
     let task = if let Some(domain) = &args.domain {
-        ExecTask::DomainValidation(domain.to_string())
+        ExecTask { hostname: Some(domain.to_string()), purpose: ExecPurpose::ServerAuth }
     } else {
-        ExecTask::ChainValidation(ExecPurpose::ServerAuth)
+        ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth }
     };
 
     let chain = read_pem_file_as_base64(&args.chain)?;

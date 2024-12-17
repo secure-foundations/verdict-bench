@@ -79,9 +79,9 @@ fn worker(args: &Args, mut instance: Box<dyn Instance>, rx_job: Receiver<CTLogEn
         }
 
         let res = if args.no_domain {
-            instance.validate(&bundle, &ExecTask::ChainValidation(ExecPurpose::ServerAuth), args.repeat)?
+            instance.validate(&bundle, &ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth }, args.repeat)?
         } else {
-            instance.validate(&bundle, &ExecTask::DomainValidation(entry.domain.to_string()), args.repeat)?
+            instance.validate(&bundle, &ExecTask { hostname: Some(entry.domain.to_string()), purpose: ExecPurpose::ServerAuth }, args.repeat)?
         };
 
         // Send back a CTLogResult

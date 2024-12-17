@@ -589,8 +589,9 @@ pub open spec fn check_all_name_constraints(chain: &Seq<ExecRef<Certificate>>) -
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
-    match task {
-        Task::DomainValidation(domain) => {
+    match &task.hostname {
+        None => Err(PolicyError::UnsupportedTask),
+        Some(domain) => {
             let domain = str_lower(domain);
 
             Ok(chain.len() >= 2 && {
@@ -603,7 +604,6 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
                 &&& check_all_name_constraints(chain)
             })
         }
-        _ => Err(PolicyError::UnsupportedTask),
     }
 }
 

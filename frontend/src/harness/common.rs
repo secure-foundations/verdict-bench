@@ -49,9 +49,9 @@ impl Instance for CommonBenchInstance {
             return Err(Error::ZeroRepeat);
         }
 
-        let task_str = match task {
-            ExecTask::DomainValidation(domain) => {
-                if domain.trim().is_empty() {
+        let task_str = match &task.hostname {
+            Some(hostname) => {
+                if hostname.trim().is_empty() {
                     // Abort if the domain is empty
                     return Ok(ValidationResult {
                         valid: false,
@@ -59,10 +59,9 @@ impl Instance for CommonBenchInstance {
                         stats: vec![0; repeat],
                     });
                 }
-                format!("domain: {}", domain)
+                format!("domain: {}", hostname)
             },
-            ExecTask::ChainValidation(ExecPurpose::ServerAuth) => "validate".to_string(),
-            // _ => return Err(Error::UnsupportedTask)
+            None => "validate".to_string(),
         };
 
         writeln!(self.stdin, "repeat: {}", repeat)?;

@@ -574,8 +574,9 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
-    match task {
-        Task::DomainValidation(domain) => {
+    match &task.hostname {
+        None => Err(PolicyError::UnsupportedTask),
+        Some(domain) => {
             let domain = str_lower(domain);
 
             Ok(chain.len() >= 2 && {
@@ -588,7 +589,6 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
                 &&& cert_verified_root(env, root, &chain[chain.len() - 2], leaf, (chain.len() - 2) as usize)
             })
         }
-        _ => Err(PolicyError::UnsupportedTask),
     }
 }
 
