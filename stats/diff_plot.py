@@ -14,7 +14,7 @@ results = [
     ("Limbo", (
         ("Chrome", "../frontend/limbo-results/chrome.txt", "../frontend/limbo-results/verdict-chrome-v12.txt"),
         ("Firefox", "../frontend/limbo-results/firefox.txt", "../frontend/limbo-results/verdict-firefox.txt"),
-        ("OpenSSL", "../frontend/limbo-results/openssl-v2.txt", "../frontend/limbo-results/verdict-openssl-v2.txt"),
+        ("OpenSSL", "../frontend/limbo-results/openssl-v3-has-domain.txt", "../frontend/limbo-results/verdict-openssl-v3-has-domain.txt"),
     )),
 ]
 

@@ -375,6 +375,16 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
         (bc.path_len matches Some(path_len) ==> depth <= path_len as usize))
 }
 
+// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L1007
+pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bool {
+    &&& &cert.ext_subject_alt_name matches Some(san)
+    &&& exists |i: usize|
+            0 <= i < san.names.len() && {
+                &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
+                &&& match_name(&str_lower(dns_name), &hostname)
+            }
+}
+
 pub open spec fn valid_leaf(env: &Policy, cert: &Certificate) -> bool {
     valid_cert_common(env, cert, true, false, 0)
 }
@@ -391,16 +401,13 @@ pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> b
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
-    if (task.hostname matches None) {
-        Ok(chain.len() >= 2 && {
-            &&& valid_leaf(env, &chain[0])
-            &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
-            &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
-            &&& check_name_constraints(chain)
-        })
-    } else {
-        Err(PolicyError::UnsupportedTask)
-    }
+    Ok(chain.len() >= 2 && {
+        &&& valid_leaf(env, &chain[0])
+        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
+        &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
+        &&& check_name_constraints(chain)
+        &&& &task.hostname matches Some(hostname) ==> check_hostname(&chain[0], hostname)
+    })
 }
 
 pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool
