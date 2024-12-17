@@ -82,8 +82,8 @@ print("\\end{tabular}")
 
 # Plotting the combined box plot
 combined_df["result"] = combined_df["result"].replace({
-    "true": "Valid",
-    "false": "Invalid"
+    "true": "Accept",
+    "false": "Reject"
 })
 
 # Define the two groups:
@@ -111,7 +111,7 @@ sns.boxplot(
     capprops=dict(linewidth=0.5),
     medianprops=dict(linewidth=0.5),
     hue="result",
-    palette={"Valid": "green", "Invalid": "red"},
+    palette={"Accept": "#40B0A6", "Reject": "#E1BE6A"},
 )
 ax1.set_xlabel("")
 ax1.set_ylabel("Validation time (microseconds)")
@@ -128,13 +128,13 @@ sns.boxplot(
     capprops=dict(linewidth=0.5),
     medianprops=dict(linewidth=0.5),
     hue="result",
-    palette={"Valid": "green", "Invalid": "red"},
+    palette={"Accept": "#40B0A6", "Reject": "#E1BE6A"},
 ).legend(title="Result", loc="upper right")
 ax2.set_xlabel("")
 ax2.set_ylabel("")
-ax2.set_ylim(50, 260)
+ax2.set_ylim(0, 260)
 # ax2.set_yscale("log")
 
 plt.tight_layout(pad=0.1)
-plt.savefig("test.pdf")
+plt.savefig("performance.pdf")
 plt.close()

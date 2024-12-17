@@ -20,8 +20,9 @@ results = [
 
 diff_command = ["../frontend/target/release/frontend", "diff-results"]
 
+
 print("\\begin{tabular}{clrrrr}")
-print("Test & Impl. & T/T & T/F & F/T & F/F \\\\")
+print("Test & Impl. & A/A & A/R & R/A & R/R \\\\")
 print("\\hline")
 
 for i, (suite, impls) in enumerate(results):
@@ -54,6 +55,6 @@ for i, (suite, impls) in enumerate(results):
         # total = class_tt + class_tf + class_ft + class_ff
 
         prefix = f"\\multirow{{{len(impls)}}}{{*}}{{{suite}}} "
-        print(f"{prefix if j == 0 else ''}& {name} & {class_tt} & {class_tf} & {class_ft} & {class_ff} \\\\")
+        print(f"{prefix if j == 0 else ''}& {name} & {class_tt:,} & {class_tf:,} & {class_ft:,} & {class_ff:,} \\\\")
 
 print("\\end{tabular}")
