@@ -211,7 +211,7 @@ pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) ->
     }
 }
 
-/// nc_dns: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L629
+/// nc_dns: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L629
 pub open spec fn match_dns_name(pattern: &SpecString, name: &SpecString) -> bool {
     ||| pattern.len() == 0
     ||| {
@@ -222,7 +222,7 @@ pub open spec fn match_dns_name(pattern: &SpecString, name: &SpecString) -> bool
     ||| name.len() == pattern.len() && &str_lower(pattern) == &str_lower(name)
 }
 
-/// nc_match_single: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L570
+/// nc_match_single: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L570
 /// NOTE: we only support DNSName and DirectoryName for now
 pub open spec fn is_general_subtree_of(name1: &GeneralName, name2: &GeneralName) -> bool {
     match (name1, name2) {
@@ -245,7 +245,7 @@ pub open spec fn has_general_name_constraint(name: &GeneralName, nc: &NameConstr
     }
 }
 
-/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L501
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L501
 pub open spec fn nc_match(name: &GeneralName, nc: &NameConstraints) -> bool
 {
     let permitted_enabled = has_general_name_constraint(name, nc);
@@ -259,7 +259,7 @@ pub open spec fn nc_match(name: &GeneralName, nc: &NameConstraints) -> bool
             !is_general_subtree_of(#[trigger] &nc.excluded[j as int], &name)
 }
 
-/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L331-L336
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L331-L336
 pub open spec fn check_san_constraints(san: &SubjectAltName, nc: &NameConstraints) -> bool
 {
     forall |i: usize| 0 <= i < san.names.len() ==>
@@ -267,7 +267,7 @@ pub open spec fn check_san_constraints(san: &SubjectAltName, nc: &NameConstraint
 }
 
 /// NAME_CONSTRAINTS_check_CN
-/// https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_ncons.c#L438C5-L438C30
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L438C5-L438C30
 pub open spec fn check_common_name_constraints(cert: &Certificate, nc: &NameConstraints) -> bool
 {
     forall |i: usize| #![trigger cert.subject.0[i as int]] 0 <= i < cert.subject.0.len() ==>
@@ -306,8 +306,8 @@ pub open spec fn check_name_constraints(chain: &Seq<ExecRef<Certificate>>) -> bo
 
 /// Check for purpose == X509_PURPOSE_SSL_SERVER, i.e. special case of the following calls
 /// - check_purpose: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L462
-/// - X509_check_purpose: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L86
-/// - check_purpose_ssl_server: https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L736
+/// - X509_check_purpose: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L86
+/// - check_purpose_ssl_server: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L736
 /// Assuming X509_check_trust returns X509_TRUST_UNTRUSTED
 /// XKU_SGC is not supported
 pub open spec fn check_purpose(cert: &Certificate, is_leaf: bool) -> bool
@@ -317,11 +317,11 @@ pub open spec fn check_purpose(cert: &Certificate, is_leaf: bool) -> bool
             (#[trigger] &eku.usages[i as int] matches ExtendedKeyUsageType::ServerAuth)
 
     &&& if is_leaf {
-        // https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L733
+        // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L733
         &cert.ext_key_usage matches Some(ku) ==>
             ku.digital_signature || ku.key_encipherment || ku.key_agreement
     } else {
-        // https://github.com/openssl/openssl/blob/ea5817854cf67b89c874101f209f06ae016fd333/crypto/x509/v3_purp.c#L702
+        // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L702
         check_ca(cert) == 1
     }
 }
