@@ -259,6 +259,7 @@ pub open spec fn same_attr(attr1: &Attribute, attr2: &Attribute, normalize: bool
 {
     &&& &attr1.oid == &attr2.oid
     &&& if normalize {
+        &attr1.value == &attr2.value ||
         &normalize_string(&attr1.value) == &normalize_string(&attr2.value)
     } else {
         &attr1.value == &attr2.value
