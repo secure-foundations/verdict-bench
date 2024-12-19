@@ -183,14 +183,11 @@ pub enum PolicyError {
 /// Match a pattern with wildcard (e.g. "*.example.com") against a string
 pub open spec fn match_name(pattern: &SpecString, name: &SpecString) -> bool {
     if pattern.len() > 2 && pattern.char_at(0) == '*' && pattern.char_at(1) == '.' {
-        let suffix = pattern.skip(2);
-
-        ||| &suffix == name
-        ||| suffix.len() + 1 < name.len() && // `name` should be longer than ".{suffix}"
-            &suffix == &name.skip(name.len() - suffix.len()) &&
-            name.char_at(name.len() - suffix.len() - 1) == '.' &&
+        ||| &pattern.skip(2) == name // *.a.com matches a.com
+        ||| pattern.len() - 1 < name.len() && // `name` should be longer than ".{suffix}"
+            &pattern.skip(1) == &name.skip(name.len() - (pattern.len() - 1)) &&
             // the prefix of `name` that matches '*' should not contain '.'
-            !name.take(name.len() - suffix.len() - 1).has_char('.')
+            !name.take(name.len() - (pattern.len() - 1)).has_char('.')
     } else {
         pattern == name
     }

@@ -29,9 +29,12 @@ implementations = [
     ("OpenSSL", "../frontend/perf-results/results-openssl-part-2.txt"),
 
     # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2.txt"),
-    ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v2.txt"),
-    ("Verdict/Firefox", "../frontend/perf-results/results-verdict-firefox-part-2.txt"),
-    ("Verdict/OpenSSL", "../frontend/perf-results/results-verdict-openssl-part-2-refactor-2.txt"),
+    # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v2.txt"),
+    # ("Verdict/Chrome 2", "../frontend/perf-results/results-verdict-chrome-part-2-v3.txt"),
+    ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v5.txt"),
+    # ("Verdict/Firefox", "../frontend/perf-results/results-verdict-firefox-part-2.txt"),
+    ("Verdict/OpenSSL", "../frontend/perf-results/results-verdict-openssl-part-2-v3.txt"),
+    ("Verdict/Firefox", "../frontend/perf-results/results-verdict-firefox-part-2-v2.txt"),
 
     ("Firefox", "../frontend/perf-results/results-firefox-part-2.txt"),
     ("Chrome", "../frontend/perf-results/results-chrome-part-2.txt"),
