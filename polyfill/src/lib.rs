@@ -6,6 +6,7 @@ use std::num::TryFromIntError;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::str::from_utf8;
+use std::fmt::Write;
 
 use vstd::prelude::*;
 
@@ -195,6 +196,7 @@ pub fn str_to_utf8(s: &str) -> (res: &[u8])
     s.as_bytes()
 }
 
+/// TODO: specify this
 pub closed spec fn spec_u64_to_string(x: u64) -> (res: Seq<char>);
 
 #[verifier::external_body]
@@ -204,12 +206,19 @@ pub fn char_to_string(c: char) -> (res: String)
     c.to_string()
 }
 
-/// TODO: specify this
 #[verifier::external_body]
 pub fn u64_to_string(x: u64) -> (res: String)
     ensures res@ == spec_u64_to_string(x)
 {
     x.to_string()
+}
+
+#[verifier::external_body]
+#[inline(always)]
+pub fn u64_to_string_inplace(res: &mut String, x: u64)
+    ensures res@ == old(res)@ + spec_u64_to_string(x)
+{
+    write!(res, "{}", x).unwrap();
 }
 
 /// From Verus tutorial
@@ -552,10 +561,19 @@ pub fn string_new() -> (res: String)
 }
 
 #[verifier::external_body]
+#[inline(always)]
 pub fn string_push(s: &mut String, c: char)
     ensures s@ == old(s)@.push(c)
 {
     s.push(c)
+}
+
+#[verifier::external_body]
+#[inline(always)]
+pub fn string_push_str(s: &mut String, r: &str)
+    ensures s@ == old(s)@ + r@
+{
+    s.push_str(r)
 }
 
 #[verifier::external_body]

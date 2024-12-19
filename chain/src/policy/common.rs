@@ -180,14 +180,22 @@ pub enum PolicyError {
     UnsupportedTask,
 }
 
+use exec_starts_with as starts_with;
+use exec_ends_with as ends_with;
+
 /// Match a pattern with wildcard (e.g. "*.example.com") against a string
 pub open spec fn match_name(pattern: &SpecString, name: &SpecString) -> bool {
-    if pattern.len() > 2 && pattern.char_at(0) == '*' && pattern.char_at(1) == '.' {
-        ||| &pattern.skip(2) == name // *.a.com matches a.com
-        ||| pattern.len() - 1 < name.len() && // `name` should be longer than ".{suffix}"
-            &pattern.skip(1) == &name.skip(name.len() - (pattern.len() - 1)) &&
-            // the prefix of `name` that matches '*' should not contain '.'
-            !name.take(name.len() - (pattern.len() - 1)).has_char('.')
+    if starts_with(pattern, &"*."@) {
+        let name_len = name.len();
+        let pattern_len = pattern.len();
+
+        pattern_len > 2 && {
+            ||| &pattern.skip(2) == name // *.a.com matches a.com
+            ||| name_len > pattern_len - 1 && // `name` should be longer than ".{suffix}"
+                ends_with(name, &pattern.skip(1)) &&
+                // the prefix of `name` that matches '*' should not contain '.'
+            !name.take(name_len - (pattern_len - 1)).has_char('.')
+        }
     } else {
         pattern == name
     }
@@ -369,6 +377,30 @@ pub fn exec_normalize_string(s: &String) -> (res: String)
     ensures res.deep_view() == normalize_string(&s.deep_view())
 {
     issue::normalize_string(s.as_str())
+}
+
+pub open spec fn starts_with(s: &SpecString, r: &SpecString) -> bool {
+    s.len() >= r.len() && s.take(r.len() as int) == r
+}
+
+#[verifier::external_body]
+#[inline(always)]
+pub fn exec_starts_with(s: &String, r: &String) -> (res: bool)
+    ensures res.deep_view() == starts_with(&s.deep_view(), &r.deep_view())
+{
+    s.starts_with(r)
+}
+
+pub open spec fn ends_with(s: &SpecString, r: &SpecString) -> bool {
+    s.len() >= r.len() && s.skip(s.len() - r.len()) == r
+}
+
+#[verifier::external_body]
+#[inline(always)]
+pub fn exec_ends_with(s: &String, r: &String) -> (res: bool)
+    ensures res.deep_view() == ends_with(&s.deep_view(), &r.deep_view())
+{
+    s.ends_with(r)
 }
 
 pub open spec fn bv_and_u8(a: &u8, b: &u8) -> u8 { *a & *b }

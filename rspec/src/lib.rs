@@ -1482,7 +1482,7 @@ fn compile_rspec(items: Items, trace: bool) -> Result<TokenStream2, Error> {
     // For each function, generate an exec version
     for item_fn in ctx.fns.values() {
         let exec_fn = compile_spec_fn(&ctx, item_fn, trace)?;
-        output.push(quote! { #[inline(always)] #[verifier::loop_isolation(false)] #exec_fn });
+        output.push(quote! { #[verifier::loop_isolation(false)] #exec_fn });
     }
 
     // println!("########################################");

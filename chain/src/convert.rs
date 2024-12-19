@@ -283,24 +283,53 @@ impl policy::Certificate {
     }
 
     /// Convert OID to a string by concatenating all arcs with '.'
+    // pub closed spec fn spec_oid_to_string(oid: SpecObjectIdentifierValue) -> Seq<char>
+    // {
+    //     seq_join(Seq::new(oid.len(), |i| spec_u64_to_string(oid[i])), "."@)
+    // }
+
     pub closed spec fn spec_oid_to_string(oid: SpecObjectIdentifierValue) -> Seq<char>
+        decreases oid.len()
     {
-        seq_join(Seq::new(oid.len(), |i| spec_u64_to_string(oid[i])), "."@)
+        if oid.len() == 0 {
+            seq![]
+        } else if oid.len() == 1 {
+            spec_u64_to_string(oid[0])
+        } else {
+            spec_u64_to_string(oid.first()) + "."@ + Self::spec_oid_to_string(oid.drop_first())
+        }
     }
 
     /// Exec version of the above
     pub fn oid_to_string(oid: &ObjectIdentifierValue) -> (res: String)
         ensures res@ =~= Self::spec_oid_to_string(oid@)
     {
-        let strings = vec_map(oid.0.to_vec(),
-            |id: &u64| -> (res: String)
-            ensures res@ == spec_u64_to_string(*id)
-            { u64_to_string(*id) });
+        // Estimate the number of characters needed to be 4 * number of arcs
+        let oid_len = oid.0.len();
+        let mut res = if oid_len <= usize::MAX / 4 { string_new_with_cap(oid_len * 3) }
+            else { string_new() };
 
-        assert(Seq::new(strings@.len(), |i| strings@[i]@) =~= Seq::new(oid@.len(), |i| spec_u64_to_string(oid@[i])));
-        assert(Seq::new(strings@.len(), |i| strings@[i]@) =~= strings@.map_values(|v: String| v@));
+        assert(oid@.skip(0) == oid@);
 
-        join_strings(&strings, ".")
+        for i in 0..oid_len
+            invariant
+                oid_len == oid@.len(),
+
+                Self::spec_oid_to_string(oid@) =~=
+                    res@ + Self::spec_oid_to_string(oid@.skip(i as int))
+        {
+            let ghost prev_res = res@;
+            u64_to_string_inplace(&mut res, *oid.0.get(i));
+
+            if i + 1 != oid_len {
+                string_push(&mut res, '.');
+            }
+
+            proof { reveal_strlit("."); }
+            assert(oid@.skip(i as int).drop_first() == oid@.skip(i + 1));
+        }
+
+        res
     }
 
     pub closed spec fn spec_time_to_timestamp(time: SpecTimeValue) -> Option<i64>;

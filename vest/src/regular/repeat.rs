@@ -175,33 +175,52 @@ impl<C: Combinator> Repeat<C> where
     }
 
     /// Helper function for parse()
-    /// TODO: Recursion is not ideal, but hopefully tail call opt will kick in
-    fn parse_helper<'a>(&self, s: &'a [u8], res: &mut Vec<C::Result<'a>>) -> (r: Result<
-        (),
-        ParseError,
-    >)
+    #[inline(always)]
+    fn parse_helper<'a>(&self, s: &'a [u8]) -> (r: Result<Vec<C::Result<'a>>, ParseError>)
         requires
             self.0.parse_requires(),
             C::V::is_prefix_secure(),
         ensures
-            r is Ok ==> {
-                &&& self@.spec_parse(s@) is Ok
-                &&& self@.spec_parse(s@) matches Ok((n, v)) ==> RepeatResult::<C>(*res)@
-                    =~= RepeatResult::<C>(*old(res))@ + v
+            r matches Ok(res) ==> {
+                &&& self@.spec_parse(s@) matches Ok((_, v))
+                &&& RepeatResult::<C>(res)@ =~= v
             },
             r is Err ==> self@.spec_parse(s@) is Err,
     {
-        if s.len() == 0 {
-            return Ok(());
-        }
-        let (n, v) = self.0.parse(s)?;
+        let mut res = Vec::new();
+        let mut offset: usize = 0;
 
-        if n > 0 {
+        assert(s@.subrange(0, s@.len() as int) == s@);
+
+        while offset < s.len()
+            invariant
+                0 <= offset <= s@.len(),
+                self.parse_requires(),
+                self@.spec_parse(s@.subrange(offset as int, s@.len() as int)) matches Ok((_, rest)) ==> {
+                    &&& self@.spec_parse(s@) matches Ok((_, v))
+                    &&& RepeatResult::<C>(res)@ + rest =~= v
+                },
+                offset < s@.len() ==>
+                    (self@.spec_parse(s@.subrange(offset as int, s@.len() as int)) is Err ==> self@.spec_parse(s@) is Err),
+        {
+            let (n, v) = self.0.parse(slice_subrange(s, offset, s.len()))?;
+            if n == 0 {
+                return Err(ParseError::RepeatEmptyElement);
+            }
+
+            let ghost prev_offset = offset;
+
             res.push(v);
-            self.parse_helper(slice_subrange(s, n, s.len()), res)
-        } else {
-            Err(ParseError::RepeatEmptyElement)
+            offset += n;
+
+            assert(s@.subrange(prev_offset as int, s@.len() as int).skip(n as int)
+                =~= s@.subrange(offset as int, s@.len() as int))
         }
+
+        let ghost empty: Seq<u8> = seq![];
+        assert(s@.subrange(s@.len() as int, s@.len() as int) == empty);
+
+        Ok(res)
     }
 
     fn serialize_helper(
@@ -268,9 +287,7 @@ impl<C: Combinator> Combinator for Repeat<C> where
     }
 
     fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
-        let mut res = Vec::new();
-        self.parse_helper(s, &mut res)?;
-        Ok((s.len(), RepeatResult(res)))
+        Ok((s.len(), RepeatResult(self.parse_helper(s)?)))
     }
 
     open spec fn serialize_requires(&self) -> bool {

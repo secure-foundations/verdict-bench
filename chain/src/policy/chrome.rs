@@ -130,6 +130,8 @@ use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
 use exec_same_dn as same_dn;
+use exec_starts_with as starts_with;
+use exec_ends_with as ends_with;
 
 use exec_ip_addr_in_range as ip_addr_in_range;
 use exec_has_directory_name_constraint as has_directory_name_constraint;
@@ -251,7 +253,7 @@ pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
 /// TODO: URI encoding
 pub open spec fn clean_name(name: &SpecString) -> SpecString {
     let lower = str_lower(name);
-    if lower.len() > 0 && lower.char_at(lower.len() - 1) == '.' {
+    if ends_with(&lower, &"."@) && lower.len() != 0 {
         lower.take(lower.len() - 1)
     } else {
         lower
@@ -261,16 +263,15 @@ pub open spec fn clean_name(name: &SpecString) -> SpecString {
 pub open spec fn valid_name(name: &SpecString) -> bool {
     if name.has_char('*') {
         &&& name.len() > 2
-        &&& name.char_at(0) == '*'
-        &&& name.char_at(1) == '.'
-        &&& name.char_at(name.len() - 1) != '.'
+        &&& starts_with(name, &"*."@)
+        &&& !ends_with(name, &"."@)
         &&& name.skip(2).has_char('.') // at least two components
     } else {
         &&& name.len() > 0
         // Chrome doesn't check for preceding dot
         // per x509-limbo:rfc5280::nc::nc-permits-invalid-dns-san
         // &&& name.char_at(0) != '.'
-        &&& name.char_at(name.len() - 1) != '.'
+        &&& !ends_with(name, &"."@)
     }
 }
 
@@ -389,7 +390,7 @@ pub open spec fn cert_verified_non_leaf(cert: &Certificate, depth: usize) -> boo
 pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
     let name = clean_name(name);
     &&& name.len() > 0
-    &&& name.char_at(name.len() - 1) != '.'
+    &&& !ends_with(&name, &"."@)
     &&& !name.has_char('*')
 }
 

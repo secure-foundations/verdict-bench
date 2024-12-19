@@ -225,6 +225,7 @@ dependencies = [
  "builtin",
  "builtin_macros",
  "chrono",
+ "itoa",
  "libcrux",
  "libcrux-hacl",
  "macros",

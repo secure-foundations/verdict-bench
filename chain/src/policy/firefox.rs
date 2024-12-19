@@ -127,6 +127,8 @@ use exec_check_auth_key_id as check_auth_key_id;
 use exec_is_subtree_of as is_subtree_of;
 use exec_permit_name as permit_name;
 use exec_same_dn as same_dn;
+use exec_starts_with as starts_with;
+use exec_ends_with as ends_with;
 
 use exec_ip_addr_in_range as ip_addr_in_range;
 use exec_has_directory_name_constraint as has_directory_name_constraint;
@@ -179,14 +181,13 @@ pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
 pub open spec fn valid_name(name: &SpecString) -> bool {
     if name.has_char('*') {
         &&& name.len() > 2
-        &&& name.char_at(0) == '*'
-        &&& name.char_at(1) == '.'
-        &&& name.char_at(name.len() - 1) != '.'
+        &&& starts_with(name, &"*."@)
+        &&& !ends_with(name, &"."@)
         &&& name.skip(2).has_char('.') // at least two components
     } else {
         &&& name.len() > 0
-        &&& name.char_at(0) != '.'
-        &&& name.char_at(name.len() - 1) != '.'
+        &&& !starts_with(name, &"."@)
+        &&& !ends_with(name, &"."@)
     }
 }
 
@@ -419,7 +420,7 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &C
 /// Different from Chrome, Firefox does not clean name first
 pub open spec fn valid_name_constraint(name: &SpecString) -> bool {
     &&& name.len() > 0
-    &&& name.char_at(name.len() - 1) != '.'
+    &&& !ends_with(name, &"."@)
     &&& !name.has_char('*')
 }
 
