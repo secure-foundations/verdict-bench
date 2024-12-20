@@ -346,6 +346,15 @@ pub open spec fn has_ip_addr_name_constraint(constraints: &NameConstraints) -> b
         #[trigger] &constraints.permitted[i as int] matches GeneralName::IPAddr(_)
 }
 
+/// Check that there is no two extensions with the same OID
+pub open spec fn check_duplicate_extensions(cert: &Certificate) -> bool
+{
+    &cert.all_exts matches Some(all_exts) ==>
+    forall |i: usize| #![trigger all_exts[i as int]] 0 <= i < all_exts.len() ==>
+    forall |j: usize| #![trigger all_exts[j as int]] 0 <= j < i ==>
+        &all_exts[i as int].oid != &all_exts[j as int].oid
+}
+
 } // rspec!
 
 /// NOTE: unspecified

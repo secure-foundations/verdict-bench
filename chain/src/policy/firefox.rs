@@ -134,6 +134,7 @@ use exec_ip_addr_in_range as ip_addr_in_range;
 use exec_has_directory_name_constraint as has_directory_name_constraint;
 use exec_has_dns_name_constraint as has_dns_name_constraint;
 use exec_has_ip_addr_name_constraint as has_ip_addr_name_constraint;
+use exec_check_duplicate_extensions as check_duplicate_extensions;
 
 pub struct EVPolicy {
     pub oid: SpecString,
@@ -169,7 +170,7 @@ pub struct Policy {
 
 pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     match cert.subject_key {
-        SubjectKey::RSA { mod_length } => mod_length >= 1024,
+        SubjectKey::RSA { mod_length } => mod_length >= 2048,
         SubjectKey::DSA { p_len, .. } => p_len >= 1024,
         SubjectKey::Other => true,
     }
@@ -229,22 +230,19 @@ pub open spec fn key_usage_valid_leaf(cert: &Certificate) -> bool {
 }
 
 pub open spec fn extended_key_usage_valid(cert: &Certificate) -> bool {
-    (&cert.ext_basic_constraints, &cert.ext_extended_key_usage) matches (Some(bc), Some(key_usage))
-    ==>
-        if bc.is_ca {
+    &cert.ext_extended_key_usage matches Some(key_usage) ==>
+        if &cert.ext_basic_constraints matches Some(bc) && bc.is_ca {
             exists |i: usize| 0 <= i < key_usage.usages.len() &&
                 #[trigger] key_usage.usages[i as int] matches ExtendedKeyUsageType::ServerAuth
         } else {
             // Has ServerAuth
             &&& exists |i: usize| 0 <= i < key_usage.usages.len() &&
-                    (#[trigger] key_usage.usages[i as int] matches ExtendedKeyUsageType::ServerAuth)
+            (#[trigger] key_usage.usages[i as int] matches ExtendedKeyUsageType::ServerAuth)
 
             // No OCSPSigning
             &&& forall |i: usize| 0 <= i < key_usage.usages.len() ==>
                     !(#[trigger] key_usage.usages[i as int] matches ExtendedKeyUsageType::OCSPSigning)
         }
-
-    // TODO check if this is equivalent to extKetUsageValid in Hammurabi
 }
 
 // pub open spec fn not_revoked(env: &Policy, cert: &Certificate) -> bool {
@@ -373,6 +371,21 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
     &&& cert.not_after > env.time
 
     &&& key_usage_valid_non_leaf(cert)
+
+    // AKI must not be marked critical
+    &&& &cert.ext_authority_key_id matches Some(aki)
+        ==> (aki.critical matches Some(c) ==> !c)
+
+    &&& cert.subject.0.len() != 0
+
+    &&& check_duplicate_extensions(cert)
+
+    // // TODO: It's unclear where the check is exactly done in Firefox,
+    // // but Firefox does place some constraints on either the number of
+    // // name constraints or the number of SANs (or the total size of the certificate)
+    // // See x509-limbo:pathological::nc-dos-1
+    // &&& &cert.ext_name_constraints matches Some(constraints)
+    //     ==> constraints.permitted.len() <= 1024 && constraints.excluded.len() <= 1024
 }
 
 /// See CheckForSymantecDistrust in Firefox
@@ -498,6 +511,11 @@ pub open spec fn check_san_name_constraints(san: &SubjectAltName, constraints: &
             GeneralName::DNSName(name) => check_dns_name_constraints(&constraints, name),
             GeneralName::DirectoryName(name) => check_directory_name_constraints(&constraints, name),
             GeneralName::IPAddr(addr) => check_ip_addr_name_constraints(&constraints, addr),
+
+            // We consider all OtherName in SAN to be unrecognized, therefore reject
+            // added due to rfc5280::nc::nc-forbids-othername
+            GeneralName::OtherName => false,
+
             _ => true,
         }
 }
@@ -507,26 +525,26 @@ pub open spec fn check_common_name_constraints(cert: &Certificate, constraints: 
     forall |j: usize| 0 <= j < cert.subject.0[i as int].len() ==>
         {
             let name = #[trigger] &cert.subject.0[i as int][j as int];
-            &&& &name.oid == "2.5.4.3"@ // common name
-            &&& check_dns_name_constraints(&constraints, &name.value)
+            &name.oid == "2.5.4.3"@ // common name
+            ==> check_dns_name_constraints(&constraints, &name.value)
         }
 }
 
-/// Check a leaf certificate against the name constraints in a parent certificate
-pub open spec fn check_name_constraints(cert: &Certificate, leaf: &Certificate) -> bool {
+/// Check a target certificate against the name constraints in a parent certificate
+pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate) -> bool {
     &cert.ext_name_constraints matches Some(constraints)
     ==> {
         &&& valid_dns_name_constraints(&constraints)
         &&& constraints.permitted.len() != 0 || constraints.excluded.len() != 0
 
         // Check SAN section against name constraints
-        &&& match &leaf.ext_subject_alt_name {
-            Some(leaf_san) => check_san_name_constraints(leaf_san, constraints),
+        &&& match &target.ext_subject_alt_name {
+            Some(san) => check_san_name_constraints(san, constraints),
             // Otherwise fall back to common name
-            None => check_common_name_constraints(leaf, constraints),
+            None => check_common_name_constraints(target, constraints),
         }
 
-        &&& check_directory_name_constraints(constraints, &leaf.subject)
+        &&& check_directory_name_constraints(constraints, &target.subject)
     }
 }
 
@@ -536,11 +554,13 @@ pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, le
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& extended_key_usage_valid(cert)
     // &&& not_revoked(env, cert)
-    &&& check_name_constraints(cert, leaf)
 }
 
 pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &SpecString, ev: bool) -> bool {
     &&& is_valid_pki(cert)
+
+    // Per x509-limbo:webpki::forbidden-dsa-leaf
+    &&& !(cert.subject_key matches SubjectKey::DSA { .. })
 
     // Check that SAN or CN is valid
     // and the domain belongs to one of them
@@ -568,7 +588,17 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid_leaf(cert)
     &&& extended_key_usage_valid(cert)
+    &&& check_duplicate_extensions(cert)
     // &&& not_revoked(env, cert)
+}
+
+/// Check name constraints of each certificate against all certs down the path
+pub open spec fn check_all_name_constraints(chain: &Seq<ExecRef<Certificate>>) -> bool
+{
+    &&& chain.len() > 0
+    &&& forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
+        forall |j: usize| #![trigger chain[j as int]] 0 <= j < i ==>
+            check_name_constraints(&chain[i as int], &chain[j as int])
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
@@ -584,10 +614,10 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
                 let leaf = &chain[0];
                 let root = &chain[chain.len() - 1];
 
-                &&& forall |i: usize| 0 <= i < chain.len() - 1 ==> check_auth_key_id(&chain[i + 1], #[trigger] &chain[i as int])
                 &&& cert_verified_leaf(env, leaf, &domain, false) // EV chains are not yet supported
                 &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
                 &&& cert_verified_root(env, root, &chain[chain.len() - 2], leaf, (chain.len() - 2) as usize)
+                &&& check_all_name_constraints(chain)
             })
         }
     }

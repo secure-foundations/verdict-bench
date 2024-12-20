@@ -137,6 +137,7 @@ use exec_ip_addr_in_range as ip_addr_in_range;
 use exec_has_directory_name_constraint as has_directory_name_constraint;
 use exec_has_dns_name_constraint as has_dns_name_constraint;
 use exec_has_ip_addr_name_constraint as has_ip_addr_name_constraint;
+use exec_check_duplicate_extensions as check_duplicate_extensions;
 
 pub struct Policy {
     pub time: u64,
@@ -320,15 +321,6 @@ pub open spec fn check_ext_critical(cert: &Certificate) -> bool {
     &cert.all_exts matches Some(all_exts) ==>
         forall |i: usize| #![trigger all_exts[i as int]] 0 <= i < all_exts.len()
         ==> (&all_exts[i as int].critical matches Some(t) ==> *t)
-}
-
-/// Check that there is no two extensions with the same OID
-pub open spec fn check_duplicate_extensions(cert: &Certificate) -> bool
-{
-    &cert.all_exts matches Some(all_exts) ==>
-    forall |i: usize| #![trigger all_exts[i as int]] 0 <= i < all_exts.len() ==>
-    forall |j: usize| #![trigger all_exts[j as int]] 0 <= j < i ==>
-        &all_exts[i as int].oid != &all_exts[j as int].oid
 }
 
 pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Certificate, domain: &SpecString) -> bool {
