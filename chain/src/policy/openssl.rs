@@ -475,6 +475,7 @@ pub open spec fn check_valid_pattern(pattern: &SpecString) -> bool {
 pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bool {
     // NOTE: case-insensitivity is set here
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L901
+    let hostname = str_lower(hostname);
 
     // Check SAN
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L912-L914
@@ -517,7 +518,7 @@ pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> b
 
     // Per x509-limbo:webpki::aki::root-with-aki-*
     &&& &cert.ext_authority_key_id matches Some(aki) ==>
-        (aki.issuer matches None) && (aki.serial matches None)
+        (aki.issuer matches None) == (aki.serial matches None)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1

@@ -8,7 +8,7 @@ results = [
     ("CT", (
         ("Chrome", "../frontend/diff-results/chrome-v2.txt", "../frontend/diff-results/verdict-chrome-v11.txt"),
         ("Firefox", "../frontend/diff-results/firefox-no-required-tls-features.txt", "../frontend/diff-results/verdict-firefox-v6.txt"),
-        ("OpenSSL", "../frontend/diff-results/openssl.txt", "../frontend/diff-results/verdict-openssl-v2.txt"),
+        ("OpenSSL", "../frontend/diff-results/openssl-v3.txt", "../frontend/diff-results/verdict-openssl-v5.txt"),
     )),
 
     ("Limbo", (
@@ -19,7 +19,6 @@ results = [
 ]
 
 diff_command = ["../frontend/target/release/frontend", "diff-results"]
-
 
 print("\\begin{tabular}{clrrrr}")
 print("Test & Impl. & A/A & A/R & R/A & R/R \\\\")
