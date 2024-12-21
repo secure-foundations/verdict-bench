@@ -80,7 +80,7 @@ int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_
 
         X509 *cert = parse_x509(cert_base64[i]);
         if (!cert) {
-            *err = strdup("parse error");
+            *err = strdup("parse_error");
             goto END_VALIDATION;
         }
         sk_X509_push(chain, cert);
@@ -90,14 +90,6 @@ int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_
     ctx = X509_STORE_CTX_new();
     if (!ctx) {
         printf("error: failed to create X509_STORE_CTX\n");
-        exit(1);
-    }
-
-    // Set chain in the context
-    leaf = sk_X509_value(chain, 0);
-    sk_X509_shift(chain);
-    if (!X509_STORE_CTX_init(ctx, roots, leaf, chain)) {
-        printf("error: failed to initialize X509_STORE_CTX\n");
         exit(1);
     }
 
@@ -115,8 +107,15 @@ int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_
     if (hostname) {
         X509_VERIFY_PARAM_set1_host(param, hostname, 0);
     }
+    X509_STORE_set1_param(roots, param);
 
-    X509_STORE_CTX_set0_param(ctx, param);
+    // Set chain in the context
+    leaf = sk_X509_value(chain, 0);
+    sk_X509_shift(chain);
+    if (!X509_STORE_CTX_init(ctx, roots, leaf, chain)) {
+        printf("error: failed to initialize X509_STORE_CTX\n");
+        exit(1);
+    }
 
     res = X509_verify_cert(ctx);
 
@@ -131,9 +130,8 @@ int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_
 END_VALIDATION:
     sk_X509_pop_free(chain, X509_free);
 
+    if (param) X509_VERIFY_PARAM_free(param);
     if (ctx) X509_STORE_CTX_free(ctx);
-    else if (param) X509_VERIFY_PARAM_free(param);
-
     if (leaf) X509_free(leaf);
 
     return res;
