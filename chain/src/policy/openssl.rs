@@ -35,7 +35,7 @@ impl Policy for OpenSSLPolicy {
 
 impl rfc::NoExpiration for OpenSSLPolicy {
     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
-        assert(chain[0].not_before < self.time < chain[0].not_after);
+        assert(chain[0].not_before <= self.time <= chain[0].not_after);
     }
 }
 
@@ -109,6 +109,8 @@ use exec_clone_dn as clone_dn;
 use exec_clone_string as clone_string;
 use exec_same_dn as same_dn;
 use exec_ip_addr_in_range as ip_addr_in_range;
+use exec_check_duplicate_extensions as check_duplicate_extensions;
+use exec_starts_with as starts_with;
 
 pub struct Policy {
     pub time: u64,
@@ -144,7 +146,14 @@ pub open spec fn check_cert_key_level(cert: &Certificate) -> bool
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
 pub open spec fn check_cert_time(env: &Policy, cert: &Certificate) -> bool
 {
-    &&& cert.not_before < env.time
+    // NOTE: X509_cmp_time(a, b) returns
+    // 1 iff a > b
+    // -1 if a <= b
+    //
+    // ossl_x509_check_cert_time checks that
+    // X509_cmp_time(not_before, now) == -1 ==> not_before <= now
+    // X509_cmp_time(not_after, now) == 1 ==> not_after > now
+    &&& cert.not_before <= env.time
     &&& cert.not_after > env.time
 }
 
@@ -250,6 +259,8 @@ pub open spec fn nc_match(name: &GeneralName, nc: &NameConstraints) -> bool
 {
     let permitted_enabled = has_general_name_constraint(name, nc);
 
+    &&& !(name matches GeneralName::OtherName)
+
     &&& permitted_enabled ==>
             exists |j: usize| 0 <= j < nc.permitted.len() &&
                 is_general_subtree_of(#[trigger] &nc.permitted[j as int], &name)
@@ -340,6 +351,8 @@ pub open spec fn check_name_constraints(chain: &Seq<ExecRef<Certificate>>) -> bo
     forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
         (&chain[i as int].ext_name_constraints matches Some(nc) ==>
         forall |j: usize| 0 <= j < i ==>
+            // NameConstraints do not apply to self-issued certificates
+            !same_dn(&chain[j as int].subject, &chain[j as int].issuer, true) ==>
             check_name_constraints_helper(#[trigger] &chain[j as int], &nc, j == 0))
 }
 
@@ -363,6 +376,33 @@ pub open spec fn check_purpose(cert: &Certificate, is_leaf: bool) -> bool
         // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L702
         check_ca(cert) == 1
     }
+}
+
+/// Check for critical extensions unsupported by Chrome
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L270
+pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
+    &cert.all_exts matches Some(all_exts) ==>
+    forall |i: usize| #![trigger all_exts[i as int]]
+        0 <= i < all_exts.len() ==>
+        (all_exts[i as int].critical matches Some(c) && c) ==>
+        {
+            ||| &all_exts[i as int].oid == "2.16.840.1.113730.1.1"@ // NetscapeCertType
+            ||| &all_exts[i as int].oid == "2.5.29.15"@ // KeyUsage
+            ||| &all_exts[i as int].oid == "2.5.29.17"@ // SubjectAltName
+            ||| &all_exts[i as int].oid == "2.5.29.19"@ // BasicConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.32"@ // CertificatePolicies
+            ||| &all_exts[i as int].oid == "2.5.29.31"@ // CRLDistributionPoints
+            ||| &all_exts[i as int].oid == "2.5.29.37"@ // ExtendedKeyUsage
+            // NOTE: Assuming no OPENSSL_NO_RFC3779
+            // ||| &all_exts[i as int].oid == "1.3.6.1.5.5.7.1.7"@ // SbgpIpAddrBlock
+            // ||| &all_exts[i as int].oid == "1.3.6.1.5.5.7.1.8"@ // SbgpAutonomousSysNum
+            ||| &all_exts[i as int].oid == "1.3.6.1.5.5.7.48.1.5"@ // OCSPNoCheck
+            ||| &all_exts[i as int].oid == "2.5.29.36"@ // PolicyConstraints
+            ||| &all_exts[i as int].oid == "1.3.6.1.5.5.7.1.14"@ // ProxyCertInfo
+            ||| &all_exts[i as int].oid == "2.5.29.30"@ // NameConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.33"@ // PolicyMappings
+            ||| &all_exts[i as int].oid == "2.5.29.54"@ // InhibitAnyPolicy
+        }
 }
 
 /// Common checks for certificates, this includes checks in
@@ -412,6 +452,22 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
     &&& !is_leaf ==>
         (&cert.ext_basic_constraints matches Some(bc) ==>
         (bc.path_len matches Some(path_len) ==> depth <= path_len as usize))
+
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L543-L545
+    &&& check_unhandled_extensions(cert)
+
+    &&& check_duplicate_extensions(cert)
+}
+
+/// Part of valid_star
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L742
+pub open spec fn check_valid_pattern(pattern: &SpecString) -> bool {
+    if starts_with(pattern, &"*."@) {
+        // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L800
+        pattern.len() >= 2 && pattern.skip(2).has_char('.')
+    } else {
+        true
+    }
 }
 
 /// Check if the given hostname is specified in the leaf certificate
@@ -426,6 +482,7 @@ pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bo
         exists |i: usize|
             0 <= i < san.names.len() && {
                 &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
+                &&& check_valid_pattern(dns_name)
                 &&& match_name(&str_lower(dns_name), &hostname)
             }
 
@@ -442,6 +499,7 @@ pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bo
                 {
                     let name = &cert.subject.0[i as int][j as int];
                     &&& &name.oid == "2.5.4.3"@ // common name
+                    &&& check_valid_pattern(&name.value)
                     &&& match_name(&str_lower(&name.value), &hostname)
                 }
 }
@@ -455,7 +513,11 @@ pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usi
 }
 
 pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> bool {
-    valid_cert_common(env, cert, false, true, depth)
+    &&& valid_cert_common(env, cert, false, true, depth)
+
+    // Per x509-limbo:webpki::aki::root-with-aki-*
+    &&& &cert.ext_authority_key_id matches Some(aki) ==>
+        (aki.issuer matches None) && (aki.serial matches None)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
