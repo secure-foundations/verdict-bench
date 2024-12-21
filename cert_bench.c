@@ -104,6 +104,9 @@ int x509_validte(X509_STORE *roots, int64_t timestamp, char **cert_base64, size_
     X509_VERIFY_PARAM_set_purpose(param, X509_PURPOSE_SSL_SERVER);
     X509_VERIFY_PARAM_set_depth(param, MAX_CHAIN_SIZE);
     X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT);
+    // Align the flags with x509-limbo: https://github.com/C2SP/x509-limbo/blob/main/harness/openssl/main.cpp#L131C37-L131C62
+    // which is needed for some test cases
+    X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
     if (hostname) {
         X509_VERIFY_PARAM_set1_host(param, hostname, 0);
     }
