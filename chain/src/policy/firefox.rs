@@ -559,18 +559,20 @@ pub open spec fn check_common_name_constraints(cert: &Certificate, constraints: 
 }
 
 /// Check a target certificate against the name constraints in a parent certificate
-pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate) -> bool {
+pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate, is_leaf: bool) -> bool {
     &cert.ext_name_constraints matches Some(constraints)
     ==> {
         &&& valid_dns_name_constraints(&constraints)
         &&& constraints.permitted.len() != 0 || constraints.excluded.len() != 0
 
         // Check SAN section against name constraints
-        &&& match &target.ext_subject_alt_name {
-            Some(san) => check_san_name_constraints(san, constraints),
-            // Otherwise fall back to common name
-            None => check_common_name_constraints(target, constraints),
-        }
+        &&& &target.ext_subject_alt_name matches Some(san)
+            ==> check_san_name_constraints(san, constraints)
+
+        // Only check CN of the leaf (when SAN does not exist)
+        // https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certhigh/certvfy.c#L705
+        &&& is_leaf ==> (&target.ext_subject_alt_name matches None
+            ==> check_common_name_constraints(target, constraints))
 
         &&& check_directory_name_constraints(constraints, &target.subject)
     }
@@ -627,7 +629,7 @@ pub open spec fn check_all_name_constraints(chain: &Seq<ExecRef<Certificate>>) -
     &&& chain.len() > 0
     &&& forall |i: usize| #![trigger chain[i as int]] 1 <= i < chain.len() ==>
         forall |j: usize| #![trigger chain[j as int]] 0 <= j < i ==>
-            check_name_constraints(&chain[i as int], &chain[j as int])
+            check_name_constraints(&chain[i as int], &chain[j as int], j == 0)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
