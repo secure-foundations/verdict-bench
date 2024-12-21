@@ -38,7 +38,7 @@ impl Policy for FirefoxPolicy {
 
 impl rfc::NoExpiration for FirefoxPolicy {
     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
-        assert(chain[0].not_before < self.time < chain[0].not_after);
+        assert(chain[0].not_before <= self.time <= chain[0].not_after);
     }
 }
 
@@ -211,6 +211,33 @@ pub open spec fn strong_signature(alg: &SpecString) -> bool {
     ||| alg == "1.2.840.113549.1.1.13"@
 }
 
+/// Check for critical extensions unsupported by Firefox
+/// https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certxutl.c#L468
+/// https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/util/secoidt.h#L118
+pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
+    &cert.all_exts matches Some(all_exts) ==>
+    forall |i: usize| #![trigger all_exts[i as int]]
+        0 <= i < all_exts.len() ==>
+        (all_exts[i as int].critical matches Some(c) && c) ==>
+        {
+            ||| &all_exts[i as int].oid == "2.5.29.9"@ // SubjectDirectoryAttributes
+            ||| &all_exts[i as int].oid == "2.5.29.14"@ // SubjectKeyIdentifier
+            ||| &all_exts[i as int].oid == "2.5.29.15"@ // KeyUsage
+            ||| &all_exts[i as int].oid == "2.5.29.16"@ // PrivateKeyUsagePeriod
+            ||| &all_exts[i as int].oid == "2.5.29.17"@ // SubjectAltName
+            ||| &all_exts[i as int].oid == "2.5.29.18"@ // IssuerAltName
+            ||| &all_exts[i as int].oid == "2.5.29.19"@ // BasicConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.30"@ // NameConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.31"@ // CRLDistributionPoints
+            ||| &all_exts[i as int].oid == "2.5.29.32"@ // CertificatePolicies
+            ||| &all_exts[i as int].oid == "2.5.29.33"@ // PolicyMappings
+            ||| &all_exts[i as int].oid == "2.5.29.36"@ // PolicyConstraints
+            ||| &all_exts[i as int].oid == "2.5.29.35"@ // AuthorityKeyIdentifier
+            ||| &all_exts[i as int].oid == "2.5.29.37"@ // ExtKeyUsage
+            ||| &all_exts[i as int].oid == "1.3.6.1.5.5.7.1.1"@ // AuthorityInfoAccess
+        }
+}
+
 pub open spec fn key_usage_valid_non_leaf(cert: &Certificate) -> bool {
     &cert.ext_key_usage matches Some(key_usage)
     ==> {
@@ -367,8 +394,8 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
     &&& bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
-    &&& cert.not_before < env.time
-    &&& cert.not_after > env.time
+    &&& cert.not_before <= env.time
+    &&& cert.not_after >= env.time
 
     &&& key_usage_valid_non_leaf(cert)
 
@@ -379,6 +406,7 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
     &&& cert.subject.0.len() != 0
 
     &&& check_duplicate_extensions(cert)
+    &&& check_unhandled_extensions(cert)
 
     // // TODO: It's unclear where the check is exactly done in Firefox,
     // // but Firefox does place some constraints on either the number of
@@ -582,13 +610,14 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
     &&& not_in_crl(env, cert)
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
-    &&& cert.not_before < env.time
-    &&& cert.not_after > env.time
+    &&& cert.not_before <= env.time
+    &&& cert.not_after >= env.time
 
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid_leaf(cert)
     &&& extended_key_usage_valid(cert)
     &&& check_duplicate_extensions(cert)
+    &&& check_unhandled_extensions(cert)
     // &&& not_revoked(env, cert)
 }
 
