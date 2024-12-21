@@ -205,7 +205,7 @@ pub open spec fn check_san(cert: &Certificate) -> bool
     &cert.ext_subject_alt_name matches Some(san) ==> san.names.len() != 0
 }
 
-pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) -> bool
+pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool, is_leaf: bool) -> bool
 {
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L622-L627
     &&& &cert.ext_authority_key_id matches Some(akid) ==> !match akid.critical { Some(t) => t, None => false }
@@ -214,7 +214,7 @@ pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool) ->
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L628-L642
     &&& if cert.version >= 2 {
         &&& !is_root ==> (&cert.ext_authority_key_id matches Some(akid) && akid.key_id matches Some(..))
-        &&& (&cert.ext_basic_constraints matches Some(bc) && bc.is_ca) ==> &cert.ext_subject_key_id matches Some(..)
+        &&& !is_leaf ==> &cert.ext_subject_key_id matches Some(..)
     } else {
         cert.all_exts matches None
     }
@@ -442,7 +442,7 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L645-L647
     &&& check_purpose(cert, is_leaf)
 
-    &&& check_auth_subject_key_id(cert, is_root)
+    &&& check_auth_subject_key_id(cert, is_root, is_leaf)
 
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L443-L444
     &&& &cert.ext_basic_constraints matches Some(bc) ==>
@@ -516,9 +516,9 @@ pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usi
 pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> bool {
     &&& valid_cert_common(env, cert, false, true, depth)
 
-    // Per x509-limbo:webpki::aki::root-with-aki-*
-    &&& &cert.ext_authority_key_id matches Some(aki) ==>
-        (aki.issuer matches None) == (aki.serial matches None)
+    // // Per x509-limbo:webpki::aki::root-with-aki-*
+    // &&& &cert.ext_authority_key_id matches Some(aki) ==>
+    //     (aki.issuer matches None) == (aki.serial matches None)
 }
 
 /// chain[0] is the leaf, and assume chain[i] is issued by chain[i + 1] for all i < chain.len() - 1
