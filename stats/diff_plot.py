@@ -7,13 +7,13 @@ import subprocess
 results = [
     ("CT", (
         ("Chrome", "../frontend/diff-results/chrome-v2.txt", "../frontend/diff-results/verdict-chrome-v11.txt"),
-        ("Firefox", "../frontend/diff-results/firefox-no-required-tls-features.txt", "../frontend/diff-results/verdict-firefox-v5.txt"),
+        ("Firefox", "../frontend/diff-results/firefox-no-required-tls-features.txt", "../frontend/diff-results/verdict-firefox-v6.txt"),
         ("OpenSSL", "../frontend/diff-results/openssl.txt", "../frontend/diff-results/verdict-openssl-v2.txt"),
     )),
 
     ("Limbo", (
         ("Chrome", "../frontend/limbo-results/chrome.txt", "../frontend/limbo-results/verdict-chrome-v12.txt"),
-        ("Firefox", "../frontend/limbo-results/firefox.txt", "../frontend/limbo-results/verdict-firefox.txt"),
+        ("Firefox", "../frontend/limbo-results/firefox.txt", "../frontend/limbo-results/verdict-firefox-v2.txt"),
         ("OpenSSL", "../frontend/limbo-results/openssl-v3-has-domain.txt", "../frontend/limbo-results/verdict-openssl-v3-has-domain.txt"),
     )),
 ]

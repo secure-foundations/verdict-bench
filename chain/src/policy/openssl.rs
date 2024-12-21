@@ -279,6 +279,35 @@ pub open spec fn check_common_name_constraints(cert: &Certificate, nc: &NameCons
     }
 }
 
+/// Check if there is any DNS name in SAN
+pub open spec fn check_san_has_dns(cert: &Certificate) -> bool
+{
+    &&& &cert.ext_subject_alt_name matches Some(san)
+    &&& exists |i: usize| 0 <= i < san.names.len() &&
+            #[trigger] san.names[i as int] matches GeneralName::DNSName(..)
+}
+
+/// min(a + b, usize::MAX)
+pub open spec fn add_usize(a: usize, b: usize) -> usize
+{
+    if a <= usize::MAX - b {
+        (a + b) as usize
+    } else {
+        usize::MAX
+    }
+}
+
+/// Sum of subject RDNs and SANs
+pub open spec fn get_name_count(cert: &Certificate) -> usize
+{
+    let san_count = match &cert.ext_subject_alt_name {
+        Some(san) => san.names.len(),
+        None => 0,
+    };
+
+    add_usize(cert.subject.0.len() as usize, san_count as usize)
+}
+
 /// This check is a best-effort encoding of the two functions in OpenSSL:
 /// - Name normalization: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x_name.c#L310
 /// - Comparison (directly done via memcmp): https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L615
@@ -286,13 +315,23 @@ pub open spec fn check_common_name_constraints(cert: &Certificate, nc: &NameCons
 pub open spec fn check_name_constraints_helper(cert: &Certificate, nc: &NameConstraints, is_leaf: bool) -> bool
 {
     // NOTE: no support for these
-    // - DoS guard https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L290-L296
     // - Email name https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L310-L327
     // - nc_minmax_valid
 
+    // Avoid expensive name constraints check
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_ncons.c#L290-L296
+    &&& {
+        let name_count = get_name_count(cert);
+        let constraint_count = add_usize(nc.permitted.len() as usize, nc.excluded.len() as usize);
+        name_count == 0 || constraint_count <= 1048576usize / name_count
+    }
+
     &&& nc_match(&GeneralName::DirectoryName(clone_dn(&cert.subject)), nc)
     &&& &cert.ext_subject_alt_name matches Some(san) ==> check_san_constraints(san, nc)
-    &&& is_leaf ==> check_common_name_constraints(cert, nc)
+
+    // In the case of a leaf certificate, OpenSSL checks if SAN has any DNS name (if it exists) if not, it checks CN
+    // https://github.com/openssl/openssl/blob/b3bb214720f20f3b126ae4b9c330e9a48b835415/crypto/x509/x509_vfy.c#L843C35-L843C45
+    &&& is_leaf ==> !check_san_has_dns(cert) ==> check_common_name_constraints(cert, nc)
 }
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L711
@@ -375,14 +414,36 @@ pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bo
         (bc.path_len matches Some(path_len) ==> depth <= path_len as usize))
 }
 
-// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L1007
+/// Check if the given hostname is specified in the leaf certificate
+/// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L1007
 pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bool {
-    &&& &cert.ext_subject_alt_name matches Some(san)
-    &&& exists |i: usize|
+    // NOTE: case-insensitivity is set here
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L901
+
+    // Check SAN
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L912-L914
+    ||| &cert.ext_subject_alt_name matches Some(san) &&
+        exists |i: usize|
             0 <= i < san.names.len() && {
                 &&& #[trigger] &san.names[i as int] matches GeneralName::DNSName(dns_name)
                 &&& match_name(&str_lower(dns_name), &hostname)
             }
+
+    // Check CN
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L994-L995
+    //
+    // NOTE: by this line, CN is only checked if there is no DNS name in SAN
+    // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_utl.c#L985
+    ||| !check_san_has_dns(cert) &&
+            exists |i: usize| #![trigger cert.subject.0[i as int]]
+                0 <= i < cert.subject.0.len() &&
+            exists |j: usize| #![trigger cert.subject.0[i as int][j as int]]
+                0 <= j < cert.subject.0[i as int].len() &&
+                {
+                    let name = &cert.subject.0[i as int][j as int];
+                    &&& &name.oid == "2.5.4.3"@ // common name
+                    &&& match_name(&str_lower(&name.value), &hostname)
+                }
 }
 
 pub open spec fn valid_leaf(env: &Policy, cert: &Certificate) -> bool {
