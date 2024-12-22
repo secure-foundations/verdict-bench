@@ -410,7 +410,7 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
     // // TODO: It's unclear where the check is exactly done in Firefox,
     // // but Firefox does place some constraints on either the number of
     // // name constraints or the number of SANs (or the total size of the certificate)
-    // // See x509-limbo:pathological::nc-dos-1
+    // // See x509-limbo::pathological::nc-dos-1
     // &&& &cert.ext_name_constraints matches Some(constraints)
     //     ==> constraints.permitted.len() <= 1024 && constraints.excluded.len() <= 1024
 }

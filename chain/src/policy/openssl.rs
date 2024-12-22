@@ -513,7 +513,7 @@ pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usi
 pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> bool {
     &&& valid_cert_common(env, cert, false, true, depth)
 
-    // // Per x509-limbo:webpki::aki::root-with-aki-*
+    // // Per x509-limbo::webpki::aki::root-with-aki-*
     // &&& &cert.ext_authority_key_id matches Some(aki) ==>
     //     (aki.issuer matches None) == (aki.serial matches None)
 }

@@ -270,7 +270,7 @@ pub open spec fn valid_name(name: &SpecString) -> bool {
     } else {
         &&& name.len() > 0
         // Chrome doesn't check for preceding dot
-        // per x509-limbo:rfc5280::nc::nc-permits-invalid-dns-san
+        // per x509-limbo::rfc5280::nc::nc-permits-invalid-dns-san
         // &&& name.char_at(0) != '.'
         &&& !ends_with(name, &"."@)
     }
@@ -327,7 +327,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
-    // Per x509-limbo:webpki::forbidden-dsa-leaf
+    // Per x509-limbo::webpki::forbidden-dsa-leaf
     &&& !(cert.subject_key matches SubjectKey::DSA { .. })
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
@@ -340,7 +340,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     &&& match_san_domain(env, cert, domain)
     &&& check_duplicate_extensions(cert)
 
-    // Per x509-limbo:rfc5280::ee-critical-aia-invalid
+    // Per x509-limbo::rfc5280::ee-critical-aia-invalid
     &&& &cert.ext_authority_info_access matches Some(aia)
         ==> (aia.critical matches Some(c) ==> !c)
 
@@ -348,7 +348,7 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/cert_verify_proc.cc#L680
     &&& is_known_root(env, root) ==> leaf_duration_valid(cert)
 
-    // Per x509-limbo:rfc5280::san::noncritical-with-empty-subject
+    // Per x509-limbo::rfc5280::san::noncritical-with-empty-subject
     &&& cert.subject.0.len() == 0
         ==> (&cert.ext_subject_alt_name matches Some(san) && (san.critical matches Some(c) && c))
 
@@ -554,7 +554,7 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &C
 
     &&& &cert.ext_key_usage matches Some(key_usage) ==> key_usage.key_cert_sign
 
-    // Per x509-limbo:webpki::aki::root-with-aki-*
+    // Per x509-limbo::webpki::aki::root-with-aki-*
     &&& &cert.ext_authority_key_id matches Some(aki) ==> {
         // Not checked in Chrome
         // &&& aki.key_id matches Some(..)
