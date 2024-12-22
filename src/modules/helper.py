@@ -7,7 +7,7 @@ def set_home_dir(dir):
     import modules.semantic.semantic_quick as semantic_quick
     import modules.chain_builder.chain_builder as chain_builder
     semantic_quick.extra_location = semantic.extra_location = "{}/extras".format(dir)
-    chain_builder.mapped_ca_store_path = "{}/compiled-ca-store".format(dir)
+    chain_builder.mapped_ca_store_path = "{}/compiled-ca-store/".format(dir)
 
 
 def hex_n_bytes_to_int(x):

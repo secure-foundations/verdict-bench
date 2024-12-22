@@ -32,6 +32,13 @@ chain_smtVariables = []
 chain_rawcert_smts = []
 only_smt_global = None
 
+def reset():
+    global errors, chain_smtVariables, chain_rawcert_smts, only_smt_global
+    errors = []
+    chain_smtVariables = []
+    chain_rawcert_smts = []
+    only_smt_global = None
+
 
 def call_smt_solver(lfsc, postfix):
     solverLoc = '{}/CVC4/cvc4'.format(extra_location)
