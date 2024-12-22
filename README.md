@@ -7,8 +7,4 @@ This repository contains the official release of CERES library introduced in the
 This is a modified version of CERES for benchmarking.
 
 Run `build-ceres.sh` to build some random stuff and output to `build/`
-Then run
-```
-python3 src/driver.py /etc/ssl/certs/ca-certificates.crt --input test.pem
-```
-To validate `test.pem` against root certificates
+Then use our benchmarking frontend to run tests.
