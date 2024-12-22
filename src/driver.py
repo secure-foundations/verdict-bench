@@ -2,13 +2,18 @@ import argparse
 import base64
 import os
 import sys
+import tempfile
+import shutil
 
+from modules.helper import set_home_dir
 from modules.chain_builder import chain_builder
 from modules.parsers.combinator_based import parser_tbs_raw
 from modules.parsers.combinator_based import parser_x509
 from modules.parsers.dsl_based import parser_x509_dsl
 from modules.semantic import semantic
 from modules.semantic import semantic_quick
+
+from build_ca_store import build_ca_store
 
 current_version = "1.0-11_08_2021"
 
@@ -120,6 +125,7 @@ def handle_spec_consistency_check(chain_len):
 ################################ ENTRY POINT #####################################
 # usage: ceres [-h] [--input INPUT] [--ca-store CA_STORE] [--check-purpose CHECK_PURPOSE [CHECK_PURPOSE ...]] [--check-proof] [--show-chain] [--check-spec] [--dsl-parser] [--version]
 parser = argparse.ArgumentParser(description='CERES command-line arguments')
+parser.add_argument("root_pem", type=str)
 parser.add_argument('--input', type=str,
                     help='Input chain location')
 parser.add_argument('--ca-store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
@@ -143,147 +149,155 @@ parser.add_argument('--quick-semantic-check-sc', action='store_true',
                     help='Quick semantic check (no SMT solver) for a single certificate; default=False')
 args = parser.parse_args()
 
-input_chain = args.input
-input_CA_store = args.ca_store
-input_lfsc = args.check_proof
-input_show_chain = args.show_chain
-input_purposes = args.check_purpose
-input_only_smt = args.check_spec
-temp_parser = args.dsl_parser
-show_version = args.version
-asn1parse = args.asn1parse
-quickSemChkCert = args.quick_semantic_check_sc
 
-if input_chain == None:
-    if show_version:
-        print(current_version)
-    if input_only_smt:  # check specification consistency
-        print("Checking specification consistency ...")
-        try:
-            chain_len = int(input("Enter symbolic certificate chain length:"))
-        except:
-            print("Invalid length; must be between 1 to 32")
-            sys.exit(-1)
+with tempfile.TemporaryDirectory() as work_dir:
+    shutil.copytree("build/extras", f"{work_dir}/extras")
 
-        if chain_len >= 1 and chain_len <= 32:
-            handle_spec_consistency_check(chain_len)
-        else:
-            print("Invalid length; must be between 1 to 32")
-    if not (show_version or input_only_smt):
-        print("Error : input certificate chain required")
-    sys.exit(-1)
+    # Load and cache CAs
+    build_ca_store(args.root_pem, f"{work_dir}/compiled-ca-store")
+    set_home_dir(work_dir)
 
-if temp_parser:
-    input_dsl_parser = True
-else:
-    input_dsl_parser = False
+    input_chain = args.input
+    input_CA_store = args.ca_store
+    input_lfsc = args.check_proof
+    input_show_chain = args.show_chain
+    input_purposes = args.check_purpose
+    input_only_smt = args.check_spec
+    temp_parser = args.dsl_parser
+    show_version = args.version
+    asn1parse = args.asn1parse
+    quickSemChkCert = args.quick_semantic_check_sc
 
-for purpose in input_purposes:
-    if purpose == 'serverAuth':
-        continue
-    elif purpose == 'clientAuth':
-        continue
-    elif purpose == 'codeSigning':
-        continue
-    elif purpose == 'emailProtection':
-        continue
-    elif purpose == 'timeStamping':
-        continue
-    elif purpose == 'OCSPSigning':
-        continue
-    elif purpose == 'digitalSignature':
-        continue
-    elif purpose == 'nonRepudiation':
-        continue
-    elif purpose == 'keyEncipherment':
-        continue
-    elif purpose == 'dataEncipherment':
-        continue
-    elif purpose == 'keyAgreement':
-        continue
-    elif purpose == 'keyCertSign':
-        continue
-    elif purpose == 'cRLSign':
-        continue
-    elif purpose == 'encipherOnly':
-        continue
-    elif purpose == 'decipherOnly':
-        continue
-    else:
-        print(
-            "Error : Purposes are not supported (supported purposes: serverAuth, "
-            "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, "
-            "digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, "
-            "keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly"
-            ")")
+    if input_chain == None:
+        if show_version:
+            print(current_version)
+        if input_only_smt:  # check specification consistency
+            print("Checking specification consistency ...")
+            try:
+                chain_len = int(input("Enter symbolic certificate chain length:"))
+            except:
+                print("Invalid length; must be between 1 to 32")
+                sys.exit(-1)
+
+            if chain_len >= 1 and chain_len <= 32:
+                handle_spec_consistency_check(chain_len)
+            else:
+                print("Invalid length; must be between 1 to 32")
+        if not (show_version or input_only_smt):
+            print("Error : input certificate chain required")
         sys.exit(-1)
 
-if not (input_chain.endswith((".pem", ".crt")) \
-        and input_CA_store.endswith((".pem", ".crt")) \
-        and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
-    print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
-    sys.exit(-1)
+    if temp_parser:
+        input_dsl_parser = True
+    else:
+        input_dsl_parser = False
 
-# call chain pre-processor module
-errors, cert_list_decoded, cert_list_raw = pre_process_chain_mod(input_chain)
-try:
-    assert len(errors) == 0
-except AssertionError:
-    print("Chain pre-process error...exiting")
-    print(";".join(errors))
-    sys.exit(-1)
+    for purpose in input_purposes:
+        if purpose == 'serverAuth':
+            continue
+        elif purpose == 'clientAuth':
+            continue
+        elif purpose == 'codeSigning':
+            continue
+        elif purpose == 'emailProtection':
+            continue
+        elif purpose == 'timeStamping':
+            continue
+        elif purpose == 'OCSPSigning':
+            continue
+        elif purpose == 'digitalSignature':
+            continue
+        elif purpose == 'nonRepudiation':
+            continue
+        elif purpose == 'keyEncipherment':
+            continue
+        elif purpose == 'dataEncipherment':
+            continue
+        elif purpose == 'keyAgreement':
+            continue
+        elif purpose == 'keyCertSign':
+            continue
+        elif purpose == 'cRLSign':
+            continue
+        elif purpose == 'encipherOnly':
+            continue
+        elif purpose == 'decipherOnly':
+            continue
+        else:
+            print(
+                "Error : Purposes are not supported (supported purposes: serverAuth, "
+                "clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, "
+                "digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, "
+                "keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly"
+                ")")
+            sys.exit(-1)
 
-if not asn1parse:
-    # pre-process root CA store
-    errors, ca_store, ca_list_raw = pre_process_chain_mod(input_CA_store)
+    if not (input_chain.endswith((".pem", ".crt")) \
+            and input_CA_store.endswith((".pem", ".crt")) \
+            and os.path.exists(input_chain) and os.path.exists(input_CA_store)):
+        print("Error : Input file or CA store doesn't exist or not supported (supported formats: .pem, .crt)")
+        sys.exit(-1)
+
+    # call chain pre-processor module
+    errors, cert_list_decoded, cert_list_raw = pre_process_chain_mod(input_chain)
     try:
         assert len(errors) == 0
-        ca_store_certs = [int(ca_store[i], 16) for i in range(0, len(ca_store))]
-        ca_store_certs_sizes = [len(x) for x in ca_store]
     except AssertionError:
-        print("CA store pre-process error...exiting")
+        print("Chain pre-process error...exiting")
         print(";".join(errors))
         sys.exit(-1)
 
-# call parser module
-errors, cert_list_parsed = parser_mod(cert_list_decoded, input_dsl_parser, input_show_chain)
-try:
-    assert len(errors) == 0
-    print("Succesfully parsed certificates")
-except AssertionError:
-    print("Certificate chain parsing error...exiting")
-    print(";".join(errors))
-    sys.exit(-1)
+    if not asn1parse:
+        # pre-process root CA store
+        errors, ca_store, ca_list_raw = pre_process_chain_mod(input_CA_store)
+        try:
+            assert len(errors) == 0
+            ca_store_certs = [int(ca_store[i], 16) for i in range(0, len(ca_store))]
+            ca_store_certs_sizes = [len(x) for x in ca_store]
+        except AssertionError:
+            print("CA store pre-process error...exiting")
+            print(";".join(errors))
+            sys.exit(-1)
 
-if not asn1parse:
-    # call semantic checker module
-    cert_list_parsed_new = []
-    for element in cert_list_parsed:
-        if element not in cert_list_parsed_new:
-            cert_list_parsed_new.append(element)
+    # call parser module
+    errors, cert_list_parsed = parser_mod(cert_list_decoded, input_dsl_parser, input_show_chain)
+    try:
+        assert len(errors) == 0
+        print("Succesfully parsed certificates")
+    except AssertionError:
+        print("Certificate chain parsing error...exiting")
+        print(";".join(errors))
+        sys.exit(-1)
 
-    for i in range(0, len(cert_list_parsed_new)):
-        if quickSemChkCert:
-            for cert in cert_list_parsed_new[i]:
-                result = semantic_quick.check(cert)
-                print(result)
-        else:
-            errors, result, unsat_core, proof_check_status = semantic_mod(cert_list_parsed_new[i], input_dsl_parser,
-                                                                          input_lfsc,
-                                                                          input_purposes,
-                                                                          ca_store_certs,
-                                                                          ca_store_certs_sizes, input_only_smt, -1)
-            try:
-                assert len(errors) == 0 and result == "sat"
-                print("Certificate chain verification : OK")
-                break
-            except AssertionError:
-                if i == len(cert_list_parsed_new) - 1:
-                    print("Certificate chain verification : Falied (Semantic Error)")
-                    if len(errors) > 0:
-                        print(";".join(errors))
+    if not asn1parse:
+        # call semantic checker module
+        cert_list_parsed_new = []
+        for element in cert_list_parsed:
+            if element not in cert_list_parsed_new:
+                cert_list_parsed_new.append(element)
+
+        for i in range(0, len(cert_list_parsed_new)):
+            if quickSemChkCert:
+                for cert in cert_list_parsed_new[i]:
+                    result = semantic_quick.check(cert)
+                    print(result)
+            else:
+                errors, result, unsat_core, proof_check_status = semantic_mod(cert_list_parsed_new[i], input_dsl_parser,
+                                                                            input_lfsc,
+                                                                            input_purposes,
+                                                                            ca_store_certs,
+                                                                            ca_store_certs_sizes, input_only_smt, -1)
+                try:
+                    assert len(errors) == 0 and result == "sat"
+                    print("Certificate chain verification : OK")
+                    break
+                except AssertionError:
+                    if i == len(cert_list_parsed_new) - 1:
+                        print("Certificate chain verification : Falied (Semantic Error)")
+                        if len(errors) > 0:
+                            print(";".join(errors))
+                        else:
+                            print("UNSAT-core : {}; Proof-check-status : {}".format(unsat_core, proof_check_status))
                     else:
-                        print("UNSAT-core : {}; Proof-check-status : {}".format(unsat_core, proof_check_status))
-                else:
-                    pass
-                    continue
+                        pass
+                        continue
