@@ -213,7 +213,16 @@ pub open spec fn check_auth_subject_key_id(cert: &Certificate, is_root: bool, is
         &&& !is_root ==> (&cert.ext_authority_key_id matches Some(akid) && akid.key_id matches Some(..))
         &&& !is_leaf ==> &cert.ext_subject_key_id matches Some(..)
     } else {
-        cert.all_exts matches None
+        &&& cert.all_exts matches None
+        &&& cert.ext_authority_key_id matches None
+        &&& cert.ext_subject_key_id matches None
+        &&& cert.ext_extended_key_usage matches None
+        &&& cert.ext_basic_constraints matches None
+        &&& cert.ext_key_usage matches None
+        &&& cert.ext_subject_alt_name matches None
+        &&& cert.ext_name_constraints matches None
+        &&& cert.ext_certificate_policies matches None
+        &&& cert.ext_authority_info_access matches None
     }
 }
 

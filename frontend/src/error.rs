@@ -55,6 +55,9 @@ pub enum Error {
     #[error("hammurabi bench program not found at {0}")]
     HammurabiRepoNotFound(String),
 
+    #[error("ceres driver not found at {0}")]
+    CeresRepoNotFound(String),
+
     #[error("failed to get child process stdin")]
     ChildStdin,
 

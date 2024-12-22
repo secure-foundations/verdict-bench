@@ -7,6 +7,7 @@ mod openssl;
 pub mod verdict;
 mod armor;
 mod hammurabi;
+mod ceres;
 
 pub use common::*;
 pub use chrome::*;
@@ -15,3 +16,4 @@ pub use openssl::*;
 pub use verdict::*;
 pub use armor::*;
 pub use hammurabi::*;
+pub use ceres::*;

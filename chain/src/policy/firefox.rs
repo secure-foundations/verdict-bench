@@ -52,9 +52,7 @@ standard::auto_std! {
     // FirefoxPolicy => standard::PathLenNonNegative {}
 
     FirefoxPolicy => standard::PathLenConstraint {}
-
     FirefoxPolicy => standard::NonLeafMustBeCA {}
-
     FirefoxPolicy => standard::NonLeafHasKeyCertSign {}
 
     // https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certdb.c#L1432

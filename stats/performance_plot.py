@@ -21,8 +21,11 @@ mpl.rcParams["xtick.labelsize"] = 22
 mpl.rcParams["ytick.labelsize"] = 22
 mpl.rcParams["legend.fontsize"] = 22
 
+slow_group = ["CERES", "ARMOR", "Hammurabi"]
+
 # List of implementations and their corresponding CSV file paths
 implementations = [
+    ("CERES", "../frontend/perf-results/results-ceres-part-2.txt"),
     ("ARMOR", "../frontend/perf-results/results-armor-part-2.txt"),
     ("Hammurabi", "../frontend/perf-results/results-hammurabi-part-2.txt"),
 
@@ -71,10 +74,10 @@ combined_df = pd.concat(all_data, ignore_index=True)
 print("\\begin{tabular}{lrrrr}")
 print("Impl. & Mean & Median & Min & Max \\\\")
 print("\\hline")
-for impl in combined_df["impl"].unique():
-    subset = combined_df[combined_df["impl"] == impl]
-    # true_subset = subset[subset["result"] == "true"]
 
+grouped = combined_df.groupby("impl")
+sorted_impls = sorted(grouped, key=lambda x: x[1]["min_time"].mean())
+for impl, subset in sorted_impls:
     stats_mean = int(subset["min_time"].mean())
     stats_median = int(subset["min_time"].median())
     stats_min = int(subset["min_time"].min())
@@ -94,8 +97,8 @@ combined_df["result"] = combined_df["result"].replace({
 
 def plot_two_groups(combined_df):
     # Define the two groups:
-    groupA = combined_df[combined_df["impl"].isin(["ARMOR", "Hammurabi"])]
-    groupB = combined_df[~combined_df["impl"].isin(["ARMOR", "Hammurabi"])]
+    groupA = combined_df[combined_df["impl"].isin(slow_group)]
+    groupB = combined_df[~combined_df["impl"].isin(slow_group)]
 
     num_cats_A = groupA["impl"].nunique()  # number of categories in group A
     num_cats_B = groupB["impl"].nunique()  # number of categories in group B
@@ -146,7 +149,7 @@ def plot_two_groups(combined_df):
 def plot_simple(combined_df):
     plt.figure(figsize=(10, 5))
 
-    combined_df = combined_df[~combined_df["impl"].isin(["ARMOR", "Hammurabi"])]
+    combined_df = combined_df[~combined_df["impl"].isin(slow_group)]
     sns.boxplot(
         x="impl", y="min_time", data=combined_df,
         flierprops=dict(marker=".", color="black", alpha=0.3),

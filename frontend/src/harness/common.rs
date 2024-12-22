@@ -119,6 +119,7 @@ pub enum HarnessName {
     Armor,
     HammurabiChrome,
     HammurabiFirefox,
+    Ceres,
     VerdictChrome,
     VerdictFirefox,
     VerdictOpenSSL,
@@ -149,6 +150,10 @@ pub struct HarnessArgs {
     /// Path to the Hammurabi repo
     #[clap(long)]
     hammurabi_repo: Option<String>,
+
+    /// Path to the CERES repo
+    #[clap(long)]
+    ceres_repo: Option<String>,
 
     /// Path to libfaketime.so
     #[clap(long, default_value = "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1")]
@@ -201,6 +206,14 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
                 repo: args.hammurabi_repo.clone()
                     .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
                 policy: HammurabiPolicy::Firefox,
+                debug,
+            }),
+
+        HarnessName::Ceres =>
+            Box::new(CeresHarness {
+                repo: args.ceres_repo.clone()
+                    .ok_or(Error::CommonBenchError("ceres repo not specified".to_string()))?,
+                faketime_lib: args.faketime_lib.clone(),
                 debug,
             }),
 

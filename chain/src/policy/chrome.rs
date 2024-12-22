@@ -42,7 +42,7 @@ standard::auto_std! {
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
     // ChromePolicy => standard::NoExpiration
 
-    // ChromePolicy => standard::OuterInnerSigMatch {}
+    ChromePolicy => standard::OuterInnerSigMatch {}
     ChromePolicy => standard::KeyUsageNonEmpty {}
     ChromePolicy => standard::IssuerSubjectUIDVersion {}
     ChromePolicy => standard::PathLenNonNegative {}
