@@ -8,7 +8,6 @@ use polyfill::strs_to_strings;
 use rspec_lib::*;
 
 use super::common::*;
-use super::rfc;
 
 verus! {
 
@@ -36,47 +35,48 @@ impl Policy for ChromePolicy {
     }
 }
 
-// Not checked for root in Chrome:
-// https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
-// impl rfc::NoExpiration for ChromePolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
-//         assert(chain[0].not_before <= self.time <= chain[0].not_after);
-//     }
-// }
+// Automatically prove some standard requirements
+// Unchecked rules are commented out
+standard::auto_std! {
+    // Not checked for root in Chrome:
+    // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
+    // ChromePolicy => standard::NoExpiration
 
-impl rfc::OuterInnerSigMatch for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+    // ChromePolicy => standard::OuterInnerSigMatch {}
+    ChromePolicy => standard::KeyUsageNonEmpty {}
+    ChromePolicy => standard::IssuerSubjectUIDVersion {}
+    ChromePolicy => standard::PathLenNonNegative {}
+    ChromePolicy => standard::PathLenConstraint {}
+
+    // Not checked for root certificate
+    // ChromePolicy => standard::NonLeafMustBeCA {}
+
+    ChromePolicy => standard::NonLeafHasKeyCertSign {}
+
+    // Chrome only enforces non-empty SAN for the leaf
+    // ChromePolicy => standard::NonEmptySAN {}
+
+    // ChromePolicy => standard::AKINonCritical {}
+    // ChromePolicy => standard::NonRootHasAKI {}
+    // ChromePolicy => standard::NonLeafHasSKI {}
+
+    ChromePolicy => standard::EmptySubjectImpliesCriticalSAN {}
+
+    // ChromePolicy => standard::NonCriticalRootSKI {}
+    // ChromePolicy => standard::RootCAHasAKI {}
+
+    // Chrome's parser only checks that
+    // AKI has both issuer or serial, or none
+    // ChromePolicy => standard::RootCAAKINoIssuerOrSerial {}
+
+    // ChromePolicy => standard::LeafHasEKU {}
+
+    // ChromePolicy => standard::RootHasNoEKU {}
+
+    ChromePolicy => standard::NoDSA {}
+
+    // ChromePolicy => standard::RSA2048 {}
 }
-
-impl rfc::KeyUsageNonEmpty for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-impl rfc::IssuerSubjectUIDVersion for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-impl rfc::PathLenNonNegative for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-impl rfc::PathLenConstraint for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-// Not checked for root certificate
-// impl rfc::NonLeafMustBeCA for ChromePolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
-
-impl rfc::NonLeafHasKeyCertSign for ChromePolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-// Chrome only enforces non-empty SAN for the leaf
-// impl rfc::NonEmptySAN for ChromePolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
 
 impl ChromePolicy {
     /// Create a Chrome policy with the same settings in Hammurabi
@@ -167,7 +167,7 @@ pub struct Policy {
 pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     match cert.subject_key {
         SubjectKey::RSA { mod_length } => mod_length >= 1024,
-        SubjectKey::DSA { p_len, .. } => p_len >= 1024,
+        SubjectKey::DSA { .. } => false,
         SubjectKey::Other => true,
     }
 }

@@ -33,42 +33,39 @@ impl Policy for OpenSSLPolicy {
     }
 }
 
-impl rfc::NoExpiration for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
-        assert(chain[0].not_before <= self.time <= chain[0].not_after);
-    }
-}
+// Automatically prove some standard requirements
+// Unchecked rules are commented out
+standard::auto_std! {
+    OpenSSLPolicy => standard::NoExpiration {}
+    OpenSSLPolicy => standard::OuterInnerSigMatch {}
+    OpenSSLPolicy => standard::KeyUsageNonEmpty {}
 
-impl rfc::OuterInnerSigMatch for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+    // OpenSSLPolicy => standard::IssuerSubjectUIDVersion {}
 
-impl rfc::KeyUsageNonEmpty for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+    OpenSSLPolicy => standard::PathLenNonNegative {}
+    OpenSSLPolicy => standard::PathLenConstraint {}
+    OpenSSLPolicy => standard::NonLeafMustBeCA {}
+    OpenSSLPolicy => standard::NonLeafHasKeyCertSign {}
+    OpenSSLPolicy => standard::NonEmptySAN {}
 
-// impl rfc::IssuerSubjectUIDVersion for OpenSSLPolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
+    OpenSSLPolicy => standard::AKINonCritical {}
 
-impl rfc::PathLenNonNegative for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+    // Only checked for V3
+    // OpenSSLPolicy => standard::NonRootHasAKI {}
+    // OpenSSLPolicy => standard::NonLeafHasSKI {}
 
-impl rfc::PathLenConstraint for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+    OpenSSLPolicy => standard::EmptySubjectImpliesCriticalSAN {}
 
-impl rfc::NonLeafMustBeCA for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+    OpenSSLPolicy => standard::NonCriticalRootSKI {}
+    // OpenSSLPolicy => standard::RootCAHasAKI {}
+    // OpenSSLPolicy => standard::RootCAAKINoIssuerOrSerial {}
+    // OpenSSLPolicy => standard::LeafHasEKU {}
+    // OpenSSLPolicy => standard::RootHasNoEKU {}
 
-impl rfc::NonLeafHasKeyCertSign for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
+    // OpenSSLPolicy => standard::NoDSA {}
 
-impl rfc::NonEmptySAN for OpenSSLPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
+    // This can be configured in OpenSSL, however
+    // OpenSSLPolicy => standard::RSA2048 {}
 }
 
 impl OpenSSLPolicy {

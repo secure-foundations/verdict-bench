@@ -36,48 +36,43 @@ impl Policy for FirefoxPolicy {
     }
 }
 
-impl rfc::NoExpiration for FirefoxPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {
-        assert(chain[0].not_before <= self.time <= chain[0].not_after);
-    }
+// Automatically prove some standard requirements
+// Unchecked rules are commented out
+standard::auto_std! {
+    FirefoxPolicy => standard::NoExpiration {}
+
+    FirefoxPolicy => standard::OuterInnerSigMatch {}
+    FirefoxPolicy => standard::KeyUsageNonEmpty {}
+
+    // TODO: confirm
+    // FirefoxPolicy => standard::IssuerSubjectUIDVersion {}
+
+    // Firefox/NSS allows negative PathLenConstraints
+    // https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certt.h#L591-L598
+    // FirefoxPolicy => standard::PathLenNonNegative {}
+
+    FirefoxPolicy => standard::PathLenConstraint {}
+
+    FirefoxPolicy => standard::NonLeafMustBeCA {}
+
+    FirefoxPolicy => standard::NonLeafHasKeyCertSign {}
+
+    // https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certdb.c#L1432
+    // FirefoxPolicy => standard::NonEmptySAN {}
+
+    FirefoxPolicy => standard::AKINonCritical {}
+    // FirefoxPolicy => standard::NonRootHasAKI {}
+    // FirefoxPolicy => standard::NonLeafHasSKI {}
+    // FirefoxPolicy => standard::EmptySubjectImpliesCriticalSAN {}
+
+    FirefoxPolicy => standard::NonCriticalRootSKI {}
+    // FirefoxPolicy => standard::RootCAHasAKI {}
+    // FirefoxPolicy => standard::RootCAAKINoIssuerOrSerial {}
+    // FirefoxPolicy => standard::LeafHasEKU {}
+    // FirefoxPolicy => standard::RootHasNoEKU {}
+    FirefoxPolicy => standard::NoDSA {}
+    FirefoxPolicy => standard::RSA2048 {}
 }
-
-impl rfc::OuterInnerSigMatch for FirefoxPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-impl rfc::KeyUsageNonEmpty for FirefoxPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-// TODO: check
-// impl rfc::IssuerSubjectUIDVersion for FirefoxPolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
-
-// Firefox/NSS allows negative PathLenConstraints
-// https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certt.h#L591-L598
-// impl rfc::PathLenNonNegative for FirefoxPolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
-
-impl rfc::PathLenConstraint for FirefoxPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-impl rfc::NonLeafMustBeCA for FirefoxPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-impl rfc::NonLeafHasKeyCertSign for FirefoxPolicy {
-    proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-}
-
-// https://github.com/mozilla/gecko-dev/blob/b85693acc57013b0023febd6f9b77621f55c5706/security/nss/lib/certdb/certdb.c#L1432
-// TODO: check
-// impl rfc::NonEmptySAN for FirefoxPolicy {
-//     proof fn conformance(&self, chain: Seq<Certificate>, task: Task) {}
-// }
 
 impl FirefoxPolicy {
     /// Create a Firefox policy with the same settings in Hammurabi
@@ -171,7 +166,7 @@ pub struct Policy {
 pub open spec fn is_valid_pki(cert: &Certificate) -> bool {
     match cert.subject_key {
         SubjectKey::RSA { mod_length } => mod_length >= 2048,
-        SubjectKey::DSA { p_len, .. } => p_len >= 1024,
+        SubjectKey::DSA { .. } => false,
         SubjectKey::Other => true,
     }
 }
@@ -408,6 +403,10 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
     &&& check_duplicate_extensions(cert)
     &&& check_unhandled_extensions(cert)
 
+    // Somewhat duplicate with the unhandled extension check
+    &&& &cert.ext_subject_key_id matches Some(skid)
+        ==> (skid.critical matches Some(c) ==> !c)
+
     // // TODO: It's unclear where the check is exactly done in Firefox,
     // // but Firefox does place some constraints on either the number of
     // // name constraints or the number of SANs (or the total size of the certificate)
@@ -589,9 +588,6 @@ pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, le
 pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &SpecString, ev: bool) -> bool {
     &&& is_valid_pki(cert)
 
-    // Per x509-limbo:webpki::forbidden-dsa-leaf
-    &&& !(cert.subject_key matches SubjectKey::DSA { .. })
-
     // Check that SAN or CN is valid
     // and the domain belongs to one of them
     &&& match &cert.ext_subject_alt_name {
@@ -620,6 +616,11 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
     &&& extended_key_usage_valid(cert)
     &&& check_duplicate_extensions(cert)
     &&& check_unhandled_extensions(cert)
+
+    // Somewhat duplicate with the unhandled extension check
+    &&& &cert.ext_subject_key_id matches Some(skid)
+        ==> (skid.critical matches Some(c) ==> !c)
+
     // &&& not_revoked(env, cert)
 }
 

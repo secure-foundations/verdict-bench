@@ -1,6 +1,7 @@
-/// Traits of `Policy` that specify rules from RFC 5280
+/// Traits of `Policy` that specify selected rules from RFC 5280 and CA/B BRs
 
 use vstd::prelude::*;
+
 use super::common::*;
 
 verus! {
@@ -178,5 +179,91 @@ pub trait NonCriticalRootSKI: Policy {
             chain.last().ext_subject_key_id matches Some(skid)
             ==> !skid.critical.unwrap_or(false);
 }
+
+/// Generalized from x509-limbo:webpki::aki::root-with-aki-missing-keyidentifier
+/// CA/B BR 7.1.2.1.3 Root CA Authority Key Identifier
+/// keyIdentifier MUST be present. MUST be identical to the subjectKeyIdentifier field.
+pub trait RootCAHasAKI: Policy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task)
+        requires self.spec_valid_chain(chain, task) matches Ok(res) && res
+        ensures
+            chain.last().ext_authority_key_id matches Some(akid)
+            && akid.key_id matches Some(..);
+}
+
+/// Generalized from x509-limbo:webpki::aki::root-with-aki-authoritycertissuer
+/// CA/B BR 7.1.2.1.3 Root CA Authority Key Identifier
+/// authorityCertIssuer MUST NOT be present
+/// authorityCertSerialNumber MUST NOT be present
+pub trait RootCAAKINoIssuerOrSerial: Policy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task)
+        requires self.spec_valid_chain(chain, task) matches Ok(res) && res
+        ensures
+            chain.last().ext_authority_key_id matches Some(akid)
+            ==> akid.issuer matches None && akid.serial matches None;
+}
+
+/// Generalized from x509-limbo:webpki::eku::ee-without-eku
+/// CA/B BR 7.1.2.7.6
+pub trait LeafHasEKU: Policy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task)
+        requires self.spec_valid_chain(chain, task) matches Ok(res) && res
+        ensures
+            chain[0].ext_extended_key_usage matches Some(eku)
+            && !eku.critical.unwrap_or(false);
+}
+
+/// Generalized from x509-limbo:webpki::eku::root-has-eku
+/// CA/B BR 7.1.2.1.2
+pub trait RootHasNoEKU: Policy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task)
+        requires self.spec_valid_chain(chain, task) matches Ok(res) && res
+        ensures
+            chain.last().ext_extended_key_usage matches None;
+}
+
+/// Generalized from x509-limbo:webpki::forbidden-dsa-root
+/// CA/B BR does not allow DSA keys
+pub trait NoDSA: Policy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task)
+        requires self.spec_valid_chain(chain, task) matches Ok(res) && res
+        ensures
+            forall |i: usize| #![trigger chain[i as int]]
+                0 <= i < chain.len() ==>
+                !(chain[i as int].subject_key matches SubjectKey::DSA { .. });
+}
+
+/// Generalized from x509-limbo:webpki::forbidden-weak-rsa-key-in-root
+/// CA/B BR For RSA key pairs the CA SHALL:
+///   - Ensure that the modulus size, when encoded, is at least 2048 bits
+pub trait RSA2048: Policy {
+    proof fn conformance(&self, chain: Seq<Certificate>, task: Task)
+        requires self.spec_valid_chain(chain, task) matches Ok(res) && res
+        ensures
+            forall |i: usize| #![trigger chain[i as int]]
+                0 <= i < chain.len()
+                ==> (chain[i as int].subject_key matches SubjectKey::RSA { mod_length }
+                ==> mod_length >= 2048);
+}
+
+/// Tries to automatically prove the provided standard rules
+#[allow(unused_macros)]
+macro_rules! auto_std {
+    () => {};
+    ($policy:ty => $rule:ty $proof:block $($rest_policy:ty => $rest:ty $rest_proof:block)*) => {
+        ::builtin_macros::verus! {
+            impl $rule for $policy {
+                proof fn conformance(
+                    &self,
+                    chain: Seq<crate::policy::Certificate>,
+                    task: crate::policy::Task,
+                ) $proof
+            }
+        }
+
+        crate::policy::standard::auto_std!($($rest_policy => $rest $rest_proof)*);
+    };
+}
+pub(crate) use auto_std;
 
 }

@@ -2,7 +2,7 @@ mod common;
 mod chrome;
 mod firefox;
 mod openssl;
-pub mod rfc;
+pub mod standard;
 
 pub use common::*;
 pub use chrome::ChromePolicy;
