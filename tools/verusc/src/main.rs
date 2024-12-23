@@ -4,8 +4,8 @@ use std::fs;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 use std::process::{ExitCode, Command, Stdio};
+use std::time::Instant;
 
-use serde_json::Value;
 use regex::Regex;
 use colored::*;
 
@@ -20,12 +20,26 @@ fn parse_extern_argument(s: &str) -> Option<(&str, &str)> {
 
 /// Check if a string is a rustc artifact message
 fn is_artifact_message(s: &str) -> bool {
-    if let Ok(value) = serde_json::from_str::<Value>(s) {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(s) {
         if let Some(msg_type) = value.get("$message_type") {
             return msg_type.as_str() == Some("artifact");
         }
     }
     false
+}
+
+/// Tries to get additional Verus flags from the crate's Cargo.toml
+fn get_verus_flags(path: &str) -> Option<String> {
+    let content = fs::read_to_string(path).ok()?;
+    let parsed = toml::from_str::<toml::Value>(&content).ok()?;
+
+    if let Some(section) = parsed.get("verus") {
+        if let Some(flags) = section.get("extra_flags") {
+            return Some(flags.as_str()?.to_string());
+        }
+    }
+
+    None
 }
 
 enum Level {
@@ -124,11 +138,11 @@ fn check_verification(args: &Vec<String>) -> Result<(), Box<dyn Error>> {
         verus_args.push(arg.clone());
     }
 
+    // Prepare and call verus command
     if use_verus && deps_dir.is_some() && hash.is_some() {
         let deps_dir = deps_dir.unwrap();
         let hash = hash.unwrap();
 
-        // Prepare verus command
         let crate_name = env::var("CARGO_CRATE_NAME")?;
         let crate_version = env::var("CARGO_PKG_VERSION")?;
         let crate_path = env::var("CARGO_MANIFEST_DIR")?;
@@ -155,12 +169,18 @@ fn check_verification(args: &Vec<String>) -> Result<(), Box<dyn Error>> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // Add optional VERUS_FLAGS
+        // Add optional flags from VERUS_FLAGS
         if let Ok(flags) = env::var("VERUS_FLAGS") {
             verus_cmd.args(shell_words::split(&flags)?);
         }
 
-        println!("running verus: {:?}", verus_cmd);
+        // Add optional flags from Cargo.toml
+        if let Some(flags) = get_verus_flags(&format!("{}/Cargo.toml", crate_path)) {
+            verus_cmd.args(shell_words::split(&flags)?);
+        }
+
+        // println!("running verus: {:?}", verus_cmd);
+        let start = Instant::now();
         let mut verus_proc = verus_cmd.spawn()?;
 
         let verus_stderr = verus_proc.stderr.take()
@@ -185,13 +205,15 @@ fn check_verification(args: &Vec<String>) -> Result<(), Box<dyn Error>> {
             if let Ok(line) = line {
                 if let Some(cap) = result_re.captures(&line) {
                     if let (Some(num_suc), Some(num_fail)) = (cap.get(1), cap.get(2)) {
+                        let elapsed = start.elapsed().as_secs_f64();
+
                         let num_suc: usize = num_suc.as_str().parse()?;
                         let num_fail: usize = num_fail.as_str().parse()?;
 
                         if num_fail == 0 {
-                            cargo_message(Level::Note, "Verus", &format!("{}: {} verified", crate_name, num_suc));
+                            cargo_message(Level::Note, "Verus", &format!("{}: {} verified in {:.2}s", crate_name, num_suc, elapsed));
                         } else {
-                            cargo_message(Level::Error, "Verus", &format!("{}: {} verified, {} failed", crate_name, num_suc, num_fail));
+                            cargo_message(Level::Error, "Verus", &format!("{}: {} verified, {} failed, in {:.2}s", crate_name, num_suc, num_fail, elapsed));
                         }
                     }
                 }

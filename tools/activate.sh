@@ -21,7 +21,7 @@ popd > /dev/null
 
 # This "vargo" is not the same as Verus's internal vargo
 vargo() {
-    VERUS_FLAGS="$VERUS_FLAGS --no-lifetime" "$(which cargo)" "$@"
+    "$(which cargo)" "$@"
 }
 
 cargo() {
