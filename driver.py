@@ -26,7 +26,6 @@ def main():
     input_CA_store = args.trust_store
     input_purpose = args.purpose
 
-
     if not (input_CA_store.endswith((".pem", ".crt")) \
         and os.path.exists(input_CA_store)):
         print("Error : CA store doesn't exist or not supported (supported formats: .pem, .crt)")
@@ -53,21 +52,6 @@ def main():
 
     assert input_purpose is not None
     # assert not input_chain.endswith(".der")
-
-    child = subprocess.Popen(
-        [
-            f"{script_dir}/armor-bin",
-            "--purpose", input_purpose,
-            input_CA_store,
-        ],
-        stdin=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        bufsize=0,
-    )
-
-    # First wait until root certificates have been parsed
-    line = child.stderr.readline()
-    assert line.startswith(b"roots parsed:")
 
     def validate(chain_file):
         child.stdin.write(chain_file.encode() + b"\n")
@@ -114,6 +98,23 @@ def main():
     # Prepare a temporary file for the chain
     try:
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            child = subprocess.Popen(
+                [
+                    f"{script_dir}/armor-bin",
+                    "--purpose", input_purpose,
+                    input_CA_store,
+                ],
+                stdin=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=0,
+            )
+
+            # First wait until root certificates have been parsed
+            line = child.stderr.readline()
+            if not line.startswith(b"roots parsed:"):
+                print(f"error: failed to parse root; {line.decode()}")
+                exit(130)
+
             for input_line in sys.stdin:
                 input_line = input_line.strip()
 
