@@ -160,6 +160,7 @@ fn check_verification(args: &Vec<String>) -> Result<(), Box<dyn Error>> {
 
         let mut verus_cmd = Command::new("verus");
         verus_cmd
+            .env_remove("CARGO_MAKEFLAGS")
             .args(&verus_args)
             .arg("-L").arg(format!("dependency={}", verify_deps_dir))
             .arg("--emit=dep-info,metadata") // Don't do any linking
