@@ -9,6 +9,3 @@ builtin = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
 vstd = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
 rspec = { path = "../rspec" }
 rspec-lib = { path = "../rspec_lib" }
-
-[profile.verify]
-inherits = "dev"

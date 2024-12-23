@@ -14,6 +14,3 @@ vstd = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
 
 [package.metadata.verus.ide]
 extra_args = "--crate-type=lib --expand-errors --test"
-
-[profile.verify]
-inherits = "dev"

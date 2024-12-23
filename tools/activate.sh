@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-unset -f cargo 2>/dev/null || true
+set -e
 
 get_script_dir() {
     if [ -n "$BASH_VERSION" ]; then
@@ -14,18 +14,24 @@ get_script_dir() {
 }
 
 script_dir="$(get_script_dir)"
-real_cargo="$(which cargo)"
 
-pushd "$script_dir/verusc"
-"$real_cargo" build --release
-popd
+pushd "$script_dir/verusc" > /dev/null
+"$(which cargo)" build --release
+popd > /dev/null
 
 # This "vargo" is not the same as Verus's internal vargo
 vargo() {
-    VERUS_FLAGS="$VERUS_FLAGS --no-lifetime" RUSTC_WRAPPER="$script_dir/verusc/target/release/verusc" "$real_cargo" "$@"
+    VERUS_FLAGS="$VERUS_FLAGS --no-lifetime" "$(which cargo)" "$@"
 }
 
 cargo() {
     echo You have activated the build environment of Verus, so it is likely that
     echo you want to use \`vargo\` instead of \`cargo\`. Restart the shell to disable.
 }
+
+export RUSTC_WRAPPER="$script_dir/verusc/target/release/verusc"
+
+export -f vargo
+export -f cargo
+
+exec "$SHELL"

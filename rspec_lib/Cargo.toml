@@ -7,6 +7,3 @@ edition = "2021"
 builtin_macros = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
 builtin = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
 vstd = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
-
-[profile.verify]
-inherits = "dev"
