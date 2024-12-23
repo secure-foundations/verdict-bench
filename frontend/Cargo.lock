@@ -469,6 +469,7 @@ dependencies = [
  "csv",
  "limbo-harness-support",
  "parser",
+ "rand",
  "regex",
  "rspec-lib",
  "serde",

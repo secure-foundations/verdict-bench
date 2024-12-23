@@ -13,6 +13,9 @@ use crossbeam::channel::Sender;
 use csv::{ReaderBuilder, WriterBuilder};
 use chain::policy::{ExecTask, ExecPurpose};
 
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
+
 use crate::ct_logs::*;
 use crate::error::*;
 use crate::utils::*;
@@ -64,6 +67,14 @@ pub struct Args {
     /// Do chain validation only without domain
     #[arg(long, default_value_t = false)]
     no_domain: bool,
+
+    /// Each certificate is only chosen for testing with the given probability (Bernoulli sampling)
+    #[arg(long)]
+    sample: Option<f64>,
+
+    /// Seed for the --sample flag
+    #[arg(long, default_value_t = 0)]
+    sample_seed: u32,
 }
 
 /// Each worker thread waits for CTLogEntry's, does the validation, and then sends back CTLogResult's
@@ -136,6 +147,11 @@ pub fn main(args: Args) -> Result<(), Error> {
 
     let mut workers = Vec::new();
 
+    let mut seed = [0u8; 32];
+    seed[0..4].copy_from_slice(&args.sample_seed.to_le_bytes());
+    let mut rng = StdRng::from_seed(seed);
+
+    // Main thread: read the input CSV files and send jobs (CTLogEntry's) to worker threads
     let inner = || {
         for _ in 0..args.num_jobs {
             let args = args.clone();
@@ -149,20 +165,32 @@ pub fn main(args: Args) -> Result<(), Error> {
         let out_csv = args.out_csv.clone();
         workers.push(thread::spawn(move || reducer(out_csv, rx_res)));
 
-        // Main thread: read the input CSV files and send jobs (CTLogEntry's) to worker threads
         let mut found_hash = false;
+        let mut i: usize = 0;
+        let mut num_samples: usize = 0;
+
         'outer: for path in &args.csv_files {
             let file = File::open(path)?;
             let mut reader = ReaderBuilder::new()
                 .has_headers(false)
                 .from_reader(file);
 
-            for (i, entry) in reader.deserialize().enumerate() {
+            for entry in reader.deserialize() {
                 let entry: CTLogEntry = entry?;
 
                 if let Some(limit) = args.limit {
                     if i >= limit {
                         break;
+                    } else {
+                        i += 1;
+                    }
+                }
+
+                if let Some(sample) = args.sample {
+                    if rng.gen::<f64>() >= sample {
+                        continue;
+                    } else {
+                        num_samples += 1;
                     }
                 }
 
@@ -193,6 +221,10 @@ pub fn main(args: Args) -> Result<(), Error> {
             if !found_hash {
                 eprintln!("hash {} not found in the given CSV files", hash);
             }
+        }
+
+        if args.sample.is_some() {
+            eprintln!("sampled {} certificates", num_samples);
         }
 
         Ok(())
