@@ -60,7 +60,7 @@ impl<P: Policy> VerdictServerVerifier<P> {
     }
 }
 
-impl<P: Policy + Send + Sync> ServerCertVerifier for VerdictServerVerifier<P> {
+impl<P: Policy> ServerCertVerifier for VerdictServerVerifier<P> {
     fn verify_server_cert(
         &self,
         end_entity: &CertificateDer<'_>,

@@ -1,5 +1,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use chain::policy::Policy;
 use core::marker::PhantomData;
 
 use pki_types::{CertificateDer, PrivateKeyDer};
@@ -61,17 +62,15 @@ impl ConfigBuilder<ClientConfig, WantsVerifier> {
     }
 
     /// Use Verdict's Chrome certificate validator instead of the default one
-    pub fn with_verdict_chrome_verifier<'a>(
+    pub fn with_verdict_verifier<'a, P: Policy + 'static>(
         self,
+        policy: P,
         roots_der: impl IntoIterator<Item = CertificateDer<'a>>,
     ) -> Result<ConfigBuilder<ClientConfig, WantsClientCert>, Error> {
         Ok(ConfigBuilder {
             state: WantsClientCert {
                 versions: self.state.versions,
-                verifier: Arc::new(VerdictServerVerifier::new(
-                    chain::policy::ChromePolicy::default(),
-                    roots_der,
-                )?),
+                verifier: Arc::new(VerdictServerVerifier::new(policy, roots_der)?),
                 client_ech_mode: self.state.client_ech_mode,
             },
             provider: self.provider,

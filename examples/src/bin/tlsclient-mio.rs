@@ -24,11 +24,12 @@ use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::{process, str};
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use mio::net::TcpStream;
 use rustls::crypto::{aws_lc_rs as provider, CryptoProvider};
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
+use rustls::webpki::{ChromePolicy, FirefoxPolicy, OpenSSLPolicy};
 use rustls::RootCertStore;
 
 const CLIENT: mio::Token = mio::Token(0);
@@ -201,6 +202,15 @@ impl io::Read for TlsClient {
     }
 }
 
+#[derive(Clone, Debug, ValueEnum)]
+enum CertVerifierName {
+    Default,
+    VerdictChrome,
+    VerdictFirefox,
+    #[clap(name = "verdict-openssl")]
+    VerdictOpenSSL,
+}
+
 /// Connects to the TLS server at hostname:PORT.  The default PORT
 /// is 443.  By default, this reads a request from stdin (to EOF)
 /// before making the connection.  --http replaces this with a
@@ -265,6 +275,10 @@ struct Args {
     /// CERTS must match up with KEY.
     #[clap(long)]
     auth_certs: Option<String>,
+
+    /// Specify the certificate validator to use
+    #[clap(long, default_value = "default")]
+    validator: CertVerifierName,
 
     /// Which hostname/address to connect to
     hostname: String,
@@ -393,22 +407,6 @@ mod danger {
 
 /// Build a `ClientConfig` from our arguments
 fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
-    // let mut root_store = RootCertStore::empty();
-
-    // if let Some(cafile) = args.cafile.as_ref() {
-    //     root_store.add_parsable_certificates(
-    //         CertificateDer::pem_file_iter(cafile)
-    //             .expect("Cannot open CA file")
-    //             .map(|result| result.unwrap()),
-    //     );
-    // } else {
-    //     root_store.extend(
-    //         webpki_roots::TLS_SERVER_ROOTS
-    //             .iter()
-    //             .cloned(),
-    //     );
-    // }
-
     let suites = if !args.suite.is_empty() {
         lookup_suites(&args.suite)
     } else {
@@ -429,13 +427,52 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
         .into(),
     )
     .with_protocol_versions(&versions)
-    .expect("inconsistent cipher-suite/versions selected")
-    .with_verdict_chrome_verifier(
-        CertificateDer::pem_file_iter(args.cafile.as_ref().expect("verdict needs a CA file"))
-            .expect("Cannot open CA file")
-            .map(|result| result.unwrap())
-    ).unwrap();
-    // .with_root_certificates(root_store);
+    .expect("inconsistent cipher-suite/versions selected");
+
+    let config = match args.validator {
+        CertVerifierName::Default => {
+            let mut root_store = RootCertStore::empty();
+
+            if let Some(cafile) = args.cafile.as_ref() {
+                root_store.add_parsable_certificates(
+                    CertificateDer::pem_file_iter(cafile)
+                        .expect("Cannot open CA file")
+                        .map(|result| result.unwrap()),
+                );
+            } else {
+                root_store.extend(
+                    webpki_roots::TLS_SERVER_ROOTS
+                        .iter()
+                        .cloned(),
+                );
+            }
+
+            config.with_root_certificates(root_store)
+        }
+
+        _ => {
+            let cafile = args.cafile.as_ref().expect("verdict requires a CA file");
+            let roots_der = CertificateDer::pem_file_iter(cafile)
+                .expect("Cannot open CA file")
+                .map(|result| result.unwrap());
+
+            match args.validator {
+                CertVerifierName::VerdictChrome => config.with_verdict_verifier(
+                    ChromePolicy::default(),
+                    roots_der,
+                ),
+                CertVerifierName::VerdictFirefox => config.with_verdict_verifier(
+                    FirefoxPolicy::default(),
+                    roots_der,
+                ),
+                CertVerifierName::VerdictOpenSSL => config.with_verdict_verifier(
+                    OpenSSLPolicy::default(),
+                    roots_der,
+                ),
+                _ => unimplemented!(),
+            }.expect("failed to initialize verdict with the given root CAs")
+        }
+    };
 
     let mut config = match (&args.auth_key, &args.auth_certs) {
         (Some(key_file), Some(certs_file)) => {

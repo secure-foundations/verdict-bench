@@ -15,6 +15,7 @@ mod verify;
 
 mod verdict;
 pub use verdict::VerdictServerVerifier;
+pub use chain::policy::{ChromePolicy, FirefoxPolicy, OpenSSLPolicy};
 
 pub use anchors::RootCertStore;
 pub use client_verifier::{ClientCertVerifierBuilder, WebPkiClientVerifier};
