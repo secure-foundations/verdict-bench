@@ -369,7 +369,7 @@ pub open spec fn match_san_domain(san: &SubjectAltName, domain: &SpecString) -> 
 //         }
 // }
 
-pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: &Certificate, depth: usize, now: u64) -> bool {
+pub open spec fn cert_verified_non_leaf(env: &Policy, task: &Task, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
     &&& is_international_valid(env, cert, leaf)
     &&& is_valid_pki(cert)
 
@@ -380,8 +380,8 @@ pub open spec fn cert_verified_non_leaf(env: &Policy, cert: &Certificate, leaf: 
     &&& bc.path_len matches Some(limit) ==> limit >= 0 && depth <= limit as usize
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
-    &&& cert.not_before <= now
-    &&& cert.not_after >= now
+    &&& cert.not_before <= task.now
+    &&& cert.not_after >= task.now
 
     &&& key_usage_valid_non_leaf(cert)
 
@@ -442,8 +442,8 @@ pub open spec fn is_international_valid(env: &Policy, cert: &Certificate, leaf: 
     ==> is_international_valid_san(env, cert, san)
 }
 
-pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &Certificate, leaf: &Certificate, depth: usize, now: u64) -> bool {
-    &&& cert_verified_non_leaf(env, cert, leaf, depth, now)
+pub open spec fn cert_verified_root(env: &Policy, task: &Task, cert: &Certificate, interm: &Certificate, leaf: &Certificate, depth: usize) -> bool {
+    &&& cert_verified_non_leaf(env, task, cert, leaf, depth)
     &&& !is_bad_symantec_root(env, cert, interm)
     &&& is_international_valid(env, cert, leaf)
 }
@@ -568,25 +568,26 @@ pub open spec fn check_name_constraints(cert: &Certificate, target: &Certificate
     }
 }
 
-pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, leaf: &Certificate, depth: usize, now: u64) -> bool {
-    &&& cert_verified_non_leaf(env, cert, leaf, depth, now)
+pub open spec fn cert_verified_intermediate(env: &Policy, task: &Task, cert: &Certificate, leaf: &Certificate, depth: usize) -> bool {
+    &&& cert_verified_non_leaf(env, task, cert, leaf, depth)
     &&& not_in_crl(env, cert)
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& extended_key_usage_valid(cert)
     // &&& not_revoked(env, cert)
 }
 
-pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &SpecString, ev: bool, now: u64) -> bool {
+pub open spec fn cert_verified_leaf(env: &Policy, task: &Task, cert: &Certificate, ev: bool) -> bool {
     &&& is_valid_pki(cert)
 
     // Check that SAN or CN is valid
     // and the domain belongs to one of them
-    &&& match &cert.ext_subject_alt_name {
-        Some(san) => match_san_domain(san, domain),
+    &&& &task.hostname matches Some(domain)
+        ==> match &cert.ext_subject_alt_name {
+            Some(san) => match_san_domain(san, &str_lower(domain)),
 
-        // If SAN is not present, check CN instead
-        None => match_common_name_domain(cert, domain),
-    }
+            // If SAN is not present, check CN instead
+            None => match_common_name_domain(cert, &str_lower(domain)),
+        }
 
     &&& &cert.ext_basic_constraints matches Some(bc) ==> !bc.is_ca
 
@@ -599,8 +600,8 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, domain: &S
     &&& not_in_crl(env, cert)
 
     &&& &cert.sig_alg_inner.bytes == &cert.sig_alg_outer.bytes
-    &&& cert.not_before <= now
-    &&& cert.not_after >= now
+    &&& cert.not_before <= task.now
+    &&& cert.not_after >= task.now
 
     &&& strong_signature(&cert.sig_alg_inner.id)
     &&& key_usage_valid_leaf(cert)
@@ -628,22 +629,15 @@ pub open spec fn check_all_name_constraints(chain: &Seq<ExecRef<Certificate>>) -
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
-    match &task.hostname {
-        None => Err(PolicyError::UnsupportedTask),
-        Some(domain) => {
-            let domain = str_lower(domain);
+    Ok(chain.len() >= 2 && {
+        let leaf = &chain[0];
+        let root = &chain[chain.len() - 1];
 
-            Ok(chain.len() >= 2 && {
-                let leaf = &chain[0];
-                let root = &chain[chain.len() - 1];
-
-                &&& cert_verified_leaf(env, leaf, &domain, false, task.now) // EV chains are not yet supported
-                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], &leaf, (i - 1) as usize, task.now)
-                &&& cert_verified_root(env, root, &chain[chain.len() - 2], leaf, (chain.len() - 2) as usize, task.now)
-                &&& check_all_name_constraints(chain)
-            })
-        }
-    }
+        &&& cert_verified_leaf(env, task, leaf, false) // EV chains are not yet supported
+        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, &task, #[trigger] &chain[i as int], &leaf, (i - 1) as usize)
+        &&& cert_verified_root(env, task, root, &chain[chain.len() - 2], leaf, (chain.len() - 2) as usize)
+        &&& check_all_name_constraints(chain)
+    })
 }
 
 pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool

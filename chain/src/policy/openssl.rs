@@ -407,13 +407,13 @@ pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
 
 /// Common checks for certificates, this includes checks in
 /// - check_extensions: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
-pub open spec fn valid_cert_common(_env: &Policy, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize, now: u64) -> bool
+pub open spec fn valid_cert_common(_env: &Policy, task: &Task, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize) -> bool
 {
     // NOTE: unhandled critical extensions not checked
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L543-L545
 
     &&& check_cert_key_level(cert)
-    &&& check_cert_time(cert, now)
+    &&& check_cert_time(cert, task.now)
     &&& check_basic_constraints(cert)
     &&& check_key_usage(cert)
 
@@ -505,16 +505,16 @@ pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bo
                 }
 }
 
-pub open spec fn valid_leaf(env: &Policy, cert: &Certificate, now: u64) -> bool {
-    valid_cert_common(env, cert, true, false, 0, now)
+pub open spec fn valid_leaf(env: &Policy, task: &Task, cert: &Certificate) -> bool {
+    valid_cert_common(env, task, cert, true, false, 0)
 }
 
-pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usize, now: u64) -> bool {
-    valid_cert_common(env, cert, false, false, depth, now)
+pub open spec fn valid_intermediate(env: &Policy, task: &Task, cert: &Certificate, depth: usize) -> bool {
+    valid_cert_common(env, task, cert, false, false, depth)
 }
 
-pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize, now: u64) -> bool {
-    &&& valid_cert_common(env, cert, false, true, depth, now)
+pub open spec fn valid_root(env: &Policy, task: &Task, cert: &Certificate, depth: usize) -> bool {
+    &&& valid_cert_common(env, task, cert, false, true, depth)
 
     // // Per x509-limbo::webpki::aki::root-with-aki-*
     // &&& &cert.ext_authority_key_id matches Some(aki) ==>
@@ -526,9 +526,9 @@ pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize, now:
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
     Ok(chain.len() >= 2 && {
-        &&& valid_leaf(env, &chain[0], task.now)
-        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize, task.now)
-        &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize, task.now)
+        &&& valid_leaf(env, task, &chain[0])
+        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, &task, #[trigger] &chain[i as int], (i - 1) as usize)
+        &&& valid_root(env, task, &chain[chain.len() - 1], (chain.len() - 2) as usize)
         &&& check_name_constraints(chain)
         &&& &task.hostname matches Some(hostname) ==> check_hostname(&chain[0], hostname)
     })

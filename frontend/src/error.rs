@@ -37,6 +37,9 @@ pub enum Error {
     #[error("repeat number must be positive")]
     ZeroRepeat,
 
+    #[error("different validation time given at spawn and in task")]
+    Inconsistentimestamps,
+
     #[error("libfaketime.so not found at {0}")]
     LibFakeTimeNotFound(String),
 

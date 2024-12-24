@@ -315,7 +315,7 @@ pub open spec fn check_ext_critical(cert: &Certificate) -> bool {
         ==> (&all_exts[i as int].critical matches Some(t) ==> *t)
 }
 
-pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Certificate, domain: &SpecString, now: u64) -> bool {
+pub open spec fn cert_verified_leaf(env: &Policy, task: &Task, cert: &Certificate, root: &Certificate) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
@@ -326,10 +326,10 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
 
     // Time comparison is inclusive
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
-    &&& cert.not_before <= now
-    &&& cert.not_after >= now
+    &&& cert.not_before <= task.now
+    &&& cert.not_after >= task.now
 
-    &&& match_san_domain(env, cert, domain)
+    &&& &task.hostname matches Some(domain) ==> match_san_domain(env, cert, &str_lower(domain))
     &&& check_duplicate_extensions(cert)
 
     // Per x509-limbo::rfc5280::ee-critical-aia-invalid
@@ -493,7 +493,7 @@ pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
         }
 }
 
-pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, depth: usize, now: u64) -> bool {
+pub open spec fn cert_verified_intermediate(env: &Policy, task: &Task, cert: &Certificate, depth: usize) -> bool {
     &&& cert_verified_non_leaf(cert, depth)
 
     &&& &cert.ext_basic_constraints matches Some(bc)
@@ -501,8 +501,8 @@ pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, de
 
     // Time comparison is inclusive
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
-    &&& cert.not_before <= now
-    &&& cert.not_after >= now
+    &&& cert.not_before <= task.now
+    &&& cert.not_after >= task.now
 
     &&& &cert.ext_authority_info_access matches Some(aia)
         ==> (aia.critical matches Some(c) ==> !c)
@@ -528,17 +528,20 @@ pub open spec fn is_bad_symantec_root(env: &Policy, root: &Certificate, interm: 
 }
 
 /// NOTE: fingerprintValid in Hammurabi
-pub open spec fn valid_root_fingerprint(env: &Policy, cert: &Certificate, domain: &SpecString) -> bool {
+pub open spec fn valid_root_fingerprint(env: &Policy, task: &Task, cert: &Certificate) -> bool {
     // &&& exists |i: usize| 0 <= i < env.trusted.len() && &cert.fingerprint == &env.trusted[i as int]
 
     let is_india_fingerprint = exists |i: usize| 0 <= i < env.india_trusted.len() && &cert.fingerprint == &env.india_trusted[i as int];
     let is_anssi_fingerprint = exists |i: usize| 0 <= i < env.anssi_trusted.len() && &cert.fingerprint == &env.anssi_trusted[i as int];
 
-    &&& is_india_fingerprint ==> exists |i: usize| #![auto] 0 <= i < env.india_domains.len() && match_name(&env.india_domains[i as int], &domain)
-    &&& is_anssi_fingerprint ==> exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && match_name(&env.anssi_domains[i as int], &domain)
+    &task.hostname matches Some(domain) ==> {
+        let domain = str_lower(domain);
+        &&& is_india_fingerprint ==> exists |i: usize| #![auto] 0 <= i < env.india_domains.len() && match_name(&env.india_domains[i as int], &domain)
+        &&& is_anssi_fingerprint ==> exists |i: usize| #![auto] 0 <= i < env.anssi_domains.len() && match_name(&env.anssi_domains[i as int], &domain)
+    }
 }
 
-pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &Certificate, depth: usize, domain: &SpecString) -> bool {
+pub open spec fn cert_verified_root(env: &Policy, task: &Task, cert: &Certificate, interm: &Certificate, depth: usize) -> bool {
     // NOTE: many checks are not done for root in chrome
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L1271
 
@@ -557,7 +560,7 @@ pub open spec fn cert_verified_root(env: &Policy, cert: &Certificate, interm: &C
         &&& (aki.issuer matches None) == (aki.serial matches None)
     }
 
-    &&& valid_root_fingerprint(env, cert, domain)
+    &&& valid_root_fingerprint(env, task, cert)
     &&& !is_bad_symantec_root(env, cert, interm)
 }
 
@@ -574,22 +577,15 @@ pub open spec fn check_all_name_constraints(chain: &Seq<ExecRef<Certificate>>) -
 /// chain.last() must be a trusted root
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
-    match &task.hostname {
-        None => Err(PolicyError::UnsupportedTask),
-        Some(domain) => {
-            let domain = str_lower(domain);
+    Ok(chain.len() >= 2 && {
+        let leaf = &chain[0];
+        let root = &chain[chain.len() - 1];
 
-            Ok(chain.len() >= 2 && {
-                let leaf = &chain[0];
-                let root = &chain[chain.len() - 1];
-
-                &&& cert_verified_leaf(env, leaf, root, &domain, task.now)
-                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize, task.now)
-                &&& cert_verified_root(env, root, &chain[chain.len() - 2], (chain.len() - 2) as usize, &domain)
-                &&& check_all_name_constraints(chain)
-            })
-        }
-    }
+        &&& cert_verified_leaf(env, task, leaf, root)
+        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, &task, #[trigger] &chain[i as int], (i - 1) as usize)
+        &&& cert_verified_root(env, task, root, &chain[chain.len() - 2], (chain.len() - 2) as usize)
+        &&& check_all_name_constraints(chain)
+    })
 }
 
 pub open spec fn likely_issued(issuer: &Certificate, subject: &Certificate) -> bool

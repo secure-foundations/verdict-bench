@@ -43,7 +43,7 @@ pub struct VerdictInstance {
 }
 
 impl VerdictInstance {
-    fn worker<P: Policy>(roots_base64: Vec<Vec<u8>>, policy: P, rx_job: Receiver<Job>, tx_res: Sender<ValidationResult>, debug: bool) -> Result<(), Error> {
+    fn worker<P: Policy>(timestamp: u64, roots_base64: Vec<Vec<u8>>, policy: P, rx_job: Receiver<Job>, tx_res: Sender<ValidationResult>, debug: bool) -> Result<(), Error> {
         let store = RootStore::from_base64(&roots_base64)?;
         let validator = Validator::from_root_store(policy, &store)?;
 
@@ -54,6 +54,10 @@ impl VerdictInstance {
 
             if debug {
                 validator.print_debug_info(&bundle_bytes, &task)?;
+            }
+
+            if task.now != timestamp {
+                return Err(Error::Inconsistentimestamps);
             }
 
             for _ in 0..repeat {
@@ -81,7 +85,7 @@ impl VerdictInstance {
 }
 
 impl Harness for VerdictHarness {
-    fn spawn(&self, roots_path: &str, _timestamp: u64) -> Result<Box<dyn Instance>, Error> {
+    fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error> {
         let roots_base64 = read_pem_file_as_base64(roots_path)?
             .into_iter().map(|base64| base64.into_bytes()).collect();
 
@@ -97,11 +101,11 @@ impl Harness for VerdictHarness {
             handle: Some(thread::spawn(move ||
                 match policy_name {
                     PolicyName::ChromeHammurabi =>
-                        VerdictInstance::worker(roots_base64, policy::ChromePolicy::default(), rx_job, tx_res, debug),
+                        VerdictInstance::worker(timestamp, roots_base64, policy::ChromePolicy::default(), rx_job, tx_res, debug),
                     PolicyName::FirefoxHammurabi =>
-                        VerdictInstance::worker(roots_base64, policy::FirefoxPolicy::default(), rx_job, tx_res, debug),
+                        VerdictInstance::worker(timestamp, roots_base64, policy::FirefoxPolicy::default(), rx_job, tx_res, debug),
                     PolicyName::OpenSSL =>
-                        VerdictInstance::worker(roots_base64, policy::OpenSSLPolicy::default(), rx_job, tx_res, debug),
+                        VerdictInstance::worker(timestamp, roots_base64, policy::OpenSSLPolicy::default(), rx_job, tx_res, debug),
                 })),
         }))
     }

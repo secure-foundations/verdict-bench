@@ -44,6 +44,6 @@ impl Harness for CeresHarness {
             cmd.stderr(process::Stdio::null());
         };
 
-        Ok(Box::new(CommonBenchInstance::new(cmd.spawn()?)?))
+        Ok(Box::new(CommonBenchInstance::new(cmd.spawn()?, timestamp)?))
     }
 }

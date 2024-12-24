@@ -43,6 +43,6 @@ impl Harness for ArmorHarness {
             cmd.stderr(process::Stdio::null());
         };
 
-        Ok(Box::new(CommonBenchInstance::new(cmd.spawn()?)?))
+        Ok(Box::new(CommonBenchInstance::new(cmd.spawn()?, timestamp)?))
     }
 }

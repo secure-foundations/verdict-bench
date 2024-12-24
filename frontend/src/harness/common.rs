@@ -14,13 +14,14 @@ pub struct ValidationResult {
     pub stats: Vec<u64>, // Durations in microseconds
 }
 
+/// NOTE: both `spawn` and `ExecTask` include timestamps
+/// this is because for some harnesses, we had to use libfaketime
+/// to set the time, which is only doable at the beginning
 pub trait Harness {
     fn spawn(&self, roots_path: &str, timestamp: u64) -> Result<Box<dyn Instance>, Error>;
 }
 
 pub trait Instance: Send {
-    /// Note that there is a small mismatch in the interface
-    /// task.now is ignored for all harnesses except for Verdict
     fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error>;
 }
 
@@ -28,16 +29,17 @@ pub trait Instance: Send {
 /// Basically the frontend sends benchmarking task (leaf, intermediates, repeat, etc.)
 /// and the server implementing the benchmark performs the task in its native language
 pub struct CommonBenchInstance {
+    timestamp: u64,
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
 }
 
 impl CommonBenchInstance {
-    pub fn new(mut child: Child) -> Result<CommonBenchInstance, Error> {
+    pub fn new(mut child: Child, timestamp: u64) -> Result<CommonBenchInstance, Error> {
         let stdin = child.stdin.take().ok_or(Error::ChildStdin)?;
         let stdout = child.stdout.take().ok_or(Error::ChildStdout)?;
-        Ok(CommonBenchInstance { child, stdin, stdout: BufReader::new(stdout) })
+        Ok(CommonBenchInstance { timestamp, child, stdin, stdout: BufReader::new(stdout) })
     }
 }
 
@@ -65,6 +67,11 @@ impl Instance for CommonBenchInstance {
             },
             None => "validate".to_string(),
         };
+
+        // Check that `task`'s timestamp is consistent with `spawn`
+        if task.now != self.timestamp {
+            return Err(Error::Inconsistentimestamps);
+        }
 
         writeln!(self.stdin, "repeat: {}", repeat)?;
         writeln!(self.stdin, "leaf: {}", bundle[0])?;
