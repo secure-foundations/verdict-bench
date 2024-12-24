@@ -24,8 +24,6 @@ pub trait Policy {
 
     fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> (res: Result<bool, ExecPolicyError>)
         ensures res.deep_view() == self.spec_valid_chain(chain.deep_view(), task.deep_view());
-
-    spec fn validation_time(&self) -> u64;
 }
 
 rspec! {
@@ -174,6 +172,7 @@ pub enum Purpose {
 pub struct Task {
     pub hostname: Option<SpecString>,
     pub purpose: Purpose,
+    pub now: u64,
 }
 
 pub enum PolicyError {
@@ -427,6 +426,7 @@ impl Clone for ExecTask {
                 None => None,
             },
             purpose: self.purpose,
+            now: self.now,
         }
     }
 }

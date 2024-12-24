@@ -99,12 +99,12 @@ fn test_limbo(args: &Args, harness: &Box<dyn Harness>, testcase: &Testcase) -> R
 
     let task = if let Some(peer_name) = &testcase.expected_peer_name {
         if args.no_domain {
-            ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth }
+            ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth, now: timestamp }
         } else {
-            ExecTask { hostname: Some(peer_name.value.to_string()), purpose: ExecPurpose::ServerAuth }
+            ExecTask { hostname: Some(peer_name.value.to_string()), purpose: ExecPurpose::ServerAuth, now: timestamp }
         }
     } else {
-        ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth }
+        ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth, now: timestamp }
     };
 
     let (valid, err_msg) = match instance.validate(&bundle, &task, args.repeat) {

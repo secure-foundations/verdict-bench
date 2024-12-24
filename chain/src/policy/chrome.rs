@@ -29,10 +29,6 @@ impl Policy for ChromePolicy {
     fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
     }
-
-    open spec fn validation_time(&self) -> u64 {
-        self.time
-    }
 }
 
 // Automatically prove some standard requirements
@@ -80,10 +76,8 @@ standard::auto_std! {
 
 impl ChromePolicy {
     /// Create a Chrome policy with the same settings in Hammurabi
-    pub fn default(time: u64) -> Self {
+    pub fn default() -> Self {
         ChromePolicy {
-            time,
-
             // NOTE: this list is incomplete
             // See https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/base/registry_controlled_domains/effective_tld_names.dat
             public_suffix: strs_to_strings(&["*.uk", "*.ac.uk", "*.co.uk", "*.gov.uk", "*.ltd.uk", "*.me.uk", "*.net.uk", "*.nhs.uk", "*.org.uk", "*.plc.uk", "*.police.uk", "*.ch.uk", "*.us", "*.dni.us", "*.fed.us", "*.isa.us", "*.kids.us", "*.nsn.us", "*.ak.us", "*.al.us", "*.ar.us", "*.as.us", "*.az.us", "*.ca.us", "*.co.us", "*.ct.us", "*.dc.us", "*.de.us", "*.fl.us", "*.ga.us", "*.gu.us", "*.hi.us", "*.ia.us", "*.id.us", "*.il.us", "*.in.us", "*.ks.us", "*.ky.us", "*.la.us", "*.ma.us", "*.md.us", "*.me.us", "*.mi.us", "*.mn.us", "*.mo.us", "*.ms.us", "*.mt.us", "*.nc.us", "*.nd.us", "*.ne.us", "*.nh.us", "*.nj.us", "*.nm.us", "*.nv.us", "*.ny.us", "*.oh.us", "*.ok.us", "*.or.us", "*.pa.us", "*.pr.us", "*.ri.us", "*.sc.us", "*.sd.us", "*.tn.us", "*.tx.us", "*.ut.us", "*.vi.us", "*.vt.us", "*.va.us", "*.wa.us", "*.wi.us", "*.wv.us", "*.wy.us", "*.k12.ak.us", "*.k12.al.us", "*.k12.ar.us", "*.k12.as.us", "*.k12.az.us", "*.k12.ca.us", "*.k12.co.us", "*.k12.ct.us", "*.k12.dc.us", "*.k12.de.us", "*.k12.fl.us", "*.k12.ga.us", "*.k12.gu.us", "*.k12.ia.us", "*.k12.id.us", "*.k12.il.us", "*.k12.in.us", "*.k12.ks.us", "*.k12.ky.us", "*.k12.la.us", "*.k12.ma.us", "*.k12.md.us", "*.k12.me.us", "*.k12.mi.us", "*.k12.mn.us", "*.k12.mo.us", "*.k12.ms.us", "*.k12.mt.us", "*.k12.nc.us", "*.k12.ne.us", "*.k12.nh.us", "*.k12.nj.us", "*.k12.nm.us", "*.k12.nv.us", "*.k12.ny.us", "*.k12.oh.us", "*.k12.ok.us", "*.k12.or.us", "*.k12.pa.us", "*.k12.pr.us", "*.k12.sc.us", "*.k12.tn.us", "*.k12.tx.us", "*.k12.ut.us", "*.k12.vi.us", "*.k12.vt.us", "*.k12.va.us", "*.k12.wa.us", "*.k12.wi.us", "*.k12.wy.us", "*.cc.ak.us", "*.cc.al.us", "*.cc.ar.us", "*.cc.as.us", "*.cc.az.us", "*.cc.ca.us", "*.cc.co.us", "*.cc.ct.us", "*.cc.dc.us", "*.cc.de.us", "*.cc.fl.us", "*.cc.ga.us", "*.cc.gu.us", "*.cc.hi.us", "*.cc.ia.us", "*.cc.id.us", "*.cc.il.us", "*.cc.in.us", "*.cc.ks.us", "*.cc.ky.us", "*.cc.la.us", "*.cc.ma.us", "*.cc.md.us", "*.cc.me.us", "*.cc.mi.us", "*.cc.mn.us", "*.cc.mo.us", "*.cc.ms.us", "*.cc.mt.us", "*.cc.nc.us", "*.cc.nd.us", "*.cc.ne.us", "*.cc.nh.us", "*.cc.nj.us", "*.cc.nm.us", "*.cc.nv.us", "*.cc.ny.us", "*.cc.oh.us", "*.cc.ok.us", "*.cc.or.us", "*.cc.pa.us", "*.cc.pr.us", "*.cc.ri.us", "*.cc.sc.us", "*.cc.sd.us", "*.cc.tn.us", "*.cc.tx.us", "*.cc.ut.us", "*.cc.vi.us", "*.cc.vt.us", "*.cc.va.us", "*.cc.wa.us", "*.cc.wi.us", "*.cc.wv.us", "*.cc.wy.us", "*.lib.ak.us", "*.lib.al.us", "*.lib.ar.us", "*.lib.as.us", "*.lib.az.us", "*.lib.ca.us", "*.lib.co.us", "*.lib.ct.us", "*.lib.dc.us", "*.lib.fl.us", "*.lib.ga.us", "*.lib.gu.us", "*.lib.hi.us", "*.lib.ia.us", "*.lib.id.us", "*.lib.il.us", "*.lib.in.us", "*.lib.ks.us", "*.lib.ky.us", "*.lib.la.us", "*.lib.ma.us", "*.lib.md.us", "*.lib.me.us", "*.lib.mi.us", "*.lib.mn.us", "*.lib.mo.us", "*.lib.ms.us", "*.lib.mt.us", "*.lib.nc.us", "*.lib.nd.us", "*.lib.ne.us", "*.lib.nh.us", "*.lib.nj.us", "*.lib.nm.us", "*.lib.nv.us", "*.lib.ny.us", "*.lib.oh.us", "*.lib.ok.us", "*.lib.or.us", "*.lib.pa.us", "*.lib.pr.us", "*.lib.ri.us", "*.lib.sc.us", "*.lib.sd.us", "*.lib.tn.us", "*.lib.tx.us", "*.lib.ut.us", "*.lib.vi.us", "*.lib.vt.us", "*.lib.va.us", "*.lib.wa.us", "*.lib.wi.us", "*.lib.wy.us", "*.pvt.k12.ma.us", "*.chtr.k12.ma.us", "*.paroch.k12.ma.us", "*.ann-arbor.mi.us", "*.cog.mi.us", "*.dst.mi.us", "*.eaton.mi.us", "*.gen.mi.us", "*.mus.mi.us", "*.tec.mi.us", "*.washtenaw.mi.us", "*.gov.me"]),
@@ -140,8 +134,6 @@ use exec_has_ip_addr_name_constraint as has_ip_addr_name_constraint;
 use exec_check_duplicate_extensions as check_duplicate_extensions;
 
 pub struct Policy {
-    pub time: u64,
-
     /// This should include all of `publicSuffix` in Hammurabi
     /// and all of their suffixes
     pub public_suffix: Seq<SpecString>,
@@ -323,7 +315,7 @@ pub open spec fn check_ext_critical(cert: &Certificate) -> bool {
         ==> (&all_exts[i as int].critical matches Some(t) ==> *t)
 }
 
-pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Certificate, domain: &SpecString) -> bool {
+pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Certificate, domain: &SpecString, now: u64) -> bool {
     &&& cert.version == 2
     &&& is_valid_pki(cert)
 
@@ -334,8 +326,8 @@ pub open spec fn cert_verified_leaf(env: &Policy, cert: &Certificate, root: &Cer
 
     // Time comparison is inclusive
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
-    &&& cert.not_before <= env.time
-    &&& cert.not_after >= env.time
+    &&& cert.not_before <= now
+    &&& cert.not_after >= now
 
     &&& match_san_domain(env, cert, domain)
     &&& check_duplicate_extensions(cert)
@@ -501,7 +493,7 @@ pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
         }
 }
 
-pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, depth: usize) -> bool {
+pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, depth: usize, now: u64) -> bool {
     &&& cert_verified_non_leaf(cert, depth)
 
     &&& &cert.ext_basic_constraints matches Some(bc)
@@ -509,8 +501,8 @@ pub open spec fn cert_verified_intermediate(env: &Policy, cert: &Certificate, de
 
     // Time comparison is inclusive
     // https://github.com/chromium/chromium/blob/0590dcf7b036e15c133de35213be8fe0986896aa/net/cert/internal/verify_certificate_chain.cc#L104
-    &&& cert.not_before <= env.time
-    &&& cert.not_after >= env.time
+    &&& cert.not_before <= now
+    &&& cert.not_after >= now
 
     &&& &cert.ext_authority_info_access matches Some(aia)
         ==> (aia.critical matches Some(c) ==> !c)
@@ -591,8 +583,8 @@ pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, ta
                 let leaf = &chain[0];
                 let root = &chain[chain.len() - 1];
 
-                &&& cert_verified_leaf(env, leaf, root, &domain)
-                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
+                &&& cert_verified_leaf(env, leaf, root, &domain, task.now)
+                &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> cert_verified_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize, task.now)
                 &&& cert_verified_root(env, root, &chain[chain.len() - 2], (chain.len() - 2) as usize, &domain)
                 &&& check_all_name_constraints(chain)
             })

@@ -78,7 +78,7 @@ pub struct Args {
 }
 
 /// Each worker thread waits for CTLogEntry's, does the validation, and then sends back CTLogResult's
-fn worker(args: &Args, mut instance: Box<dyn Instance>, rx_job: Receiver<CTLogEntry>, tx_res: Sender<CTLogResult>) -> Result<(), Error> {
+fn worker(args: &Args, timestamp: u64, mut instance: Box<dyn Instance>, rx_job: Receiver<CTLogEntry>, tx_res: Sender<CTLogResult>) -> Result<(), Error> {
     // Recv a CTLogEntry
     while let Ok(entry) = rx_job.recv() {
         let mut bundle = vec![entry.cert_base64.to_string()];
@@ -90,9 +90,9 @@ fn worker(args: &Args, mut instance: Box<dyn Instance>, rx_job: Receiver<CTLogEn
         }
 
         let res = if args.no_domain {
-            instance.validate(&bundle, &ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth }, args.repeat)?
+            instance.validate(&bundle, &ExecTask { hostname: None, purpose: ExecPurpose::ServerAuth, now: timestamp }, args.repeat)?
         } else {
-            instance.validate(&bundle, &ExecTask { hostname: Some(entry.domain.to_string()), purpose: ExecPurpose::ServerAuth }, args.repeat)?
+            instance.validate(&bundle, &ExecTask { hostname: Some(entry.domain.to_string()), purpose: ExecPurpose::ServerAuth, now: timestamp }, args.repeat)?
         };
 
         // Send back a CTLogResult
@@ -159,7 +159,7 @@ pub fn main(args: Args) -> Result<(), Error> {
             let rx_job = rx_job.clone();
             let tx_res = tx_res.clone();
 
-            workers.push(thread::spawn(move || worker(&args, instance, rx_job, tx_res)));
+            workers.push(thread::spawn(move || worker(&args, timestamp, instance, rx_job, tx_res)));
         }
 
         let out_csv = args.out_csv.clone();

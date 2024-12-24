@@ -19,6 +19,8 @@ pub trait Harness {
 }
 
 pub trait Instance: Send {
+    /// Note that there is a small mismatch in the interface
+    /// task.now is ignored for all harnesses except for Verdict
     fn validate(&mut self, bundle: &Vec<String>, task: &ExecTask, repeat: usize) -> Result<ValidationResult, Error>;
 }
 

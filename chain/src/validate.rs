@@ -813,6 +813,10 @@ pub struct RootStore {
 }
 
 impl RootStore {
+    pub fn from_owned_der(roots_der: Vec<Vec<u8>>) -> RootStore {
+        RootStore { roots_der }
+    }
+
     /// Creates a root store from base64 encodings of root certificates
     pub fn from_base64(roots_base64: &Vec<Vec<u8>>) -> (res: Result<RootStore, ParseError>)
         ensures

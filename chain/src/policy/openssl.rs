@@ -27,10 +27,6 @@ impl Policy for OpenSSLPolicy {
     fn valid_chain(&self, chain: &Vec<&ExecCertificate>, task: &ExecTask) -> Result<bool, ExecPolicyError> {
         internal::exec_valid_chain(self, chain, task)
     }
-
-    open spec fn validation_time(&self) -> u64 {
-        self.time
-    }
 }
 
 // Automatically prove some standard requirements
@@ -70,8 +66,8 @@ standard::auto_std! {
 
 impl OpenSSLPolicy {
     /// Create a Firefox policy with the same settings in Hammurabi
-    pub fn default(time: u64) -> Self {
-        OpenSSLPolicy { time }
+    pub fn default() -> Self {
+        OpenSSLPolicy
     }
 }
 
@@ -109,9 +105,7 @@ use exec_ip_addr_in_range as ip_addr_in_range;
 use exec_check_duplicate_extensions as check_duplicate_extensions;
 use exec_starts_with as starts_with;
 
-pub struct Policy {
-    pub time: u64,
-}
+pub struct Policy;
 
 // Some global assumptions/settings
 // - Purpose is set to X509_PURPOSE_SSL_SERVER
@@ -141,7 +135,7 @@ pub open spec fn check_cert_key_level(cert: &Certificate) -> bool
 }
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
-pub open spec fn check_cert_time(env: &Policy, cert: &Certificate) -> bool
+pub open spec fn check_cert_time(cert: &Certificate, now: u64) -> bool
 {
     // NOTE: X509_cmp_time(a, b) returns
     // 1 iff a > b
@@ -150,8 +144,8 @@ pub open spec fn check_cert_time(env: &Policy, cert: &Certificate) -> bool
     // ossl_x509_check_cert_time checks that
     // X509_cmp_time(not_before, now) == -1 ==> not_before <= now
     // X509_cmp_time(not_after, now) == 1 ==> not_after > now
-    &&& cert.not_before <= env.time
-    &&& cert.not_after > env.time
+    &&& cert.not_before <= now
+    &&& cert.not_after > now
 }
 
 /// https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/v3_purp.c#L653
@@ -413,13 +407,13 @@ pub open spec fn check_unhandled_extensions(cert: &Certificate) -> bool {
 
 /// Common checks for certificates, this includes checks in
 /// - check_extensions: https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L1785
-pub open spec fn valid_cert_common(env: &Policy, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize) -> bool
+pub open spec fn valid_cert_common(_env: &Policy, cert: &Certificate, is_leaf: bool, is_root: bool, depth: usize, now: u64) -> bool
 {
     // NOTE: unhandled critical extensions not checked
     // https://github.com/openssl/openssl/blob/5c5b8d2d7c59fc48981861629bb0b75a03497440/crypto/x509/x509_vfy.c#L543-L545
 
     &&& check_cert_key_level(cert)
-    &&& check_cert_time(env, cert)
+    &&& check_cert_time(cert, now)
     &&& check_basic_constraints(cert)
     &&& check_key_usage(cert)
 
@@ -511,16 +505,16 @@ pub open spec fn check_hostname(cert: &Certificate, hostname: &SpecString) -> bo
                 }
 }
 
-pub open spec fn valid_leaf(env: &Policy, cert: &Certificate) -> bool {
-    valid_cert_common(env, cert, true, false, 0)
+pub open spec fn valid_leaf(env: &Policy, cert: &Certificate, now: u64) -> bool {
+    valid_cert_common(env, cert, true, false, 0, now)
 }
 
-pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usize) -> bool {
-    valid_cert_common(env, cert, false, false, depth)
+pub open spec fn valid_intermediate(env: &Policy, cert: &Certificate, depth: usize, now: u64) -> bool {
+    valid_cert_common(env, cert, false, false, depth, now)
 }
 
-pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> bool {
-    &&& valid_cert_common(env, cert, false, true, depth)
+pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize, now: u64) -> bool {
+    &&& valid_cert_common(env, cert, false, true, depth, now)
 
     // // Per x509-limbo::webpki::aki::root-with-aki-*
     // &&& &cert.ext_authority_key_id matches Some(aki) ==>
@@ -532,9 +526,9 @@ pub open spec fn valid_root(env: &Policy, cert: &Certificate, depth: usize) -> b
 pub open spec fn valid_chain(env: &Policy, chain: &Seq<ExecRef<Certificate>>, task: &Task) -> Result<bool, PolicyError>
 {
     Ok(chain.len() >= 2 && {
-        &&& valid_leaf(env, &chain[0])
-        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize)
-        &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize)
+        &&& valid_leaf(env, &chain[0], task.now)
+        &&& forall |i: usize| 1 <= i < chain.len() - 1 ==> valid_intermediate(&env, #[trigger] &chain[i as int], (i - 1) as usize, task.now)
+        &&& valid_root(env, &chain[chain.len() - 1], (chain.len() - 2) as usize, task.now)
         &&& check_name_constraints(chain)
         &&& &task.hostname matches Some(hostname) ==> check_hostname(&chain[0], hostname)
     })

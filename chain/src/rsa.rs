@@ -255,3 +255,7 @@ pub fn pkcs1_v1_5_load_pub_key(pub_key: &[u8]) -> (res: Result<RSAPublicKeyInter
 }
 
 }
+
+// No operation can modify the public key pointer except for Drop
+unsafe impl Send for RSAPublicKeyInternal {}
+unsafe impl Sync for RSAPublicKeyInternal {}

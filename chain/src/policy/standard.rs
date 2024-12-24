@@ -13,7 +13,7 @@ pub trait NoExpiration: Policy {
         ensures
             forall |i: usize| #![trigger chain[i as int]]
                 0 <= i < chain.len() ==>
-                chain[i as int].not_before <= self.validation_time() <= chain[i as int].not_after;
+                chain[i as int].not_before <= task.now <= chain[i as int].not_after;
 }
 
 /// Outer signature algorithm should match the inner one
