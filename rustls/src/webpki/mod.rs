@@ -13,6 +13,9 @@ mod client_verifier;
 mod server_verifier;
 mod verify;
 
+mod verdict;
+pub use verdict::VerdictServerVerifier;
+
 pub use anchors::RootCertStore;
 pub use client_verifier::{ClientCertVerifierBuilder, WebPkiClientVerifier};
 pub use server_verifier::{ServerCertVerifierBuilder, WebPkiServerVerifier};

@@ -393,21 +393,21 @@ mod danger {
 
 /// Build a `ClientConfig` from our arguments
 fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
-    let mut root_store = RootCertStore::empty();
+    // let mut root_store = RootCertStore::empty();
 
-    if let Some(cafile) = args.cafile.as_ref() {
-        root_store.add_parsable_certificates(
-            CertificateDer::pem_file_iter(cafile)
-                .expect("Cannot open CA file")
-                .map(|result| result.unwrap()),
-        );
-    } else {
-        root_store.extend(
-            webpki_roots::TLS_SERVER_ROOTS
-                .iter()
-                .cloned(),
-        );
-    }
+    // if let Some(cafile) = args.cafile.as_ref() {
+    //     root_store.add_parsable_certificates(
+    //         CertificateDer::pem_file_iter(cafile)
+    //             .expect("Cannot open CA file")
+    //             .map(|result| result.unwrap()),
+    //     );
+    // } else {
+    //     root_store.extend(
+    //         webpki_roots::TLS_SERVER_ROOTS
+    //             .iter()
+    //             .cloned(),
+    //     );
+    // }
 
     let suites = if !args.suite.is_empty() {
         lookup_suites(&args.suite)
@@ -430,7 +430,12 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
     )
     .with_protocol_versions(&versions)
     .expect("inconsistent cipher-suite/versions selected")
-    .with_root_certificates(root_store);
+    .with_verdict_chrome_verifier(
+        CertificateDer::pem_file_iter(args.cafile.as_ref().expect("verdict needs a CA file"))
+            .expect("Cannot open CA file")
+            .map(|result| result.unwrap())
+    ).unwrap();
+    // .with_root_certificates(root_store);
 
     let mut config = match (&args.auth_key, &args.auth_certs) {
         (Some(key_file), Some(certs_file)) => {

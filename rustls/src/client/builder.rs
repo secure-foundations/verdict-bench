@@ -11,7 +11,7 @@ use crate::error::Error;
 use crate::key_log::NoKeyLog;
 use crate::msgs::handshake::CertificateChain;
 use crate::versions::TLS13;
-use crate::webpki::{self, WebPkiServerVerifier};
+use crate::webpki::{self, VerdictServerVerifier, WebPkiServerVerifier};
 use crate::{compress, verify, versions, WantsVersions};
 
 impl ConfigBuilder<ClientConfig, WantsVersions> {
@@ -58,6 +58,26 @@ impl ConfigBuilder<ClientConfig, WantsVerifier> {
         self.with_webpki_verifier(
             WebPkiServerVerifier::new_without_revocation(root_store, algorithms).into(),
         )
+    }
+
+    /// Use Verdict's Chrome certificate validator instead of the default one
+    pub fn with_verdict_chrome_verifier<'a>(
+        self,
+        roots_der: impl IntoIterator<Item = CertificateDer<'a>>,
+    ) -> Result<ConfigBuilder<ClientConfig, WantsClientCert>, Error> {
+        Ok(ConfigBuilder {
+            state: WantsClientCert {
+                versions: self.state.versions,
+                verifier: Arc::new(VerdictServerVerifier::new(
+                    chain::policy::ChromePolicy::default(),
+                    roots_der,
+                )?),
+                client_ech_mode: self.state.client_ech_mode,
+            },
+            provider: self.provider,
+            time_provider: self.time_provider,
+            side: PhantomData,
+        })
     }
 
     /// Choose how to verify server certificates using a webpki verifier.
