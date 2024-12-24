@@ -12,7 +12,7 @@ pub use super::*;
 
 verus! {
 
-pub trait Policy {
+pub trait Policy: Send + Sync {
     /// User-defined issuing relation without checking signature
     spec fn spec_likely_issued(&self, issuer: Certificate, subject: Certificate) -> bool;
 
