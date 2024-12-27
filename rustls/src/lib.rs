@@ -435,7 +435,9 @@ mod key_log;
 mod key_log_file;
 mod suites;
 mod versions;
-pub mod webpki;
+
+mod webpki;
+pub use webpki::VerdictPolicy;
 
 /// Internal classes that are used in integration tests.
 /// The contents of this section DO NOT form part of the stable interface.

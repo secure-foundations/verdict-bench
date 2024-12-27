@@ -1,6 +1,5 @@
 use std::boxed::Box;
 use std::format;
-use std::sync::Arc;
 use std::vec::Vec;
 use std::fmt;
 
@@ -20,11 +19,19 @@ use super::{verify_tls12_signature, verify_tls13_signature};
 
 /// Interface for calling Verdict as opposed to
 /// the built-in WebPkiServerVerifier
-pub struct VerdictServerVerifier<P: Policy> {
+pub(crate) struct VerdictServerVerifier<P: Policy> {
     validator: Validator<'static, P>,
 
     // For supported schemes only
     provider: CryptoProvider,
+}
+
+/// Policy to use for verdict
+#[allow(missing_docs)]
+pub enum VerdictPolicy {
+    Chrome,
+    Firefox,
+    OpenSSL,
 }
 
 impl From<ValidationError> for Error {
@@ -43,7 +50,7 @@ impl<P: Policy> VerdictServerVerifier<P> {
     /// NOTE: due to interface issues, this function
     /// will create and leak the given set of root DER
     /// encodings, so that we can get a 'static lifetime
-    pub fn new<'a>(policy: P, roots_der: impl IntoIterator<Item = CertificateDer<'a>>)
+    pub(crate) fn new<'a>(policy: P, roots_der: impl IntoIterator<Item = CertificateDer<'a>>)
         -> Result<Self, Error> {
         // Copy all buffers
         let roots_der: Vec<Vec<u8>> =

@@ -1,6 +1,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use chain::policy::Policy;
+use chain::policy::{ChromePolicy, FirefoxPolicy, OpenSSLPolicy};
 use core::marker::PhantomData;
 
 use pki_types::{CertificateDer, PrivateKeyDer};
@@ -12,7 +12,7 @@ use crate::error::Error;
 use crate::key_log::NoKeyLog;
 use crate::msgs::handshake::CertificateChain;
 use crate::versions::TLS13;
-use crate::webpki::{self, VerdictServerVerifier, WebPkiServerVerifier};
+use crate::webpki::{self, VerdictPolicy, VerdictServerVerifier, WebPkiServerVerifier};
 use crate::{compress, verify, versions, WantsVersions};
 
 impl ConfigBuilder<ClientConfig, WantsVersions> {
@@ -62,15 +62,19 @@ impl ConfigBuilder<ClientConfig, WantsVerifier> {
     }
 
     /// Use Verdict's Chrome certificate validator instead of the default one
-    pub fn with_verdict_verifier<'a, P: Policy + 'static>(
+    pub fn with_verdict_verifier<'a>(
         self,
-        policy: P,
+        policy: VerdictPolicy,
         roots_der: impl IntoIterator<Item = CertificateDer<'a>>,
     ) -> Result<ConfigBuilder<ClientConfig, WantsClientCert>, Error> {
         Ok(ConfigBuilder {
             state: WantsClientCert {
                 versions: self.state.versions,
-                verifier: Arc::new(VerdictServerVerifier::new(policy, roots_der)?),
+                verifier: match policy {
+                    VerdictPolicy::Chrome => Arc::new(VerdictServerVerifier::new(ChromePolicy::default(), roots_der)?),
+                    VerdictPolicy::Firefox => Arc::new(VerdictServerVerifier::new(FirefoxPolicy::default(), roots_der)?),
+                    VerdictPolicy::OpenSSL => Arc::new(VerdictServerVerifier::new(OpenSSLPolicy::default(), roots_der)?),
+                },
                 client_ech_mode: self.state.client_ech_mode,
             },
             provider: self.provider,

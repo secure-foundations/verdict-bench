@@ -23,7 +23,7 @@ use rustls::server::{
 use rustls::unbuffered::{ConnectionState, EncryptError, InsufficientSizeError, UnbufferedStatus};
 use rustls::{
     CipherSuite, ClientConfig, ClientConnection, ConnectionCommon, Error, HandshakeKind,
-    RootCertStore, ServerConfig, ServerConnection, SideData,
+    RootCertStore, ServerConfig, ServerConnection, SideData, VerdictPolicy,
 };
 
 pub fn main() {
@@ -122,8 +122,20 @@ struct Args {
     #[arg(long, value_enum, default_value_t = Api::Both, help = "Choose buffered or unbuffered API")]
     api: Api,
 
+    #[arg(long, default_value = "default")]
+    validator: ValidatorName,
+
     #[command(subcommand)]
     command: Option<Command>,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum ValidatorName {
+    Default,
+    VerdictChrome,
+    VerdictFirefox,
+    #[clap(name = "verdict-openssl")]
+    VerdictOpenSSL,
 }
 
 impl Args {
@@ -443,7 +455,8 @@ fn multithreaded(
 
 fn report_handshake_result(variant: &str, params: &Parameters, rounds: u64, timings: Vec<Timings>) {
     print!(
-        "{}\t{:?}\t{:?}\t{:?}\tclient\t{}\t{}\t",
+        "{:?}\t{}\t{:?}\t{:?}\t{:?}\tclient\t{}\t{}\t",
+        params.validator,
         variant,
         params.proto.version,
         params.proto.key_type,
@@ -453,16 +466,16 @@ fn report_handshake_result(variant: &str, params: &Parameters, rounds: u64, timi
     );
     report_timings("handshakes/s", &timings, rounds as f64, |t| t.client);
 
-    print!(
-        "{}\t{:?}\t{:?}\t{:?}\tserver\t{}\t{}\t",
-        variant,
-        params.proto.version,
-        params.proto.key_type,
-        params.proto.ciphersuite,
-        params.client_auth.label(),
-        params.resume.label(),
-    );
-    report_timings("handshakes/s", &timings, rounds as f64, |t| t.server);
+    // print!(
+    //     "{}\t{:?}\t{:?}\t{:?}\tserver\t{}\t{}\t",
+    //     variant,
+    //     params.proto.version,
+    //     params.proto.key_type,
+    //     params.proto.ciphersuite,
+    //     params.client_auth.label(),
+    //     params.resume.label(),
+    // );
+    // report_timings("handshakes/s", &timings, rounds as f64, |t| t.server);
 }
 
 fn report_timings(
@@ -711,6 +724,9 @@ struct Parameters {
 
     /// For bulk benchmarks, how much data to send
     plaintext_size: u64,
+
+    /// Certificate validator to use
+    validator: ValidatorName,
 }
 
 impl Parameters {
@@ -728,6 +744,7 @@ impl Parameters {
             resume: ResumptionParam::No,
             max_fragment_size: None,
             plaintext_size: 1024,
+            validator: args.validator,
         }
     }
 
@@ -807,13 +824,6 @@ impl Parameters {
     }
 
     fn client_config(&self) -> Arc<ClientConfig> {
-        let mut root_store = RootCertStore::empty();
-        root_store.add_parsable_certificates(
-            CertificateDer::pem_file_iter(self.proto.key_type.path_for("ca.cert"))
-                .unwrap()
-                .map(|result| result.unwrap()),
-        );
-
         let cfg = ClientConfig::builder_with_provider(
             CryptoProvider {
                 cipher_suites: self
@@ -824,8 +834,28 @@ impl Parameters {
             .into(),
         )
         .with_protocol_versions(&[self.proto.version])
-        .unwrap()
-        .with_root_certificates(root_store);
+        .unwrap();
+
+        let pem_iter = CertificateDer::pem_file_iter(self.proto.key_type.path_for("ca.cert"))
+            .unwrap()
+            .map(|result| result.unwrap());
+
+        let cfg = match self.validator {
+            ValidatorName::Default => {
+                let mut root_store = RootCertStore::empty();
+                root_store.add_parsable_certificates(pem_iter);
+                cfg.with_root_certificates(root_store)
+            }
+
+            ValidatorName::VerdictChrome =>
+                cfg.with_verdict_verifier(VerdictPolicy::Chrome, pem_iter).unwrap(),
+
+            ValidatorName::VerdictFirefox =>
+                cfg.with_verdict_verifier(VerdictPolicy::Firefox, pem_iter).unwrap(),
+
+            ValidatorName::VerdictOpenSSL =>
+                cfg.with_verdict_verifier(VerdictPolicy::OpenSSL, pem_iter).unwrap(),
+        };
 
         let mut cfg = match self.client_auth {
             ClientAuth::Yes => cfg

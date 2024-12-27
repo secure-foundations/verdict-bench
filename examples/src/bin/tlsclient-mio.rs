@@ -29,7 +29,7 @@ use mio::net::TcpStream;
 use rustls::crypto::{aws_lc_rs as provider, CryptoProvider};
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
-use rustls::webpki::{ChromePolicy, FirefoxPolicy, OpenSSLPolicy};
+use rustls::VerdictPolicy;
 use rustls::RootCertStore;
 
 const CLIENT: mio::Token = mio::Token(0);
@@ -456,21 +456,15 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
                 .expect("Cannot open CA file")
                 .map(|result| result.unwrap());
 
-            match args.validator {
-                CertVerifierName::VerdictChrome => config.with_verdict_verifier(
-                    ChromePolicy::default(),
-                    roots_der,
-                ),
-                CertVerifierName::VerdictFirefox => config.with_verdict_verifier(
-                    FirefoxPolicy::default(),
-                    roots_der,
-                ),
-                CertVerifierName::VerdictOpenSSL => config.with_verdict_verifier(
-                    OpenSSLPolicy::default(),
-                    roots_der,
-                ),
+            let policy = match args.validator {
+                CertVerifierName::VerdictChrome => VerdictPolicy::Chrome,
+                CertVerifierName::VerdictFirefox => VerdictPolicy::Firefox,
+                CertVerifierName::VerdictOpenSSL => VerdictPolicy::OpenSSL,
                 _ => unimplemented!(),
-            }.expect("failed to initialize verdict with the given root CAs")
+            };
+
+            config.with_verdict_verifier(policy, roots_der)
+                .expect("failed to initialize verdict with the given root CAs")
         }
     };
 

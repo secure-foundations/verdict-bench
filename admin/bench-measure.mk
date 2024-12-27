@@ -39,6 +39,25 @@ measure: $(BENCH)
 	$^ handshake-resume TLS13_AES_256_GCM_SHA384
 	$^ handshake-ticket TLS13_AES_256_GCM_SHA384
 
+verdict-bench: $(BENCH)
+	@echo "RSA 2048 (libcrux)"
+	@$^ --validator verdict-chrome --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator verdict-firefox --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator verdict-openssl --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator default --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+
+	@echo "ECDSA-P256 (libcrux)"
+	@$^ --validator verdict-chrome --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator verdict-firefox --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator verdict-openssl --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator default --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+
+	@echo "ECDSA-P384 (aws-lc)"
+	@$^ --validator verdict-chrome --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator verdict-firefox --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator verdict-openssl --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+	@$^ --validator default --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+
 memory: $(BENCH)
 	$(MEMUSAGE) $^ memory TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 100
 	$(MEMUSAGE) $^ memory TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 1000
