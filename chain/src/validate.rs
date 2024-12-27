@@ -929,3 +929,76 @@ impl<'a, P: Policy> Validator<'a, P> {
         Ok(())
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use policy::{ChromePolicy, ExecPurpose, FirefoxPolicy, OpenSSLPolicy};
+
+    use super::*;
+
+    /// Extract a list of base64 encoded certificates from a PEM-encoded string
+    fn pem_to_base64(pem: &str) -> Vec<Vec<u8>> {
+        const BEGIN: &'static str = "-----BEGIN CERTIFICATE-----";
+        const END: &'static str = "-----END CERTIFICATE-----";
+
+        pem.split(BEGIN)
+            .skip(1)
+            .filter_map(|part|
+                // Remove suffix
+                part.split(END).next().map(|cert|
+                    // Remove whitespaces
+                    cert.chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect::<String>()
+                        .into_bytes()))
+            .collect()
+    }
+
+    const TESTS: &[(&str, &str, u64, bool)] = &[
+        (include_str!("../tests/chains/github.pem"), "github.com", 1725029869, true),
+        (include_str!("../tests/chains/google.pem"), "google.com", 1725029869, true),
+        (include_str!("../tests/chains/outlook.pem"), "outlook.com", 1725029869, true),
+        (include_str!("../tests/chains/slack.pem"), "slack.com", 1725029869, true),
+        (include_str!("../tests/chains/verus.pem"), "verus.rs", 1725029869, true),
+    ];
+
+    macro_rules! test_policy {
+        ($policy:expr) => {
+            let roots_base64 = pem_to_base64(include_str!("../tests/roots.pem"));
+
+            for (pem, hostname, now, expected) in TESTS {
+                let chain_base64 = pem_to_base64(pem);
+
+                let res = validate_x509_base64(
+                    &roots_base64,
+                    &chain_base64,
+                    $policy,
+                    &ExecTask {
+                        hostname: Some(hostname.to_string()),
+                        purpose: ExecPurpose::ServerAuth,
+                        now: *now,
+                    }
+                );
+
+                assert!(res.is_ok());
+                assert_eq!(res.unwrap(), *expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_well_known_sites_chrome() {
+        test_policy!(ChromePolicy::default());
+    }
+
+    #[test]
+    fn test_well_known_sites_firefox() {
+        test_policy!(FirefoxPolicy::default());
+    }
+
+    #[test]
+    fn test_well_known_sites_openssl() {
+        test_policy!(OpenSSLPolicy::default());
+    }
+}
