@@ -235,6 +235,7 @@ impl<Inner, 'a> Combinator for Tag<Inner, &'a [u8]> where
 }
 
 #[cfg(test)]
+#[allow(unused)]
 mod test {
     use crate::regular::choice::OrdChoice;
     use super::*;

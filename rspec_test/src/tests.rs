@@ -1,5 +1,8 @@
+#![allow(unused)]
+
 use vstd::prelude::*;
 use rspec::test_rspec;
+#[allow(unused_imports)]
 use rspec_lib::*;
 
 test_rspec!(mod simple_struct1 {

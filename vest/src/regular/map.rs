@@ -257,7 +257,7 @@ pub trait TryFromInto: View where
     <Self::SrcOwned as View>::V: SpecTryFrom<<Self::DstOwned as View>::V>,
     <Self::DstOwned as View>::V: SpecTryFrom<<Self::SrcOwned as View>::V>,
  {
-    /// The source type 
+    /// The source type
     type Src<'a>: View<V = <Self::SrcOwned as View>::V> + TryFrom<Self::Dst<'a>>;
 
     /// The destination type
@@ -443,6 +443,7 @@ impl<Inner, M> Combinator for TryMap<
 }
 
 #[cfg(test)]
+#[allow(unused)]
 mod test {
     use super::*;
     use super::super::uints::*;

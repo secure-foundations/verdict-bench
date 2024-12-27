@@ -5,7 +5,7 @@ use super::*;
 verus! {
 
 /// Macro for generating a mapper
-/// ```
+/// ```text
 /// mapper! {
 ///     struct ValidityMapper;
 ///

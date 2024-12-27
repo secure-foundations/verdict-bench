@@ -246,6 +246,7 @@ impl<Fst, Snd, F> Combinator for Depend<Fst, Snd, F> where
 }
 
 #[cfg(test)]
+#[allow(unused)]
 mod test {
     use crate::properties::*;
     use crate::regular::{
@@ -493,7 +494,7 @@ mod test {
         pub a: Seq<u8>,
     }
 
-    pub type SpecMsg3Inner = (Seq<u8>);
+    pub type SpecMsg3Inner = Seq<u8>;
 
     pub struct Msg3<'a> {
         pub a: &'a [u8],
@@ -503,9 +504,9 @@ mod test {
         pub a: Vec<u8>,
     }
 
-    pub type Msg3Inner<'a> = (&'a [u8]);
+    pub type Msg3Inner<'a> = &'a [u8];
 
-    pub type Msg3InnerOwned = (Vec<u8>);
+    pub type Msg3InnerOwned = Vec<u8>;
 
     impl View for Msg3<'_> {
         type V = SpecMsg3;
@@ -549,7 +550,7 @@ mod test {
 
     impl From<Msg3Owned> for Msg3InnerOwned {
         fn ex_from(e: Msg3Owned) -> (res: Msg3InnerOwned) {
-            (e.a)
+            e.a
         }
     }
 

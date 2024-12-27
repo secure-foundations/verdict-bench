@@ -44,7 +44,7 @@
 //!
 //! # Example: Parsing and serializing a pair of bytes
 //!
-//! ```rust
+//! ```text
 //! use vest::regular::bytes::Bytes;
 //!
 //! let pair_of_bytes = (Bytes(1), Bytes(2));
@@ -62,7 +62,7 @@
 //!
 //! # Example: Constructing a new combinator
 //!
-//! ```rust
+//! ```text
 //! use vest::regular::uints::U8;
 //! use vest::regular::refined::{Refined, Pred};
 //!

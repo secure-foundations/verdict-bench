@@ -123,7 +123,7 @@ pub closed spec fn spec_pkcs1_v1_5_verify(
 /// the message according to the digest algorithm.
 ///
 /// `pub_key` is an ASN.1 encoded public key:
-/// ```
+/// ```text
 ///     RSAPublicKey ::= SEQUENCE {
 ///         modulus            INTEGER, -- n
 ///         publicExponent     INTEGER  -- e --
