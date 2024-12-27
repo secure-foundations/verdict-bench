@@ -436,6 +436,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     /// and all root issuers of the last certificate in the path,
     /// check if the entire path satisfies the policy
     #[verifier::loop_isolation(false)]
+    #[allow(unexpected_cfgs)]
     fn check_simple_path(
         &self,
         cache: &ValidatorCache,

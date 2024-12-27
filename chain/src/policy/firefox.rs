@@ -1,4 +1,5 @@
 #![allow(unused_parens)]
+#![allow(unexpected_cfgs)]
 
 use vstd::prelude::*;
 
@@ -123,15 +124,6 @@ use exec_has_directory_name_constraint as has_directory_name_constraint;
 use exec_has_dns_name_constraint as has_dns_name_constraint;
 use exec_has_ip_addr_name_constraint as has_ip_addr_name_constraint;
 use exec_check_duplicate_extensions as check_duplicate_extensions;
-
-pub struct EVPolicy {
-    pub oid: SpecString,
-    pub country: Option<SpecString>,
-    pub common_name: Option<SpecString>,
-    pub locality: Option<SpecString>,
-    pub state: Option<SpecString>,
-    pub organization: Option<SpecString>,
-}
 
 pub struct Policy {
     /// NOTE: crlSet in Hammurabi

@@ -223,6 +223,7 @@ macro_rules! wrap_combinator_impls {
 
                 #[verifier::external_body]
                 #[inline(always)]
+                #[allow(unexpected_cfgs)]
                 fn parse<'a>(&self, s: &'a [u8]) -> (res: Result<(usize, Self::Result<'a>), ParseError>) {
                     $(let $field_name: $field_type = self.$field_name;)*
                     let res = $inner_expr.parse(s);

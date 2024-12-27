@@ -1,4 +1,5 @@
 #![allow(unused_parens)]
+#![allow(unexpected_cfgs)]
 
 use vstd::prelude::*;
 #[cfg(trace)] use rspec::rspec_trace as rspec;

@@ -20,6 +20,8 @@ asn1_tagged!(BigInt, tag_of!(INTEGER));
 /// (same as ASN.1) and the most significant bit of the first byte is the sign bit.
 pub type SpecBigIntValue = Seq<u8>;
 pub struct BigIntValue<'a>(&'a [u8]);
+
+#[allow(dead_code)]
 pub struct BigIntOwned(Vec<u8>);
 
 impl<'a> View for BigIntValue<'a> {

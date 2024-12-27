@@ -25,6 +25,7 @@ asn1_tagged!(BitString, tag_of!(BIT_STRING));
 pub type SpecBitStringValue = Seq<u8>;
 
 pub struct BitStringValue<'a>(&'a [u8]);
+#[allow(dead_code)]
 pub struct BitStringValueOwned(Vec<u8>);
 
 impl<'a> PolyfillClone for BitStringValue<'a> {

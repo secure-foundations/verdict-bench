@@ -21,9 +21,11 @@ pub enum ECDSAError {
 }
 
 #[verifier::external_type_specification]
+#[allow(dead_code)]
 pub struct ExAlgorithm(Algorithm);
 
 #[verifier::external_type_specification]
+#[allow(dead_code)]
 pub struct ExDigestAlgorithm(DigestAlgorithm);
 
 #[verifier::external_body]
