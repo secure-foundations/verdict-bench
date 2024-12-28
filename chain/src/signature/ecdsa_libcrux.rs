@@ -1,9 +1,6 @@
-/// Wrapper for libcrux ECDSA interface
-
 use vstd::prelude::*;
 
 use polyfill::slice_drop_first;
-
 use libcrux::signature::{Signature, EcDsaP256Signature, Algorithm, DigestAlgorithm, verify};
 use aws_lc_rs::signature::VerificationAlgorithm;
 
@@ -13,6 +10,20 @@ use parser::asn1::ASN1;
 use parser::x509::*;
 
 verus! {
+
+pub closed spec fn spec_p256_verify(
+    alg: SpecAlgorithmIdentifierValue,
+    pub_key: Seq<u8>,
+    sig: Seq<u8>,
+    msg: Seq<u8>,
+) -> bool;
+
+pub closed spec fn spec_p384_verify(
+    alg: SpecAlgorithmIdentifierValue,
+    pub_key: Seq<u8>,
+    sig: Seq<u8>,
+    msg: Seq<u8>,
+) -> bool;
 
 pub enum ECDSAError {
     InvalidSignature,
@@ -53,14 +64,7 @@ fn p256_verify_internal(
     verify(msg, &sig, pub_key).is_ok()
 }
 
-pub closed spec fn spec_p256_verify(
-    alg: SpecAlgorithmIdentifierValue,
-    pub_key: Seq<u8>,
-    sig: Seq<u8>,
-    msg: Seq<u8>,
-) -> bool;
-
-/// Verify ECDSA P-256 signature with SHA-256/SHA-384/SHA-512
+/// Verify ECDSA P-256 signature with SHA-256/SHA-384
 /// through libcrux/EverCrypt
 #[verifier::external_body]
 pub fn p256_verify(
@@ -111,13 +115,6 @@ pub fn p256_verify(
         Err(ECDSAError::VerificationFailed)
     }
 }
-
-pub closed spec fn spec_p384_verify(
-    alg: SpecAlgorithmIdentifierValue,
-    pub_key: Seq<u8>,
-    sig: Seq<u8>,
-    msg: Seq<u8>,
-) -> bool;
 
 /// Verify ECDSA P-384 signature with SHA-384
 /// (currently other SHA-2 hash functions are not supported

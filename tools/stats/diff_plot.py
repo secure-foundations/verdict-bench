@@ -6,19 +6,19 @@ import subprocess
 
 results = [
     ("CT", (
-        ("Chrome", "../frontend/diff-results/chrome-v2.txt", "../frontend/diff-results/verdict-chrome-v11.txt"),
-        ("Firefox", "../frontend/diff-results/firefox-no-required-tls-features.txt", "../frontend/diff-results/verdict-firefox-v6.txt"),
-        ("OpenSSL", "../frontend/diff-results/openssl-v5.txt", "../frontend/diff-results/verdict-openssl-v6.txt"),
+        ("Chrome", "../../diff-results/chrome-v2.txt", "../../diff-results/verdict-chrome-v11.txt"),
+        ("Firefox", "../../diff-results/firefox-no-required-tls-features.txt", "../../diff-results/verdict-firefox-v6.txt"),
+        ("OpenSSL", "../../diff-results/openssl-v5.txt", "../../diff-results/verdict-openssl-v6.txt"),
     )),
 
     ("Limbo", (
-        ("Chrome", "../frontend/limbo-results/chrome.txt", "../frontend/limbo-results/verdict-chrome-v12.txt"),
-        ("Firefox", "../frontend/limbo-results/firefox.txt", "../frontend/limbo-results/verdict-firefox-v2.txt"),
-        ("OpenSSL", "../frontend/limbo-results/openssl-v5.txt", "../frontend/limbo-results/verdict-openssl-v5.txt"),
+        ("Chrome", "../../limbo-results/chrome.txt", "../../limbo-results/verdict-chrome-v12.txt"),
+        ("Firefox", "../../limbo-results/firefox.txt", "../../limbo-results/verdict-firefox-v2.txt"),
+        ("OpenSSL", "../../limbo-results/openssl-v5.txt", "../../limbo-results/verdict-openssl-v5.txt"),
     )),
 ]
 
-diff_command = ["../frontend/target/release/frontend", "diff-results"]
+diff_command = ["../../target/release/frontend", "diff-results"]
 
 print("\\begin{tabular}{clrrrr}")
 print("Test & Impl. & A/A & A/R & R/A & R/R \\\\")

@@ -25,24 +25,24 @@ slow_group = ["CERES", "ARMOR", "Hammurabi"]
 
 # List of implementations and their corresponding CSV file paths
 implementations = [
-    ("CERES", "../frontend/perf-results/results-ceres-part-2.txt"),
-    ("ARMOR", "../frontend/perf-results/results-armor-part-2.txt"),
-    ("Hammurabi", "../frontend/perf-results/results-hammurabi-part-2.txt"),
+    ("CERES", "../../perf-results/results-ceres-part-2.txt"),
+    ("ARMOR", "../../perf-results/results-armor-part-2.txt"),
+    ("Hammurabi", "../../perf-results/results-hammurabi-part-2.txt"),
 
-    ("OpenSSL", "../frontend/perf-results/results-openssl-part-2.txt"),
+    ("OpenSSL", "../../perf-results/results-openssl-part-2.txt"),
 
-    # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2.txt"),
-    # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v2.txt"),
-    # ("Verdict/Chrome 2", "../frontend/perf-results/results-verdict-chrome-part-2-v3.txt"),
-    # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v4.txt"),
-    # ("Verdict/Chrome", "../frontend/perf-results/results-verdict-chrome-part-2-v7.txt"),
-    ("\\textbf{V/Chrome}", "../frontend/perf-results/results-verdict-chrome-part-2-v8.txt"),
-    # ("Verdict/Firefox", "../frontend/perf-results/results-verdict-firefox-part-2.txt"),
-    ("\\textbf{V/OpenSSL}", "../frontend/perf-results/results-verdict-openssl-part-2-v5.txt"),
-    ("\\textbf{V/Firefox}", "../frontend/perf-results/results-verdict-firefox-part-2-v5.txt"),
+    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2.txt"),
+    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2-v2.txt"),
+    # ("Verdict/Chrome 2", "../../perf-results/results-verdict-chrome-part-2-v3.txt"),
+    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2-v4.txt"),
+    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2-v7.txt"),
+    ("\\textbf{V/Chrome}", "../../perf-results/results-verdict-chrome-part-2-v10.txt"),
+    # ("Verdict/Firefox", "../../perf-results/results-verdict-firefox-part-2.txt"),
+    ("\\textbf{V/OpenSSL}", "../../perf-results/results-verdict-openssl-part-2-v5.txt"),
+    ("\\textbf{V/Firefox}", "../../perf-results/results-verdict-firefox-part-2-v5.txt"),
 
-    ("Firefox", "../frontend/perf-results/results-firefox-part-2.txt"),
-    ("Chrome", "../frontend/perf-results/results-chrome-part-2.txt"),
+    ("Firefox", "../../perf-results/results-firefox-part-2.txt"),
+    ("Chrome", "../../perf-results/results-chrome-part-2.txt"),
 ]
 
 all_data = []

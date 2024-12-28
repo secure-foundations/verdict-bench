@@ -6,8 +6,7 @@ use vstd::prelude::*;
 use polyfill::*;
 use parser::{*, asn1::*, x509::*};
 
-use crate::rsa;
-use crate::ecdsa;
+use crate::signature::*;
 
 verus! {
 

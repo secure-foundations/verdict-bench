@@ -30,6 +30,14 @@ pub struct RSAPublicKeyInternal {
     key: *mut u64,
 }
 
+pub closed spec fn spec_pkcs1_v1_5_load_pub_key(pub_key: Seq<u8>) -> Option<RSAPublicKeyInternal>;
+pub closed spec fn spec_pkcs1_v1_5_verify(
+    alg: SpecAlgorithmIdentifierValue,
+    pub_key: RSAPublicKeyInternal,
+    sig: Seq<u8>,
+    msg: Seq<u8>,
+) -> bool;
+
 impl Drop for RSAPublicKeyInternal {
     #[verifier::external_body]
     fn drop(&mut self)
@@ -107,14 +115,6 @@ fn hacl_rsa_decrypt(
         None
     }
 }
-
-pub closed spec fn spec_pkcs1_v1_5_load_pub_key(pub_key: Seq<u8>) -> Option<RSAPublicKeyInternal>;
-pub closed spec fn spec_pkcs1_v1_5_verify(
-    alg: SpecAlgorithmIdentifierValue,
-    pub_key: RSAPublicKeyInternal,
-    sig: Seq<u8>,
-    msg: Seq<u8>,
-) -> bool;
 
 /// Verify RSA PKCS#1 v1.5 signature
 ///

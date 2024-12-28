@@ -8,7 +8,7 @@ use parser::{*, x509::*, asn1::BitStringValue};
 use polyfill::*;
 
 use crate::policy::{self,Policy, Task, ExecTask};
-use crate::rsa;
+use crate::signature::*;
 use crate::issue::*;
 use crate::error::*;
 
