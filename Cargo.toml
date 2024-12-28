@@ -15,6 +15,10 @@ default-members = [
     "frontend",
 ]
 
+exclude = [
+    "tools/verusc",
+]
+
 resolver = "2"
 
 [profile.release]
