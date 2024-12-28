@@ -16,6 +16,13 @@ vargo build --release
 Then use `target/release/frontend` to run benchmark or tests
 (see `target/release/frontend --help` for more options).
 
+By default, we only use crypto primitives that are verified from [libcrux](https://github.com/cryspen/libcrux) and [aws-lc-rs](https://github.com/aws/aws-lc-rs).
+To use primitives entirely from `aws-lc-rs` which might have better performance but include unverified signature checking for RSA and ECDSA P-256,
+compile with
+```
+vargo build --release --feature aws-lc
+```
+
 To run all tests
 ```
 vargo test --workspace
