@@ -47,6 +47,7 @@ tls12 = []
 read_buf = ["rustversion", "std"]
 fips = ["aws_lc_rs", "aws-lc-rs?/fips"]
 zlib = ["dep:zlib-rs"]
+verdict-aws-lc = ["chain/aws-lc"]
 
 [dev-dependencies]
 base64 = { workspace = true }
