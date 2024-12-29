@@ -24,4 +24,4 @@ rand = "0.8.5"
 
 [features]
 default = []
-aws_lc = ["chain/aws_lc"]
+aws-lc = ["chain/aws-lc"]

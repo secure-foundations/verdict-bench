@@ -30,19 +30,16 @@ implementations = [
     ("Hammurabi", "../../perf-results/results-hammurabi-part-2.txt"),
 
     ("OpenSSL", "../../perf-results/results-openssl-part-2.txt"),
-
-    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2.txt"),
-    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2-v2.txt"),
-    # ("Verdict/Chrome 2", "../../perf-results/results-verdict-chrome-part-2-v3.txt"),
-    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2-v4.txt"),
-    # ("Verdict/Chrome", "../../perf-results/results-verdict-chrome-part-2-v7.txt"),
-    ("\\textbf{V/Chrome}", "../../perf-results/results-verdict-chrome-part-2-v10.txt"),
-    # ("Verdict/Firefox", "../../perf-results/results-verdict-firefox-part-2.txt"),
-    ("\\textbf{V/OpenSSL}", "../../perf-results/results-verdict-openssl-part-2-v5.txt"),
-    ("\\textbf{V/Firefox}", "../../perf-results/results-verdict-firefox-part-2-v5.txt"),
+    ("\\textbf{V/OpenSSL$^\\diamond$}", "../../perf-results/results-verdict-openssl-part-2-v5.txt"),
+    ("\\textbf{V/OpenSSL$^\\star$}", "../../perf-results/results-verdict-openssl-part-2-aws-lc.txt"),
 
     ("Firefox", "../../perf-results/results-firefox-part-2.txt"),
+    ("\\textbf{V/Firefox$^\\diamond$}", "../../perf-results/results-verdict-firefox-part-2-v5.txt"),
+    ("\\textbf{V/Firefox$^\\star$}", "../../perf-results/results-verdict-firefox-part-2-aws-lc.txt"),
+
     ("Chrome", "../../perf-results/results-chrome-part-2.txt"),
+    ("\\textbf{V/Chrome$^\\diamond$}", "../../perf-results/results-verdict-chrome-part-2-v10.txt"),
+    ("\\textbf{V/Chrome$^\\star$}", "../../perf-results/results-verdict-chrome-part-2-aws-lc.txt"),
 ]
 
 all_data = []
@@ -147,12 +144,12 @@ def plot_two_groups(combined_df):
 
 
 def plot_simple(combined_df):
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(20, 5))
 
     combined_df = combined_df[~combined_df["impl"].isin(slow_group)]
     sns.boxplot(
         x="impl", y="min_time", data=combined_df,
-        flierprops=dict(marker=".", color="black", alpha=0.3),
+        flierprops=dict(marker=".", color="black", alpha=0.1),
         # boxprops=dict(linewidth=0.5),
         # whiskerprops=dict(linewidth=0.5),
         # capprops=dict(linewidth=0.5),

@@ -124,6 +124,7 @@ impl Drop for CommonBenchInstance {
 pub enum HarnessName {
     Chrome,
     Firefox,
+    #[clap(name="openssl")]
     OpenSSL,
     Armor,
     HammurabiChrome,
@@ -131,6 +132,7 @@ pub enum HarnessName {
     Ceres,
     VerdictChrome,
     VerdictFirefox,
+    #[clap(name="verdict-openssl")]
     VerdictOpenSSL,
 }
 

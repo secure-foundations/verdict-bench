@@ -20,7 +20,7 @@ rspec-lib = { path = "../rspec_lib" }
 
 [features]
 default = []
-aws_lc = []
+aws-lc = []
 
 [verus]
 extra_flags = "--no-lifetime"
