@@ -20,8 +20,8 @@ impl Harness for OpenSSLHarness {
         }
 
         let mut cmd = process::Command::new(bin_path);
-        cmd.arg(roots_path)
-            // Use libfaketime to change the validation time
+        cmd.current_dir(&self.repo)
+            .arg(roots_path)
             .arg(timestamp.to_string())
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped());

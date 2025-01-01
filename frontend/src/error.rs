@@ -90,6 +90,9 @@ pub enum Error {
 
     #[error("Limbo test error: {0}")]
     LimboError(String),
+
+    #[error("root certificates not found at {0}")]
+    RootsNotFound(String),
 }
 
 impl From<X509ParseError> for Error {

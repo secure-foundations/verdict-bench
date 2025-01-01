@@ -29,16 +29,16 @@ implementations = [
     ("ARMOR", "../../perf-results/results-armor-part-2.txt"),
     ("Hammurabi", "../../perf-results/results-hammurabi-part-2.txt"),
 
-    ("OpenSSL", "../../perf-results/results-openssl-part-2.txt"),
-    ("\\textbf{V/OpenSSL$^\\diamond$}", "../../perf-results/results-verdict-openssl-part-2-v5.txt"),
+    ("OpenSSL", "../../perf-results/results-openssl-part-2-v2.txt"),
+    ("\\textbf{V/OpenSSL}", "../../perf-results/results-verdict-openssl-part-2-v5.txt"),
     ("\\textbf{V/OpenSSL$^\\star$}", "../../perf-results/results-verdict-openssl-part-2-aws-lc.txt"),
 
     ("Firefox", "../../perf-results/results-firefox-part-2.txt"),
-    ("\\textbf{V/Firefox$^\\diamond$}", "../../perf-results/results-verdict-firefox-part-2-v5.txt"),
+    ("\\textbf{V/Firefox}", "../../perf-results/results-verdict-firefox-part-2-v5.txt"),
     ("\\textbf{V/Firefox$^\\star$}", "../../perf-results/results-verdict-firefox-part-2-aws-lc.txt"),
 
     ("Chrome", "../../perf-results/results-chrome-part-2.txt"),
-    ("\\textbf{V/Chrome$^\\diamond$}", "../../perf-results/results-verdict-chrome-part-2-v10.txt"),
+    ("\\textbf{V/Chrome}", "../../perf-results/results-verdict-chrome-part-2-v10.txt"),
     ("\\textbf{V/Chrome$^\\star$}", "../../perf-results/results-verdict-chrome-part-2-aws-lc.txt"),
 ]
 

@@ -1,6 +1,7 @@
 use std::io;
 use std::fs::File;
 use std::net::IpAddr;
+use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
@@ -137,6 +138,10 @@ pub fn main(args: Args) -> Result<(), Error> {
     if args.csv_files.is_empty() {
         eprintln!("no csv files given");
         return Ok(());
+    }
+
+    if !Path::new(&args.roots).is_file() {
+        return Err(Error::RootsNotFound(args.roots.to_string()));
     }
 
     let timestamp = args.override_time.unwrap_or(Utc::now().timestamp()) as u64;
