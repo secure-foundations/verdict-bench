@@ -6,3 +6,6 @@
 	path = src/armor-driver
 	url = https://github.com/secure-foundations/verdict-bench.git
 	branch = armor-driver
+[submodule "agda"]
+	path = agda
+	url = https://github.com/agda/agda.git
