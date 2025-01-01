@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pip3 install pyinstaller
+# pip3 install pyinstaller
 
 # rm -rf ~/.residuals 2> /dev/null
 # rm -rf ~/.armor 2> /dev/null
