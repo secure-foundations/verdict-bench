@@ -1,0 +1,24 @@
+[submodule "chromium"]
+	path = chromium
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = chromium
+[submodule "firefox"]
+	path = firefox
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = firefox
+[submodule "hammurabi"]
+	path = hammurabi
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = hammurabi
+[submodule "armor"]
+	path = armor
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = armor
+[submodule "ceres"]
+	path = ceres
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = ceres
+[submodule "openssl"]
+	path = openssl
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = openssl
