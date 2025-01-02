@@ -180,11 +180,16 @@ pub struct HarnessArgs {
 
 /// Generate a dynamic Harness according the given arguments
 pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn Harness>, Error> {
+    let bench_repo = match args.bench_repo.clone() {
+        Some(p) => std::fs::canonicalize(p).ok().map(|p| p.to_string_lossy().to_string()),
+        None => None,
+    };
+
     Ok(match args.name {
         HarnessName::Chrome =>
             Box::new(ChromeHarness {
                 repo: args.chrome_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/chromium"))
+                    .or(bench_repo.clone().map(|p| p + "/chromium"))
                     .ok_or(Error::CommonBenchError("chrome repo not specified".to_string()))?,
                 faketime_lib: args.faketime_lib.clone(),
                 debug,
@@ -193,7 +198,7 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
         HarnessName::Firefox =>
             Box::new(FirefoxHarness {
                 repo: args.firefox_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/firefox"))
+                    .or(bench_repo.clone().map(|p| p + "/firefox"))
                     .ok_or(Error::CommonBenchError("firefox repo not specified".to_string()))?,
                     debug,
             }),
@@ -201,7 +206,7 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
         HarnessName::OpenSSL =>
             Box::new(OpenSSLHarness {
                 repo: args.openssl_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/openssl"))
+                    .or(bench_repo.clone().map(|p| p + "/openssl"))
                     .ok_or(Error::CommonBenchError("openssl repo not specified".to_string()))?,
                 debug,
             }),
@@ -209,7 +214,7 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
         HarnessName::Armor =>
             Box::new(ArmorHarness {
                 repo: args.armor_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/armor"))
+                    .or(bench_repo.clone().map(|p| p + "/armor"))
                     .ok_or(Error::CommonBenchError("armor repo not specified".to_string()))?,
                 faketime_lib: args.faketime_lib.clone(),
                 debug,
@@ -218,7 +223,7 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
         HarnessName::HammurabiChrome =>
             Box::new(HammurabiHarness {
                 repo: args.hammurabi_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/hammurabi"))
+                    .or(bench_repo.clone().map(|p| p + "/hammurabi"))
                     .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
                 policy: HammurabiPolicy::Chrome,
                 debug,
@@ -227,7 +232,7 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
         HarnessName::HammurabiFirefox =>
             Box::new(HammurabiHarness {
                 repo: args.hammurabi_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/hammurabi"))
+                    .or(bench_repo.clone().map(|p| p + "/hammurabi"))
                     .ok_or(Error::CommonBenchError("hammurabi repo not specified".to_string()))?,
                 policy: HammurabiPolicy::Firefox,
                 debug,
@@ -236,7 +241,7 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
         HarnessName::Ceres =>
             Box::new(CeresHarness {
                 repo: args.ceres_repo.clone()
-                    .or(args.bench_repo.clone().map(|p| p + "/ceres"))
+                    .or(bench_repo.clone().map(|p| p + "/ceres"))
                     .ok_or(Error::CommonBenchError("ceres repo not specified".to_string()))?,
                 faketime_lib: args.faketime_lib.clone(),
                 debug,
