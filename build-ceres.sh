@@ -9,9 +9,9 @@ cur=$(pwd)
 mkdir -p build
 
 ## install pre-requisite packages
-sudo apt-get update
-sudo apt-get -y install python3 python3-pip ghc libghc-regex-compat-dev libghc-text-icu-dev
-pip3 install parsec pysmt --break-system-packages
+# sudo apt-get update
+# sudo apt-get -y install python3 python3-pip ghc libghc-regex-compat-dev libghc-text-icu-dev
+# pip3 install parsec pysmt --break-system-packages
 
 cd src/extras/stringprep
 ./build.sh
