@@ -42,9 +42,6 @@ do-bench-%: $(VERDICT)
 		echo "CT_LOG is not set"; \
 		exit 1; \
 	fi
-	@if [ -n "$(ISOLATE_CORES)" ]; then \
-		echo "current isolated cores: $$(cat /sys/devices/system/cpu/isolated)"; \
-	fi
 # ceres requires some Python dependencies
 	$(if $(filter ceres,$*),python3 -m venv .venv && \
 	source .venv/bin/activate && \
@@ -62,6 +59,9 @@ do-bench-%: $(VERDICT)
 reduce-noise:
 # Disable hyperthreading
 	echo off | sudo tee /sys/devices/system/cpu/smt/control
+	@if [ -n "$(ISOLATE_CORES)" ]; then \
+		echo "current isolated cores: $$(cat /sys/devices/system/cpu/isolated)"; \
+	fi
 	@if [ -n "$(ISOLATE_CORES)" ] && [ -n "$(CORE_FREQUENCY)" ]; then \
 		sudo modprobe cpufreq_userspace; \
 		sudo cpupower -c $(ISOLATE_CORES) frequency-set --governor userspace; \
@@ -86,11 +86,11 @@ bench-firefox: do-bench-firefox
 bench-openssl: do-bench-openssl
 
 .PHONY: bench-armor
-bench-armor: override BENCH_FLAGS += --sample 0.01
+bench-armor: override BENCH_FLAGS += --sample 0.001
 bench-armor: do-bench-armor
 
 .PHONY: bench-ceres
-bench-ceres: override BENCH_FLAGS += --sample 0.01
+bench-ceres: override BENCH_FLAGS += --sample 0.001
 bench-ceres: do-bench-ceres
 
 .PHONY: bench-hammurabi-chrome
