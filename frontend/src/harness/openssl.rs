@@ -21,7 +21,7 @@ impl Harness for OpenSSLHarness {
 
         let mut cmd = process::Command::new(bin_path);
         cmd.current_dir(&self.repo)
-            .arg(roots_path)
+            .arg(std::fs::canonicalize(roots_path)?)
             .arg(timestamp.to_string())
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped());
