@@ -5,8 +5,8 @@ FROM cruizba/ubuntu-dind:noble-latest
 # Some dependencies for compiling OpenSSL, Hammurabi, ARMOR, and CERES
 RUN apt-get update && \
     apt-get install -y \
-        build-essential git locales swi-prolog \
-        zlib1g-dev libncurses5-dev \
+        build-essential git locales swi-prolog sudo \
+        zlib1g-dev libncurses5-dev opam \
         python3 python3-pip ghc libghc-regex-compat-dev libghc-text-icu-dev && \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
@@ -22,3 +22,5 @@ RUN curl -sSL https://get.haskellstack.org/ | sh && \
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 RUN git config --global safe.directory '*'
+
+ENV PATH="$PATH:/root/.cargo/bin"

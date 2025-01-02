@@ -1,5 +1,6 @@
 DOCKER = sudo docker
 DOCKER_IMAGE_TAG = verdict-bench-build
+DOCKER_FLAGS = --privileged
 
 DEPS = armor ceres openssl hammurabi chromium firefox
 
@@ -8,6 +9,7 @@ CURRENT_DIR = $(shell pwd)
 .PHONY: deps
 deps: build-env submodules
 	$(DOCKER) run -it --init \
+		$(DOCKER_FLAGS) \
 		-v $(CURRENT_DIR):$(CURRENT_DIR) \
 		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG) \
@@ -16,6 +18,7 @@ deps: build-env submodules
 .PHONY: dep-%
 dep-%: build-env submodules
 	$(DOCKER) run -it --init \
+		$(DOCKER_FLAGS) \
 		-v $(CURRENT_DIR):$(CURRENT_DIR) \
 		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG) \
@@ -32,6 +35,7 @@ build-env:
 .PHONY: enter
 enter: build-env
 	$(DOCKER) run -it --init \
+		$(DOCKER_FLAGS) \
 		-v $(CURRENT_DIR):$(CURRENT_DIR) \
 		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG)
