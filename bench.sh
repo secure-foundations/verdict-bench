@@ -26,10 +26,11 @@ run_with_timer() {
         if [ -f "$output_file" ]; then
             processed="$(wc -l < $output_file)"
             if [ "$processed" -ne 0 ]; then
-                eta_seconds="$(echo "scale=0; ($total_ct_logs - $processed) / $processed * $SECONDS" | bc)"
-                printf "\033[2K\rprocessed: %d (%.4f%%), elapsed: %02d:%02d:%02d, eta: %02d:%02d:%02d" \
+                eta_seconds="$(echo "scale=4; ($total_ct_logs - $processed) / $processed * $SECONDS" | bc)"
+                eta_seconds="$(printf -v int %.0f "$eta_seconds")"
+                printf "\033[2K\rprocessed: %d (%.2f%%), elapsed: %02d:%02d:%02d, eta: %02d:%02d:%02d" \
                     $processed \
-                    "$(echo "scale=4; $processed / $total_ct_logs" | bc)" \
+                    "$(echo "scale=4; $processed / $total_ct_logs * 100" | bc)" \
                     $((SECONDS / 3600)) $(((SECONDS / 60) % 60)) $((SECONDS % 60)) \
                     $((eta_seconds / 3600)) $(((eta_seconds / 60) % 60)) $((eta_seconds % 60))
             else
