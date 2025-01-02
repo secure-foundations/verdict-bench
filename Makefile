@@ -21,6 +21,10 @@ TIMESTAMP = 1601603624
 REPEAT = 10
 NO_DOMAIN = ceres armor # Implementations that do not support hostname validation
 
+# Settings for reducing noise (need to be changed on the test machine)
+ISOLATE_CORES = # e.g. 0,2,4,6
+CORE_FREQUENCY = # e.g. 2401000
+
 # To be configured
 CT_LOG = # Main CT log directory
 BENCH_FLAGS = # Additional benchmarking flags
@@ -38,17 +42,39 @@ do-bench-%: $(VERDICT)
 		echo "CT_LOG is not set"; \
 		exit 1; \
 	fi
+	@if [ -n "$(ISOLATE_CORES)" ]; then \
+		echo "current isolated cores: $$(cat /sys/devices/system/cpu/isolated)"; \
+	fi
 # ceres requires some Python dependencies
 	$(if $(filter ceres,$*),python3 -m venv .venv && \
 	source .venv/bin/activate && \
 	pip3 install -r requirements.txt &&,) \
-	$(VERDICT) bench-ct-logs $* \
+	$(if $(ISOLATE_CORES),taskset -c $(ISOLATE_CORES),) $(VERDICT) bench-ct-logs $* \
 		$(ROOTS) $(CT_LOG_INTS) $(CT_LOG_TESTS) \
 		-t $(TIMESTAMP) \
 		-n $(REPEAT) \
 		--bench-repo . \
 		$(if $(filter $(NO_DOMAIN),$*),--no-domain,) \
 		$(BENCH_FLAGS) > $(BENCH_OUTPUT)
+
+# Some configurations to reduce noise
+.PHONY: reduce-noise
+reduce-noise:
+# Disable hyperthreading
+	echo off | sudo tee /sys/devices/system/cpu/smt/control
+	@if [ -n "$(ISOLATE_CORES)" ] && [ -n "$(CORE_FREQUENCY)" ]; then \
+		sudo modprobe cpufreq_userspace; \
+		sudo cpupower -c $(ISOLATE_CORES) frequency-set --governor userspace; \
+		sudo cpupower -c $(ISOLATE_CORES) frequency-set --freq $(CORE_FREQUENCY); \
+	fi
+
+# Restore some settings changed in reduce-noise
+.PHONY: restore-sys
+restore-sys:
+	echo on | sudo tee /sys/devices/system/cpu/smt/control
+	@if [ -n "$(ISOLATE_CORES)" ]; then \
+		sudo cpupower -c $(ISOLATE_CORES) frequency-set --governor powersave; \
+	fi
 
 .PHONY: bench-chrome
 bench-chrome: do-bench-chrome
