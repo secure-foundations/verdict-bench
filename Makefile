@@ -2,10 +2,32 @@ DOCKER = sudo docker
 DOCKER_IMAGE_TAG = verdict-bench-build
 DOCKER_FLAGS = --privileged
 
+VERUS=verus/source/target-verus/release/verus
+VERUSC=verdict/tools/verusc/target/release/verusc
+
 DEPS = armor ceres openssl hammurabi chromium firefox
 
 CURRENT_DIR = $(shell pwd)
 
+# Build Verdict with the vendored version of verus
+.PHONY: verdict
+verdict: $(VERUS) $(VERUSC)
+	cd verdict && \
+	PATH="$(dir $(realpath $(VERUS))):$$PATH" \
+	RUSTC_WRAPPER="$(realpath $(VERUSC))" cargo build --release
+
+$(VERUSC):
+	cd verdict/tools/verusc && cargo build --release
+
+# Verus build currently only supports Bash
+$(VERUS): SHELL = /bin/bash
+$(VERUS):
+	cd verus/source && \
+	./tools/get-z3.sh && \
+	source ../tools/activate && \
+	vargo build --release
+
+# Build all other X.509 implementations in the docker environment
 .PHONY: deps
 deps: build-env submodules
 	$(DOCKER) run -it --init \
