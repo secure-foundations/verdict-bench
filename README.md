@@ -18,11 +18,14 @@ First run the following command to build harnesses for implementations other tha
 make deps
 ```
 This will take a long time since it needs to download and build large projects such as Chromium and Firefox.
+Note that this command won't install random stuff to your host system, and all dependencies are installed within a Docker container.
 On our test machine, this took 1.5 hours.
 This target also uses `sudo` when calling docker.
 
-Then run one implementation on the CT logs by
+Then run an implementation on the CT logs by
 ```
-make bench-chrome CT_LOG=...
+make bench-<impl> CT_LOG=...
 ```
-where `CT_LOG` specifies the main CT logs directory.
+where
+- `<impl>` is one of `verdict-<chrome/firefox/openssl>`, `chrome`, `firefox`, `openssl`, `armor`, `ceres`, `hammurabi`
+- `CT_LOG` specifies the main CT logs directory.
