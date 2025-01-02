@@ -1,10 +1,10 @@
 [submodule "src/armor-agda"]
 	path = src/armor-agda
-	url = https://github.com/secure-foundations/verdict-bench.git
+	url = git@github.com:secure-foundations/verdict-bench.git
 	branch = armor-agda
 [submodule "src/armor-driver"]
 	path = src/armor-driver
-	url = https://github.com/secure-foundations/verdict-bench.git
+	url = git@github.com:secure-foundations/verdict-bench.git
 	branch = armor-driver
 [submodule "agda"]
 	path = agda
