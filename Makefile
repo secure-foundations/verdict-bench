@@ -15,7 +15,6 @@ release: build-env
 		-v $(CURRENT_DIR):/build/local \
 		$(DOCKER_IMAGE_TAG) \
 		make src/out/Release/$(TARGET)
-	sudo chown -R $(USER) src/out
 
 .PHONY: debug
 debug: build-env
@@ -23,7 +22,6 @@ debug: build-env
 		-v $(CURRENT_DIR):/build/local \
 		$(DOCKER_IMAGE_TAG) \
 		make src/out/Debug/$(TARGET)
-	sudo chown -R $(USER) src/out
 
 .PHONY: build-env
 build-env:
@@ -66,11 +64,11 @@ src/.fetched:
 		echo "### fetched chromium@${CHROMIUM_COMMIT}"; \
 	fi
 
-src/out/Debug/%: force
+src/out/Debug/%: src/.fetched force
 	[ -f "src/out/Debug/build.ninja" ] || (cd src && gn gen out/Debug)
 	cd src && autoninja -C out/Debug $*
 
-src/out/Release/%: force
+src/out/Release/%: src/.fetched force
 	[ -f "src/out/Release/build.ninja" ] || (cd src && gn gen out/Release --args="is_debug=false")
 	cd src && autoninja -C out/Release $*
 
