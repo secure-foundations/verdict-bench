@@ -178,6 +178,8 @@ pub fn main(args: Args) -> Result<(), Error> {
         let mut i: usize = 0;
         let mut num_samples: usize = 0;
 
+        let skip = args.skip.unwrap_or(0);
+
         'outer: for path in &args.csv_files {
             let file = File::open(path)?;
             let mut reader = ReaderBuilder::new()
@@ -188,17 +190,15 @@ pub fn main(args: Args) -> Result<(), Error> {
                 let entry: CTLogEntry = entry?;
 
                 if let Some(limit) = args.limit {
-                    if i >= limit {
+                    if i >= limit + skip {
                         break;
                     }
                 }
 
                 i += 1;
 
-                if let Some(skip) = args.skip {
-                    if i <= skip {
-                        continue;
-                    }
+                if i <= skip {
+                    continue;
                 }
 
                 if let Some(sample) = args.sample {
