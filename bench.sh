@@ -79,7 +79,7 @@ for harness in "${harnesses[@]}"; do
         make bench-$harness \
             BENCH_FLAGS="$BENCH_FLAGS" \
             CT_LOG=~/work/mega-crl \
-            CT_LOG_TESTS="$(ls ~/work/mega-crl/certs/cert-list-*.txt | sort)" \
+            CT_LOG_TESTS="$(ls ~/work/mega-crl/certs/cert-list-*.txt | sort | xargs)" \
             ISOLATE_CORES=2,4,6,8 \
             BENCH_OUTPUT=">> bench-results/$harness.txt"
 done
