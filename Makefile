@@ -28,7 +28,7 @@ CORE_FREQUENCY = # e.g. 2401000
 # To be configured
 CT_LOG = # Main CT log directory
 BENCH_FLAGS = # Additional benchmarking flags
-BENCH_OUTPUT = /dev/stdout
+BENCH_OUTPUT = > /dev/stdout
 
 .PHONY: main
 main:
@@ -52,7 +52,7 @@ do-bench-%: $(VERDICT)
 		-n $(REPEAT) \
 		--bench-repo . \
 		$(if $(filter $(NO_DOMAIN),$*),--no-domain,) \
-		$(BENCH_FLAGS) > $(BENCH_OUTPUT)
+		$(BENCH_FLAGS) $(BENCH_OUTPUT)
 
 # Some configurations to reduce noise
 .PHONY: reduce-noise

@@ -21,12 +21,18 @@ run_with_timer() {
     }
     trap clean_up SIGINT SIGTERM
 
+    if [ -f "$output_file" ]; then
+        init_processed="$(wc -l < $output_file)"
+    else
+        init_processed=0
+    fi
+
     while kill -0 $cmd_pid 2>/dev/null; do
         total_ct_logs=10627993
         if [ -f "$output_file" ]; then
             processed="$(wc -l < $output_file)"
-            if [ "$processed" -ne 0 ]; then
-                eta_seconds="$(echo "scale=4; ($total_ct_logs - $processed) / $processed * $SECONDS" | bc)"
+            if [ "$((processed - init_processed))" -ne 0 ]; then
+                eta_seconds="$(echo "scale=4; ($total_ct_logs - $processed) / ($processed - $init_processed) * $SECONDS" | bc)"
                 eta_seconds="$(printf %.0f "$eta_seconds")"
                 printf "\033[2K\rprocessed: %d (%.2f%%), elapsed: %02d:%02d:%02d, eta: %02d:%02d:%02d" \
                     $processed \
@@ -59,6 +65,21 @@ harnesses=(
 
 for harness in "${harnesses[@]}"; do
     echo "### benchmarking $harness ###"
+
+    # Restore progress
+    if [ -f bench-results/$harness.txt ]; then
+        processed="$(wc -l < bench-results/$harness.txt)"
+        BENCH_FLAGS="--skip $processed"
+        echo "restoring progress of $processed certificates"
+    else
+        BENCH_FLAGS=
+    fi
+
     run_with_timer bench-results/$harness.txt \
-        make bench-$harness CT_LOG=~/work/mega-crl ISOLATE_CORES=2,4,6,8 BENCH_OUTPUT=bench-results/$harness.txt
+        make bench-$harness \
+            BENCH_FLAGS="$BENCH_FLAGS" \
+            CT_LOG=~/work/mega-crl \
+            CT_LOG_TESTS="$(ls ~/work/mega-crl/certs/cert-list-*.txt | sort)" \
+            ISOLATE_CORES=2,4,6,8 \
+            BENCH_OUTPUT=">> bench-results/$harness.txt"
 done
