@@ -50,8 +50,12 @@ pub struct Args {
     num_jobs: usize,
 
     /// Only validate the first <limit> certificates, if specified
-    #[clap(short = 'l', long)]
+    #[clap(long)]
     limit: Option<usize>,
+
+    /// Skip the first <skip> certificates
+    #[clap(long)]
+    skip: Option<usize>,
 
     /// Repeat validation of each certificate for benchmarking
     #[clap(short = 'n', long, default_value = "1")]
@@ -186,8 +190,14 @@ pub fn main(args: Args) -> Result<(), Error> {
                 if let Some(limit) = args.limit {
                     if i >= limit {
                         break;
-                    } else {
-                        i += 1;
+                    }
+                }
+
+                i += 1;
+
+                if let Some(skip) = args.skip {
+                    if i <= skip {
+                        continue;
                     }
                 }
 
