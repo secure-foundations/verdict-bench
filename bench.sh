@@ -27,7 +27,7 @@ run_with_timer() {
             processed="$(wc -l < $output_file)"
             if [ "$processed" -ne 0 ]; then
                 eta_seconds="$(echo "scale=4; ($total_ct_logs - $processed) / $processed * $SECONDS" | bc)"
-                eta_seconds="$(printf -v int %.0f "$eta_seconds")"
+                eta_seconds="$(printf %.0f "$eta_seconds")"
                 printf "\033[2K\rprocessed: %d (%.2f%%), elapsed: %02d:%02d:%02d, eta: %02d:%02d:%02d" \
                     $processed \
                     "$(echo "scale=4; $processed / $total_ct_logs * 100" | bc)" \
@@ -49,15 +49,16 @@ run_with_timer() {
 make reduce-noise ISOLATE_CORES=2,4,6,8 CORE_FREQUENCY=2401000
 
 harnesses=(
-    verdict-chrome verdict-firefox verdict-openssl
+    # verdict-chrome
+    chrome # firefox openssl
+    # verdict-firefox verdict-openssl
 	# verdict-chrome-aws-lc verdict-firefox-aws-lc verdict-openssl-aws-lc
 	# chrome firefox openssl
 	# hammurabi-chrome hammurabi-firefox armor ceres
 )
 
-for harness in $harnesses; do
-
-    echo "### benchmarking $harness ### "
+for harness in "${harnesses[@]}"; do
+    echo "### benchmarking $harness ###"
     run_with_timer bench-results/$harness.txt \
         make bench-$harness CT_LOG=~/work/mega-crl ISOLATE_CORES=2,4,6,8 BENCH_OUTPUT=bench-results/$harness.txt
 done
