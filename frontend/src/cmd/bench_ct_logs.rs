@@ -176,7 +176,6 @@ pub fn main(args: Args) -> Result<(), Error> {
 
         let mut found_hash = false;
         let mut i: usize = 0;
-        let mut num_samples: usize = 0;
 
         let skip = args.skip.unwrap_or(0);
 
@@ -189,6 +188,13 @@ pub fn main(args: Args) -> Result<(), Error> {
             for entry in reader.deserialize() {
                 let entry: CTLogEntry = entry?;
 
+                // Sampling is applied first, if specified
+                if let Some(sample) = args.sample {
+                    if rng.gen::<f64>() >= sample {
+                        continue;
+                    }
+                }
+
                 if let Some(limit) = args.limit {
                     if i >= limit + skip {
                         break;
@@ -199,14 +205,6 @@ pub fn main(args: Args) -> Result<(), Error> {
 
                 if i <= skip {
                     continue;
-                }
-
-                if let Some(sample) = args.sample {
-                    if rng.gen::<f64>() >= sample {
-                        continue;
-                    } else {
-                        num_samples += 1;
-                    }
                 }
 
                 // If a specific hash is specified, only check certificate with that hash
@@ -239,7 +237,7 @@ pub fn main(args: Args) -> Result<(), Error> {
         }
 
         if args.sample.is_some() {
-            eprintln!("sampled {} certificates", num_samples);
+            eprintln!("sampled {} certificates", i);
         }
 
         Ok(())
