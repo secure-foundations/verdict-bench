@@ -318,7 +318,11 @@ with tempfile.TemporaryDirectory() as work_dir:
                 start = time.time()
                 chain_builder.ski_index_map = {}
                 semantic.reset()
-                suc, err = validate_chain([base64.b64decode(cert.strip()).hex().upper() for cert in [leaf] + interm])
+                try:
+                    suc, err = validate_chain([base64.b64decode(cert.strip()).hex().upper() for cert in [leaf] + interm])
+                except:
+                    suc, err = False, "exception"
+                finally: ...
                 durations.append(time.time() - start)
 
             print(f"result: {'OK' if suc else err.replace(" ", "_")} {' '.join(str(int(d * 1000000)) for d in durations)}", flush=True)
