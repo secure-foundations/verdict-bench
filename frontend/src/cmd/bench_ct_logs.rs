@@ -201,6 +201,12 @@ pub fn main(args: Args) -> Result<(), Error> {
                     }
                 }
 
+                // Filter out tasks with empty domain name, IP address, or unicode character that failed to parse
+                if entry.domain.is_empty() || entry.domain.parse::<IpAddr>().is_ok() || entry.domain.contains('\u{FFFD}') {
+                    // eprintln!("Skipping {} due to unsupported domain name \"{}\"", &entry.hash, &entry.domain);
+                    continue;
+                }
+
                 i += 1;
 
                 if i <= skip {
@@ -214,12 +220,6 @@ pub fn main(args: Args) -> Result<(), Error> {
                     } else {
                         found_hash = true;
                     }
-                }
-
-                // Filter out tasks with empty domain name, IP address, or unicode character that failed to parse
-                if entry.domain.is_empty() || entry.domain.parse::<IpAddr>().is_ok() || entry.domain.contains('\u{FFFD}') {
-                    // eprintln!("Skipping {} due to unsupported domain name \"{}\"", &entry.hash, &entry.domain);
-                    continue;
                 }
 
                 tx_job.send(entry)?;
