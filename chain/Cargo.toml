@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-builtin_macros = { path = "../verus/source/builtin_macros" }
-builtin = { path = "../verus/source/builtin" }
-vstd = { path = "../verus/source/vstd" }
-vest = { path = "../vest" }
+builtin_macros = { path = "../deps/verus/source/builtin_macros" }
+builtin = { path = "../deps/verus/source/builtin" }
+vstd = { path = "../deps/verus/source/vstd" }
+vest = { path = "../deps/vest" }
 polyfill = { path = "../polyfill" }
 macros = { path = "../macros" }
 parser = { path = "../parser" }

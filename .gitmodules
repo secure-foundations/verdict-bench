@@ -1,4 +1,4 @@
 [submodule "verus"]
-	path = verus
+	path = deps/verus
 	url = https://github.com/zhengyao-lin/verus.git
 	branch = x509

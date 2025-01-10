@@ -4,9 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-builtin_macros = { path = "../verus/source/builtin_macros" }
-builtin = { path = "../verus/source/builtin" }
-vstd = { path = "../verus/source/vstd" }
 limbo-harness-support = { git = "https://github.com/C2SP/x509-limbo", branch = "main" }
 parser = { path = "../parser" }
 chain = { path = "../chain" }

@@ -8,7 +8,7 @@ members = [
     "rspec",
     "rspec_lib",
     "rspec_test",
-    "vest",
+    "deps/vest",
 ]
 
 default-members = [
@@ -17,7 +17,7 @@ default-members = [
 
 exclude = [
     "tools/verusc",
-    "verus",
+    "deps/verus",
 ]
 
 resolver = "2"

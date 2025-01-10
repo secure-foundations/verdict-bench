@@ -11,7 +11,7 @@ REAL_CARGO="$(which cargo)"
 
 # Build verus
 (git submodule update --init &&
-cd verus/source &&
+cd deps/verus/source &&
 [ -f z3 ] || ./tools/get-z3.sh &&
 source ../tools/activate &&
 vargo build --release) || return 1
@@ -28,4 +28,4 @@ cargo() {
     echo you want to use \`vargo\` instead of \`cargo\`. Restart the shell to disable.
 }
 
-export PATH="$REPO_ROOT/verus/source/target-verus/release:$PATH"
+export PATH="$REPO_ROOT/deps/verus/source/target-verus/release:$PATH"
