@@ -21,42 +21,53 @@ mpl.rcParams["xtick.labelsize"] = 22
 mpl.rcParams["ytick.labelsize"] = 22
 mpl.rcParams["legend.fontsize"] = 22
 
-slow_group = ["CERES", "ARMOR", "Hammurabi"]
+slow_group = ["CERES", "ARMOR", "HM/Firefox", "HM/Chrome"]
 
 # List of implementations and their corresponding CSV file paths
 implementations = [
-    ("CERES", "../../perf-results/results-ceres-part-2.txt"),
-    ("ARMOR", "../../perf-results/results-armor-part-2.txt"),
-    ("Hammurabi", "../../perf-results/results-hammurabi-part-2.txt"),
+    ("CERES", "~/work/verdict-bench/bench-results/ceres.txt"),
+    ("ARMOR", "~/work/verdict-bench/bench-results/armor.txt"),
+    ("HM/Firefox", "~/work/verdict-bench/bench-results/hammurabi-firefox.txt"),
+    ("HM/Chrome", "~/work/verdict-bench/bench-results/hammurabi-chrome.txt"),
 
-    ("OpenSSL", "../../perf-results/results-openssl-part-2-v2.txt"),
-    ("\\textbf{V/OpenSSL}", "../../perf-results/results-verdict-openssl-part-2-v5.txt"),
-    ("\\textbf{V/OpenSSL$^\\star$}", "../../perf-results/results-verdict-openssl-part-2-aws-lc.txt"),
+    ("OpenSSL", "~/work/verdict-bench/bench-results/openssl.txt"),
+    ("\\textbf{V/OpenSSL}", "~/work/verdict-bench/bench-results/verdict-openssl.txt"),
+    ("\\textbf{V/OpenSSL$^\\star$}", "~/work/verdict-bench/bench-results/verdict-openssl-aws-lc.txt"),
 
-    ("Firefox", "../../perf-results/results-firefox-part-2.txt"),
-    ("\\textbf{V/Firefox}", "../../perf-results/results-verdict-firefox-part-2-v5.txt"),
-    ("\\textbf{V/Firefox$^\\star$}", "../../perf-results/results-verdict-firefox-part-2-aws-lc.txt"),
+    ("Firefox", "~/work/verdict-bench/bench-results/firefox.txt"),
+    ("\\textbf{V/Firefox}", "~/work/verdict-bench/bench-results/verdict-firefox.txt"),
+    ("\\textbf{V/Firefox$^\\star$}", "~/work/verdict-bench/bench-results/verdict-firefox-aws-lc.txt"),
 
-    ("Chrome", "../../perf-results/results-chrome-part-2.txt"),
-    ("\\textbf{V/Chrome}", "../../perf-results/results-verdict-chrome-part-2-v10.txt"),
-    ("\\textbf{V/Chrome$^\\star$}", "../../perf-results/results-verdict-chrome-part-2-aws-lc.txt"),
+    ("Chrome", "~/work/verdict-bench/bench-results/chrome.txt"),
+    ("\\textbf{V/Chrome}", "~/work/verdict-bench/bench-results/verdict-chrome.txt"),
+    ("\\textbf{V/Chrome$^\\star$}", "~/work/verdict-bench/bench-results/verdict-chrome-aws-lc.txt"),
 ]
+
+num_measurements = 10
 
 all_data = []
 
 for impl_label, csv_file in implementations:
-    df = pd.read_csv(csv_file, header=None)
+    print(f"### Processing data for {impl_label} at {csv_file}")
 
-    num_columns = df.shape[1]
-    num_sample_cols = num_columns - 4
+    df = pd.read_csv(csv_file, header=None, dtype={
+        0: "str",
+        1: "str",
+        2: "str",
+        3: "str",
+        **{
+            i: "int64"
+            for i in range(4, 4 + num_measurements)
+        }
+    }, usecols=[2] + list(range(4, 4 + num_measurements)), engine="c")
 
     # Assign column names
-    sample_cols = [f"sample{i + 1}" for i in range(num_sample_cols)]
-    columns = ["hash", "hostname", "result", "err_msg"] + sample_cols
+    sample_cols = [f"sample{i + 1}" for i in range(num_measurements)]
+    columns = ["result"] + sample_cols
     df.columns = columns
 
     # Normalize the "result" column
-    df["result"] = df["result"].astype(str).str.strip().str.lower()
+    df["result"] = df["result"].str.strip().str.lower()
 
     # Min performance for each row across all samples
     df["min_time"] = df[sample_cols].min(axis=1)
@@ -66,6 +77,7 @@ for impl_label, csv_file in implementations:
 
 # Concatenate all data into a single DataFrame
 combined_df = pd.concat(all_data, ignore_index=True)
+combined_df = combined_df[["impl", "min_time", "result"]]
 
 # Print some stats
 print("\\begin{tabular}{lrrrr}")
@@ -147,23 +159,34 @@ def plot_simple(combined_df):
     plt.figure(figsize=(20, 5))
 
     combined_df = combined_df[~combined_df["impl"].isin(slow_group)]
+
+    print("plotting...")
+
     sns.boxplot(
         x="impl", y="min_time", data=combined_df,
-        flierprops=dict(marker=".", color="black", alpha=0.1),
+        # flierprops=dict(marker=".", color="black", alpha=0.1),
         # boxprops=dict(linewidth=0.5),
         # whiskerprops=dict(linewidth=0.5),
         # capprops=dict(linewidth=0.5),
         # medianprops=dict(linewidth=0.5),
+        showfliers=False,
         hue="result",
         palette={"Accept": "#40B0A6", "Reject": "#E1BE6A"},
-    ).legend(title="Result", loc="lower left")
+    ).legend(title="Result", loc="upper left")
     plt.xlabel("")
     plt.ylabel("Performance (microseconds)")
-    plt.ylim(0, 260)
+    plt.ylim(0, 300)
+
+    # Draw vertical separators for every 3 items
+    num_categories = len(combined_df["impl"].unique())
+    line_positions = [i - 0.5 for i in range(3, num_categories + 1, 3)]
+    for xpos in line_positions:
+        plt.axvline(x=xpos, color="gray", linestyle="dashed")
 
 # plot_two_groups(combined_df)
 plot_simple(combined_df)
 
 plt.tight_layout(pad=0.1)
+print("saving...")
 plt.savefig("performance.pdf")
 plt.close()
