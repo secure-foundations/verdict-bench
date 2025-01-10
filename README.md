@@ -23,7 +23,7 @@ compile with
 vargo build --release --feature aws-lc
 ```
 
-To run all tests
+To run some sanity checks
 ```
 vargo test --workspace
 ```
