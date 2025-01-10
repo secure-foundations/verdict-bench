@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-builtin_macros = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
-builtin = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
-vstd = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
+builtin_macros = { path = "../verus/source/builtin_macros" }
+builtin = { path = "../verus/source/builtin" }
+vstd = { path = "../verus/source/vstd" }
 vest = { path = "../vest" }
 polyfill = { path = "../polyfill" }
 der = { version = "0.7.9", features = [ "alloc", "oid" ] }

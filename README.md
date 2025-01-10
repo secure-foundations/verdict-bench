@@ -34,3 +34,14 @@ To run some sanity checks
 ```
 vargo test --workspace
 ```
+
+## Build without verification
+
+If your system does not support Verus, or for some reason Verus is not working,
+an alternative is to just build the project without invoking Verus for verification.
+
+To do this, simply run (without running `. tools/activate.sh`)
+```
+cargo build --release
+```
+which should work like in a normal Rust package, with all verification annotations stripped.

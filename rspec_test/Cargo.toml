@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-builtin_macros = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
-builtin = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
-vstd = { git = "https://github.com/zhengyao-lin/verus", branch = "x509" }
+builtin_macros = { path = "../verus/source/builtin_macros" }
+builtin = { path = "../verus/source/builtin" }
+vstd = { path = "../verus/source/vstd" }
 rspec = { path = "../rspec" }
 rspec-lib = { path = "../rspec_lib" }
