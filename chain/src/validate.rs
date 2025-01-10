@@ -600,10 +600,7 @@ impl<'a, P: Policy> Validator<'a, P> {
         bundle: &VecDeep<CertificateValue>,
         task: &policy::ExecTask,
     ) -> (res: Result<bool, ValidationError>)
-        requires
-            self.wf(),
-            bundle@.len() != 0,
-
+        requires self.wf()
         ensures
             // Soundness & completeness (modulo ValidationError)
             res matches Ok(res) ==> res == (Query {
@@ -613,6 +610,10 @@ impl<'a, P: Policy> Validator<'a, P> {
                 task: task.deep_view(),
             }).valid(),
     {
+        if bundle.len() == 0 {
+            return Err(ValidationError::EmptyChain);
+        }
+
         let cache = self.new_cache(bundle, task)?;
 
         let bundle_len = bundle.len();

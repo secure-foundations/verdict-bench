@@ -16,8 +16,7 @@ pub struct Args {
     /// The certificate chain to verify (in PEM format)
     chain: String,
 
-    /// The target domain to be validated
-    /// If not specified, the task will be Task::ChainValidation(Purpose::ServerAuth)
+    /// The (optional) target domain to be validated.
     domain: Option<String>,
 
     /// Repeat the validation for benchmarking purpose

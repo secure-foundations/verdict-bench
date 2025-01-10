@@ -20,8 +20,9 @@ use super::common::*;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum PolicyName {
-    ChromeHammurabi,
-    FirefoxHammurabi,
+    Chrome,
+    Firefox,
+    #[clap(name="openssl")]
     OpenSSL,
 }
 
@@ -100,9 +101,9 @@ impl Harness for VerdictHarness {
             rx_res: Some(rx_res),
             handle: Some(thread::spawn(move ||
                 match policy_name {
-                    PolicyName::ChromeHammurabi =>
+                    PolicyName::Chrome =>
                         VerdictInstance::worker(timestamp, roots_base64, policy::ChromePolicy::default(), rx_job, tx_res, debug),
-                    PolicyName::FirefoxHammurabi =>
+                    PolicyName::Firefox =>
                         VerdictInstance::worker(timestamp, roots_base64, policy::FirefoxPolicy::default(), rx_job, tx_res, debug),
                     PolicyName::OpenSSL =>
                         VerdictInstance::worker(timestamp, roots_base64, policy::OpenSSLPolicy::default(), rx_job, tx_res, debug),

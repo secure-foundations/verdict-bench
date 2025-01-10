@@ -13,7 +13,7 @@ To verify and build the entire project, run
 ```
 vargo build --release
 ```
-Then use `target/release/frontend` to run benchmark or tests
+Then use `target/release/frontend` to validate certificate chains or run benchmarks.
 (see `target/release/frontend --help` for more options).
 
 By default, we only use crypto primitives that are verified from [libcrux](https://github.com/cryspen/libcrux) and [aws-lc-rs](https://github.com/aws/aws-lc-rs).

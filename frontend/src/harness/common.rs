@@ -249,13 +249,13 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
 
         HarnessName::VerdictChrome =>
             Box::new(VerdictHarness {
-                policy: verdict::PolicyName::ChromeHammurabi,
+                policy: verdict::PolicyName::Chrome,
                 debug,
             }),
 
         HarnessName::VerdictFirefox =>
             Box::new(VerdictHarness {
-                policy: verdict::PolicyName::FirefoxHammurabi,
+                policy: verdict::PolicyName::Firefox,
                 debug,
             }),
 
