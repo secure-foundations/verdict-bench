@@ -5,9 +5,8 @@ To build, first run (Bash or Zsh)
 ```
 . tools/activate.sh
 ```
-
-A command `vargo` will be available,
-and its usage is exactly the same as `cargo`.
+This will first compile a vendored version of Verus, and then
+provide a command `vargo` with the same usage as `cargo`.
 
 To verify and build the entire project, run
 ```
