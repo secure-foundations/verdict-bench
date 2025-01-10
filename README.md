@@ -27,7 +27,7 @@ By default, we only use crypto primitives that are verified from [libcrux](https
 To use primitives entirely from `aws-lc-rs` which might have better performance but include unverified signature checking for RSA and ECDSA P-256,
 compile with
 ```
-vargo build --release --feature aws-lc
+vargo build --release --features aws-lc
 ```
 
 To run some sanity checks
@@ -38,10 +38,11 @@ vargo test --workspace
 ## Build without verification
 
 If your system does not support Verus, or for some reason Verus is not working,
-an alternative is to just build the project without invoking Verus for verification.
+an alternative is to just build the project without invoking Verus for formal verification.
 
 To do this, simply run (without running `. tools/activate.sh`)
 ```
+git submodule update --init
 cargo build --release
 ```
 which should work like in a normal Rust package, with all verification annotations stripped.
