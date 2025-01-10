@@ -10,7 +10,8 @@ REPO_ROOT=$(pwd)
 REAL_CARGO="$(which cargo)"
 
 # Build verus
-(cd verus/source &&
+(git submodule update --init &&
+cd verus/source &&
 ./tools/get-z3.sh &&
 source ../tools/activate &&
 vargo build --release) || return 1
