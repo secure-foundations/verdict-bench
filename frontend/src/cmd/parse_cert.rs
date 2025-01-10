@@ -30,8 +30,7 @@ pub fn main(args: Args) -> Result<(), Error>
 
         match parsed {
             Ok(cert) => {
-                println!("{:?}", cert.get().cert.get().subject_key.alg);
-                // println!("{:?}", cert);
+                println!("{:?}", cert);
             }
             Err(err) => {
                 if !args.ignore_parse_errors {
