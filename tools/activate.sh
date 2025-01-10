@@ -12,7 +12,7 @@ REAL_CARGO="$(which cargo)"
 # Build verus
 (git submodule update --init &&
 cd verus/source &&
-./tools/get-z3.sh &&
+[ -f z3 ] || ./tools/get-z3.sh &&
 source ../tools/activate &&
 vargo build --release) || return 1
 

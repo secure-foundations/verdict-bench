@@ -1,6 +1,14 @@
 Verified X.509 Certificate Validation
 ---
 
+### Dependencies
+
+Build dependencies in Ubuntu 24.04 (other systems are similar):
+- Cargo >= 1.76.0
+- build-essential, git, unzip, curl
+
+### Verify and Build
+
 To build, first run (Bash or Zsh)
 ```
 . tools/activate.sh
