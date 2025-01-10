@@ -9,9 +9,10 @@ unset -f vargo 2>/dev/null || true
 REPO_ROOT=$(pwd)
 REAL_CARGO="$(which cargo)"
 
+git submodule update --init
+
 # Build verus
-(git submodule update --init &&
-cd deps/verus/source &&
+(cd deps/verus/source &&
 [ -f z3 ] || ./tools/get-z3.sh &&
 source ../tools/activate &&
 vargo build --release) || return 1

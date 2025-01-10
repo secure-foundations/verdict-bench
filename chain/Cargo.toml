@@ -11,8 +11,8 @@ vest = { path = "../deps/vest" }
 polyfill = { path = "../polyfill" }
 macros = { path = "../macros" }
 parser = { path = "../parser" }
-libcrux = { git = "https://github.com/zhengyao-lin/libcrux.git" }
-libcrux-hacl = { git = "https://github.com/zhengyao-lin/libcrux.git" }
+libcrux = { path = "../deps/libcrux" }
+libcrux-hacl = { path = "../deps/libcrux/sys/hacl" }
 chrono = "0.4.38"
 aws-lc-rs = "1.10.0"
 rspec = { path = "../rspec" }
