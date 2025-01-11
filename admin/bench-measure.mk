@@ -41,59 +41,52 @@ measure: $(BENCH)
 
 verdict-bench: $(BENCH)
 	@echo '\begin{tabular}{lrrr}'
-	@echo 'Implementation & RSA & P256 & P384 \\'
+	@echo 'Implementation & RSA & P-256 & P-384 \\'
 	@echo '\hline'
 
-# With a mix of AWS-LC and libcrux
-	@cargo build --profile=bench -p rustls-bench --features $(PROVIDER)
-
-	@echo -n 'V/Chrome$$^\diamond$$'
-	@echo -n ' &' $$($^ --validator verdict-chrome --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-chrome --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-# @echo -n ' &' $$($^ --validator verdict-chrome --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' & -'
-	@echo ' \\'
-
-	@echo -n 'V/Firefox$$^\diamond$$'
-	@echo -n ' &' $$($^ --validator verdict-firefox --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-firefox --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-# @echo -n ' &' $$($^ --validator verdict-firefox --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' & -'
-	@echo ' \\'
-
-	@echo -n 'V/OpenSSL$$^\diamond$$'
-	@echo -n ' &' $$($^ --validator verdict-openssl --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-openssl --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-# @echo -n ' &' $$($^ --validator verdict-openssl --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' & -'
-	@echo ' \\'
-
-# With AWS-LC
-	@cargo build --profile=bench -p rustls-bench --features $(PROVIDER) --features rustls/verdict-aws-lc
-
-	@echo -n 'V/Chrome$$^\star$$'
-	@echo -n ' &' $$($^ --validator verdict-chrome --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-chrome --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-chrome --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo ' \\'
-
-	@echo -n 'V/Firefox$$^\star$$'
-	@echo -n ' &' $$($^ --validator verdict-firefox --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-firefox --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-firefox --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo ' \\'
-
-	@echo -n 'V/OpenSSL$$^\star$$'
-	@echo -n ' &' $$($^ --validator verdict-openssl --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-openssl --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --validator verdict-openssl --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo ' \\'
-
-	@echo -n 'Baseline'
-	@echo -n ' &' $$($^ --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo -n ' &' $$($^ --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{print $$(NF-1)}')
-	@echo ' \\'
+# Measure Verdict w/ and w/o AWS-LC, on RSA, P-256, and P-384
+	@cargo build --profile=bench -p rustls-bench --features $(PROVIDER); \
+	VERDICT_CHROME_RSA=$$($^ --validator verdict-chrome --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_CHROME_P256=$$($^ --validator verdict-chrome --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_CHROME_P384=$$($^ --validator verdict-chrome --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'V/Chrome &' $$VERDICT_CHROME_RSA '&' $$VERDICT_CHROME_P256 '&' $$VERDICT_CHROME_P384 '\\\\'; \
+	\
+	VERDICT_FIREFOX_RSA=$$($^ --validator verdict-firefox --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_FIREFOX_P256=$$($^ --validator verdict-firefox --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_FIREFOX_P384=$$($^ --validator verdict-firefox --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'V/Firefox &' $$VERDICT_FIREFOX_RSA '&' $$VERDICT_FIREFOX_P256 '&' $$VERDICT_FIREFOX_P384 '\\\\'; \
+	\
+	VERDICT_OPENSSL_RSA=$$($^ --validator verdict-openssl --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_OPENSSL_P256=$$($^ --validator verdict-openssl --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_OPENSSL_P384=$$($^ --validator verdict-openssl --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'V/OpenSSL &' $$VERDICT_OPENSSL_RSA '&' $$VERDICT_OPENSSL_P256 '&' $$VERDICT_OPENSSL_P384 '\\\\'; \
+	\
+	cargo build --profile=bench -p rustls-bench --features $(PROVIDER) --features rustls/verdict-aws-lc; \
+	\
+	VERDICT_CHROME_AWS_LC_RSA=$$($^ --validator verdict-chrome --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_CHROME_AWS_LC_P256=$$($^ --validator verdict-chrome --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'V/Chrome$$^\\star$$ &' $$VERDICT_CHROME_AWS_LC_RSA '&' $$VERDICT_CHROME_AWS_LC_P256 '& - \\\\'; \
+	\
+	VERDICT_FIREFOX_AWS_LC_RSA=$$($^ --validator verdict-firefox --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_FIREFOX_AWS_LC_P256=$$($^ --validator verdict-firefox --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'V/Firefox$$^\\star$$ &' $$VERDICT_FIREFOX_AWS_LC_RSA '&' $$VERDICT_FIREFOX_AWS_LC_P256 '& - \\\\'; \
+	\
+	VERDICT_OPENSSL_AWS_LC_RSA=$$($^ --validator verdict-openssl --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	VERDICT_OPENSSL_AWS_LC_P256=$$($^ --validator verdict-openssl --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'V/OpenSSL$$^\\star$$ &' $$VERDICT_OPENSSL_AWS_LC_RSA '&' $$VERDICT_OPENSSL_AWS_LC_P256 '& - \\\\'; \
+	\
+	BASELINE_RSA=$$($^ --key-type rsa2048 --api unbuffered handshake TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	BASELINE_P256=$$($^ --key-type ecdsa-p256 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	BASELINE_P384=$$($^ --key-type ecdsa-p384 --api unbuffered handshake TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 | awk '{printf("%.2f", 1000000 / $$(NF-1))}'); \
+	echo 'Baseline &' $$BASELINE_RSA '&' $$BASELINE_P256 '&' $$BASELINE_P384 '\\\\'; \
+	echo "\\hline"; \
+	echo -n "Overhead$$^\\star$$ & "; \
+	python3 -c "rsa_bench = [$$VERDICT_CHROME_AWS_LC_RSA, $$VERDICT_FIREFOX_AWS_LC_RSA, $$VERDICT_OPENSSL_AWS_LC_RSA]; \
+		p256_bench = [$$VERDICT_CHROME_AWS_LC_P256, $$VERDICT_FIREFOX_AWS_LC_P256, $$VERDICT_OPENSSL_AWS_LC_P256]; \
+		p384_bench = [$$VERDICT_CHROME_P384, $$VERDICT_FIREFOX_P384, $$VERDICT_OPENSSL_P384]; \
+		print(str(round(min(rsa_bench) / $$BASELINE_RSA * 100 - 100)) + '-' + str(round(max(rsa_bench) / $$BASELINE_RSA * 100 - 100)), end='\\% & '); \
+		print(str(round(min(p256_bench) / $$BASELINE_P256 * 100 - 100)) + '-' + str(round(max(p256_bench) / $$BASELINE_P256 * 100 - 100)), end='\\% & '); \
+		print(str(round(min(p384_bench) / $$BASELINE_P384 * 100 - 100)) + '-' + str(round(max(p384_bench) / $$BASELINE_P384 * 100 - 100)), end='\\% \\\\\n')"
 
 	@echo '\end{tabular}'
 

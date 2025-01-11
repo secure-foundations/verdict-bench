@@ -492,18 +492,16 @@ dependencies = [
 [[package]]
 name = "builtin"
 version = "0.1.0"
-source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 
 [[package]]
 name = "builtin_macros"
 version = "0.1.0"
-source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "prettyplease_verus",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
- "syn_verus 1.0.95 (git+https://github.com/zhengyao-lin/verus?branch=x509)",
+ "syn_verus",
  "synstructure 0.12.6",
 ]
 
@@ -1722,7 +1720,6 @@ checksum = "09d6582e104315a817dff97f75133544b2e094ee22447d2acf4a74e189ba06fc"
 [[package]]
 name = "libcrux"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/?branch=main)",
  "hax-lib-macros 0.1.0-rc.1 (git+https://github.com/hacspec/hax/?branch=main)",
@@ -1739,7 +1736,6 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdh"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
  "rand",
@@ -1748,7 +1744,6 @@ dependencies = [
 [[package]]
 name = "libcrux-hacl"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "cc",
  "libcrux-platform",
@@ -1757,7 +1752,6 @@ dependencies = [
 [[package]]
 name = "libcrux-hkdf"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
 ]
@@ -1765,7 +1759,6 @@ dependencies = [
 [[package]]
 name = "libcrux-hmac"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
  "libcrux-hkdf",
@@ -1774,12 +1767,10 @@ dependencies = [
 [[package]]
 name = "libcrux-intrinsics"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 
 [[package]]
 name = "libcrux-kem"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-ecdh",
  "libcrux-ml-kem",
@@ -1790,7 +1781,6 @@ dependencies = [
 [[package]]
 name = "libcrux-ml-kem"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -1802,7 +1792,6 @@ dependencies = [
 [[package]]
 name = "libcrux-platform"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libc",
 ]
@@ -1810,7 +1799,6 @@ dependencies = [
 [[package]]
 name = "libcrux-sha3"
 version = "0.0.2-beta.2"
-source = "git+https://github.com/zhengyao-lin/libcrux.git#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -2287,10 +2275,9 @@ dependencies = [
 [[package]]
 name = "prettyplease_verus"
 version = "0.1.15"
-source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "proc-macro2",
- "syn_verus 1.0.95 (git+https://github.com/zhengyao-lin/verus?branch=x509)",
+ "syn_verus",
 ]
 
 [[package]]
@@ -2514,7 +2501,7 @@ dependencies = [
  "indexmap",
  "proc-macro2",
  "quote",
- "syn_verus 1.0.95 (git+https://github.com/verus-lang/verus)",
+ "syn_verus",
 ]
 
 [[package]]
@@ -2915,17 +2902,6 @@ dependencies = [
 [[package]]
 name = "syn_verus"
 version = "1.0.95"
-source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "syn_verus"
-version = "1.0.95"
-source = "git+https://github.com/verus-lang/verus#dad7116b903fc938e1dd15f35fc80dc6698bd001"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3248,7 +3224,6 @@ dependencies = [
 [[package]]
 name = "vstd"
 version = "0.1.0"
-source = "git+https://github.com/zhengyao-lin/verus?branch=x509#be0734548e3c6f0766187b34be86c3da4827ca28"
 dependencies = [
  "builtin",
  "builtin_macros",
