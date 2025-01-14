@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 async-std = { workspace = true, optional = true }
 clap = { workspace = true }
+criterion = "0.5.1"
 env_logger = { workspace = true }
 hickory-resolver = { workspace = true }
 log = { workspace = true }

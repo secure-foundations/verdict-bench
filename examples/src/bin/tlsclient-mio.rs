@@ -22,15 +22,19 @@
 use std::io::{self, Read, Write};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
-use std::{process, str};
+use std::time::{Duration, Instant};
+use std::str;
 
 use clap::{Parser, ValueEnum};
 use mio::net::TcpStream;
+use rustls::client::Resumption;
 use rustls::crypto::{aws_lc_rs as provider, CryptoProvider};
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
 use rustls::VerdictPolicy;
 use rustls::RootCertStore;
+
+use criterion::{Criterion, black_box};
 
 const CLIENT: mio::Token = mio::Token(0);
 
@@ -41,6 +45,7 @@ struct TlsClient {
     closing: bool,
     clean_closure: bool,
     tls_conn: rustls::ClientConnection,
+    non_network_time: Duration,
 }
 
 impl TlsClient {
@@ -54,11 +59,14 @@ impl TlsClient {
             closing: false,
             clean_closure: false,
             tls_conn: rustls::ClientConnection::new(cfg, server_name).unwrap(),
+            non_network_time: Duration::ZERO,
         }
     }
 
     /// Handles events sent to the TlsClient by mio::Poll
-    fn ready(&mut self, ev: &mio::event::Event) {
+    fn ready(&mut self, ev: &mio::event::Event) -> bool {
+        let start = Instant::now();
+
         assert_eq!(ev.token(), CLIENT);
 
         if ev.is_readable() {
@@ -69,10 +77,9 @@ impl TlsClient {
             self.do_write();
         }
 
-        if self.is_closed() {
-            println!("Connection closed");
-            process::exit(if self.clean_closure { 0 } else { 1 });
-        }
+        self.non_network_time += start.elapsed();
+
+        self.is_closed()
     }
 
     fn read_source_to_end(&mut self, rd: &mut dyn io::Read) -> io::Result<usize> {
@@ -94,14 +101,14 @@ impl TlsClient {
                 if error.kind() == io::ErrorKind::WouldBlock {
                     return;
                 }
-                println!("TLS read error: {:?}", error);
+                eprintln!("TLS read error: {:?}", error);
                 self.closing = true;
                 return;
             }
 
             // If we're ready but there's no data: EOF.
             Ok(0) => {
-                println!("EOF");
+                // eprintln!("EOF");
                 self.closing = true;
                 self.clean_closure = true;
                 return;
@@ -116,7 +123,7 @@ impl TlsClient {
         let io_state = match self.tls_conn.process_new_packets() {
             Ok(io_state) => io_state,
             Err(err) => {
-                println!("TLS error: {:?}", err);
+                eprintln!("TLS error: {:?}", err);
                 self.closing = true;
                 return;
             }
@@ -132,9 +139,9 @@ impl TlsClient {
                 .reader()
                 .read_exact(&mut plaintext)
                 .unwrap();
-            io::stdout()
-                .write_all(&plaintext)
-                .unwrap();
+            // io::stdout()
+            //     .write_all(&plaintext)
+            //     .unwrap();
         }
 
         // If that fails, the peer might have started a clean TLS-level
@@ -280,8 +287,16 @@ struct Args {
     #[clap(long, default_value = "default")]
     validator: CertVerifierName,
 
+    /// Use another address for actual connection
+    #[clap(long)]
+    connect: Option<String>,
+
     /// Which hostname/address to connect to
     hostname: String,
+
+    /// Repeat the connection
+    #[clap(long, default_value = "1")]
+    repeat: usize,
 }
 
 /// Find a ciphersuite with the given name
@@ -484,11 +499,13 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
 
     config.key_log = Arc::new(rustls::KeyLogFile::new());
 
-    if args.no_tickets {
-        config.resumption = config
-            .resumption
-            .tls12_resumption(rustls::client::Tls12Resumption::SessionIdOnly);
-    }
+    // if args.no_tickets {
+    //     config.resumption = config
+    //         .resumption
+    //         .tls12_resumption(rustls::client::Tls12Resumption::SessionIdOnly);
+    // }
+
+    config.resumption = Resumption::disabled();
 
     if args.no_sni {
         config.enable_sni = false;
@@ -512,20 +529,8 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
     Arc::new(config)
 }
 
-/// Parse some arguments, then make a TLS client connection
-/// somewhere.
-fn main() {
-    let args = Args::parse();
-
-    if args.verbose {
-        env_logger::Builder::new()
-            .parse_filters("trace")
-            .init();
-    }
-
-    let config = make_config(&args);
-
-    let sock_addr = (args.hostname.as_str(), args.port)
+fn make_request(args: &Args, config: Arc<rustls::ClientConfig>) {
+    let sock_addr = (args.connect.as_ref().unwrap_or(&args.hostname).as_str(), args.port)
         .to_socket_addrs()
         .unwrap()
         .next()
@@ -556,6 +561,10 @@ fn main() {
     let mut events = mio::Events::with_capacity(32);
     tlsclient.register(poll.registry());
 
+    // let mut event_waiting_time = Duration::ZERO;
+    // let mut start = Instant::now();
+    // let mut num_rounds = 0;
+
     loop {
         match poll.poll(&mut events, None) {
             Ok(_) => {}
@@ -566,9 +575,55 @@ fn main() {
             }
         }
 
+        // num_rounds += 1;
+
+        // eprintln!("event loop elapsed: {} ms", event_waiting_time.as_millis());
+        // event_waiting_time += start.elapsed();
+
+        // eprintln!("round {}", num_rounds);
+
         for ev in events.iter() {
-            tlsclient.ready(ev);
+            if tlsclient.ready(ev) {
+                // eprintln!("connection closed, non-network time: {} μs", tlsclient.non_network_time.as_micros());
+                return;
+            }
             tlsclient.reregister(poll.registry());
         }
+
+        // start = Instant::now();
     }
+}
+
+/// Parse some arguments, then make a TLS client connection
+/// somewhere.
+fn main() {
+    let args = Args::parse();
+
+    if args.verbose {
+        env_logger::Builder::new()
+            .parse_filters("trace")
+            .init();
+    }
+
+    let config = make_config(&args);
+
+    // let mut criterion = Criterion::default();
+
+    // criterion.bench_function("make_request", |b| {
+    //     b.iter(|| make_request(&args, config.clone()));
+    // });
+
+    let mut durations = Vec::new();
+
+    for _ in 0..args.repeat {
+        let start = Instant::now();
+        make_request(&args, config.clone());
+        durations.push(start.elapsed().as_micros());
+    }
+
+    println!("{}", durations.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(" "));
+
+    // eprintln!("min: {}", durations.iter().min().unwrap());
+    // eprintln!("max: {}", durations.iter().max().unwrap());
+    // eprintln!("mean: {}", durations.iter().sum::<u128>() as f64 / durations.len() as f64);
 }
