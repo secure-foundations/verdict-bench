@@ -23,7 +23,7 @@ use std::io::{self, Read, Write};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::str;
+use std::{process, str};
 
 use clap::{Parser, ValueEnum};
 use mio::net::TcpStream;
@@ -529,7 +529,7 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
     Arc::new(config)
 }
 
-fn make_request(args: &Args, config: Arc<rustls::ClientConfig>) {
+fn make_request(args: &Args, config: Arc<rustls::ClientConfig>) -> bool {
     let sock_addr = (args.connect.as_ref().unwrap_or(&args.hostname).as_str(), args.port)
         .to_socket_addrs()
         .unwrap()
@@ -585,7 +585,7 @@ fn make_request(args: &Args, config: Arc<rustls::ClientConfig>) {
         for ev in events.iter() {
             if tlsclient.ready(ev) {
                 // eprintln!("connection closed, non-network time: {} μs", tlsclient.non_network_time.as_micros());
-                return;
+                return tlsclient.clean_closure;
             }
             tlsclient.reregister(poll.registry());
         }
@@ -614,14 +614,19 @@ fn main() {
     // });
 
     let mut durations = Vec::new();
+    let mut suc = true;
 
     for _ in 0..args.repeat {
         let start = Instant::now();
-        make_request(&args, config.clone());
+        suc = make_request(&args, config.clone());
         durations.push(start.elapsed().as_micros());
     }
 
     println!("{}", durations.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(" "));
+
+    if !suc {
+        process::exit(1);
+    }
 
     // eprintln!("min: {}", durations.iter().min().unwrap());
     // eprintln!("max: {}", durations.iter().max().unwrap());
