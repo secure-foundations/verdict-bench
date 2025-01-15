@@ -15,7 +15,7 @@ from scipy import stats
 
 
 WARMUP = 20
-REPEAT = 50
+REPEAT = 100
 
 VALIDATORS = [ "default", "verdict-chrome", "verdict-firefox", "verdict-openssl" ]
 
@@ -115,6 +115,10 @@ def main():
 
     isolated_cores = args.cores.split(",")
 
+    percent_diff = []
+    p_values = []
+    num_stats_sig = 0
+
     try:
         set_network_delay(args.port, args.delay)
 
@@ -131,11 +135,27 @@ def main():
 
                     samples_0_mean = statistics.mean(samples[0])
 
+                    is_stats_sig = False
+
                     for i in range(1, len(samples)):
                         samples_i_mean = statistics.mean(samples[i])
-                        change_perc = round((samples_i_mean - samples_0_mean) / samples_0_mean * 100, 2)
+                        change_perc = (samples_i_mean - samples_0_mean) / samples_0_mean * 100
                         t_stat, p_value = stats.ttest_ind(samples[0], samples[i], equal_var=False)
-                        print(f"{VALIDATORS[0]}: {samples_0_mean}, {VALIDATORS[i]}: {samples_i_mean} ({change_perc}%), t-stat: {round(t_stat, 3)}, p-value: {round(p_value, 3)}")
+
+                        if p_value < 0.05:
+                            is_stats_sig = True
+
+                        percent_diff.append(change_perc)
+                        p_values.append(p_value)
+
+                        print(f"{VALIDATORS[0]}: {samples_0_mean}, {VALIDATORS[i]}: {samples_i_mean} ({round(change_perc, 2)}%), t-stat: {round(t_stat, 3)}, p-value: {round(p_value, 3)}")
+
+                    if is_stats_sig:
+                        num_stats_sig += 1
+                        print(f"num different domains: {num_stats_sig}")
+
+        print(f"all percentage diff: {percent_diff}")
+        print(f"all p-values: {p_values}")
 
     finally:
         reset_network_delay()
