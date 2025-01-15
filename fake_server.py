@@ -9,18 +9,21 @@ import argparse
 
 
 def recv_full_http_request(conn):
-    request_data = b""
+    # We know the exact HTTP request from rustls/tlsclient-mio
+    return conn.recv(1024)
 
-    while True:
-        chunk = conn.recv(1024)
-        if not chunk: break
-        request_data += chunk
+    # request_data = b""
 
-        # Check if end of HTTP headers has been reached
-        if b"\r\n\r\n" in request_data:
-            break
+    # while True:
+    #     chunk = conn.recv(1024)
+    #     if not chunk: break
+    #     request_data += chunk
 
-    return request_data
+    #     # Check if end of HTTP headers has been reached
+    #     if b"\r\n\r\n" in request_data:
+    #         break
+
+    # return request_data
 
 
 def main():
@@ -45,26 +48,30 @@ def main():
 
     # Start a TLS server
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
-        sock.bind((args.host, args.port))
-        sock.listen(5)
-        print(f"[*] server listening on {args.host}:{args.port}...")
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((args.host, args.port))
+            sock.listen(5)
+            print(f"[*] server listening on {args.host}:{args.port}...", flush=True)
 
-        while True:
-            client_sock, addr = sock.accept()
-            print(f"[*] connection from {addr}")
+            while True:
+                client_sock, addr = sock.accept()
+                # print(f"[*] connection from {addr}")
 
-            try:
-                # Wrap the client socket with TLS
-                with context.wrap_socket(client_sock, server_side=True) as tls_conn:
-                    print(recv_full_http_request(tls_conn))
-                    tls_conn.sendall(response)
-                    print(f"[*] closing connection to {addr}")
+                try:
+                    # Wrap the client socket with TLS
+                    with context.wrap_socket(client_sock, server_side=True) as tls_conn:
+                        recv_full_http_request(tls_conn)
+                        tls_conn.sendall(response)
+                        # print(f"[*] closing connection to {addr}")
 
-            except Exception as e:
-                print(f"[!] error with {addr}: {e}")
+                except Exception as e:
+                    print(f"[!] error with {addr}: {e}", flush=True)
 
-            finally:
-                client_sock.close()
+                finally:
+                    client_sock.close()
+        finally:
+            sock.close()
 
 
 if __name__ == "__main__":

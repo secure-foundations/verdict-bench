@@ -16,6 +16,7 @@ of the real ones.
 import os
 import re
 import socket
+import shutil
 import requests
 import argparse
 # from concurrent.futures import ThreadPoolExecutor
@@ -205,8 +206,8 @@ def main():
     for i, hostname in enumerate(args.hostnames + domain_list):
         print(f"requesting hostname {hostname} [{i + 1}/{(len(args.hostnames) + len(domain_list))}, {num_success} success]...")
 
+        output_path = os.path.join(args.output, hostname)
         try:
-            output_path = os.path.join(args.output, hostname)
             os.mkdir(output_path)
 
             # Fetch the certificate chain
@@ -222,42 +223,39 @@ def main():
             for i in range(len(chain) - 1):
                 assert verify_signature(chain[i + 1], chain[i])
 
-            # Find a root certificate that issued chain[-1]
-            for found_root_idx, found_root in enumerate(new_roots):
-                if found_root.subject == chain[-1].issuer:
-                    break
-            else:
-                raise ValueError("no root certificate issued the last certificate in the chain")
+            # Find a root certificate that issued any of the certs in chain
+            # Lazily replace root keys with the new ones
+            for cert in chain:
+                for i, root in enumerate(new_roots):
+                    if root.subject == cert.issuer:
+                        if root.subject not in subject_to_key:
+                            print(f"replicating root {root.subject}...")
+                            subject_to_key[root.subject] = new_root_key = gen_new_key(root)
+                            assert root.subject == root.issuer
+                            new_roots[i] = replicate_cert(root, new_root_key)
 
             output_chain_path = os.path.join(output_path, "chain.pem")
             output_key_path = os.path.join(output_path, "key.pem")
 
             with open(output_chain_path, "wb") as output_chain, open(output_key_path, "wb") as output_key:
 
-                # Lazily replace root keys with the new ones
-                if found_root.subject not in subject_to_key:
-                    print(f"replicating root {found_root.subject}...")
-                    subject_to_key[found_root.subject] = new_root_key = gen_new_key(found_root)
-                    new_roots[found_root_idx] = replicate_cert(found_root, new_root_key)
-
-                prev_priv_key = subject_to_key[found_root.subject]
-
                 # Replace keys of leaf and intermediates
                 for i in range(len(chain) - 1, -1, -1):
                     # Intermeidate might be a cross-signed root
                     if chain[i].subject in subject_to_key:
                         # print(f"cross-signed subject {chain[i].subject}")
-                        new_priv_key = subject_to_key[chain[i].subject]
+                        priv_key = subject_to_key[chain[i].subject]
                     else:
-                        new_priv_key = gen_new_key(chain[i])
+                        priv_key = subject_to_key[chain[i].subject] = gen_new_key(chain[i])
 
-                    chain[i] = replicate_cert(chain[i], prev_priv_key, new_priv_key.public_key())
-                    prev_priv_key = new_priv_key
+                    assert chain[i].issuer in subject_to_key
+
+                    chain[i] = replicate_cert(chain[i], subject_to_key[chain[i].issuer], priv_key.public_key())
 
                 for cert in chain:
                     output_chain.write(cert.public_bytes(serialization.Encoding.PEM))
 
-                output_key.write(prev_priv_key.private_bytes(
+                output_key.write(priv_key.private_bytes(
                     serialization.Encoding.PEM,
                     serialization.PrivateFormat.TraditionalOpenSSL,
                     serialization.NoEncryption()
@@ -270,6 +268,7 @@ def main():
 
         except Exception as e:
             print(f"error processing hostname {hostname}: {e}")
+            shutil.rmtree(output_path)
 
     # Serialize potentially modified roots at the end
     with open(os.path.join(args.output, "roots.pem"), "wb") as new_roots_file:
