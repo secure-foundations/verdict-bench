@@ -1,6 +1,9 @@
 Verified X.509 Certificate Validation
 ---
 
+This is the main repo of Verdict, a formally verified X.509 certificate validator.
+For all evaluations, see [https://github.com/verdict-x509/verdict-bench](https://github.com/verdict-x509/verdict-bench).
+
 ### Dependencies
 
 Build dependencies in Ubuntu 24.04 (other systems are similar):
