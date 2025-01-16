@@ -498,10 +498,12 @@ dependencies = [
 [[package]]
 name = "builtin"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 
 [[package]]
 name = "builtin_macros"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "prettyplease_verus",
  "proc-macro2",
@@ -588,6 +590,7 @@ dependencies = [
 [[package]]
 name = "chain"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "aws-lc-rs",
  "builtin",
@@ -1831,6 +1834,7 @@ checksum = "09d6582e104315a817dff97f75133544b2e094ee22447d2acf4a74e189ba06fc"
 [[package]]
 name = "libcrux"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/?branch=main)",
  "hax-lib-macros 0.1.0-rc.1 (git+https://github.com/hacspec/hax/?branch=main)",
@@ -1847,6 +1851,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdh"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "libcrux-hacl",
  "rand",
@@ -1855,6 +1860,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hacl"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "cc",
  "libcrux-platform",
@@ -1863,6 +1869,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hkdf"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "libcrux-hacl",
 ]
@@ -1870,6 +1877,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hmac"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "libcrux-hacl",
  "libcrux-hkdf",
@@ -1878,10 +1886,12 @@ dependencies = [
 [[package]]
 name = "libcrux-intrinsics"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 
 [[package]]
 name = "libcrux-kem"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "libcrux-ecdh",
  "libcrux-ml-kem",
@@ -1892,6 +1902,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ml-kem"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -1903,6 +1914,7 @@ dependencies = [
 [[package]]
 name = "libcrux-platform"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "libc",
 ]
@@ -1910,6 +1922,7 @@ dependencies = [
 [[package]]
 name = "libcrux-sha3"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -1997,6 +2010,7 @@ checksum = "b8dd856d451cc0da70e2ef2ce95a18e39a93b7558bedf10201ad28503f918568"
 [[package]]
 name = "macros"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "quote",
  "syn 2.0.90",
@@ -2233,6 +2247,7 @@ dependencies = [
 [[package]]
 name = "parser"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "base64",
  "builtin",
@@ -2374,6 +2389,7 @@ dependencies = [
 [[package]]
 name = "polyfill"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "builtin",
  "builtin_macros",
@@ -2420,6 +2436,7 @@ dependencies = [
 [[package]]
 name = "prettyplease_verus"
 version = "0.1.15"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "proc-macro2",
  "syn_verus",
@@ -2642,6 +2659,7 @@ dependencies = [
 [[package]]
 name = "rspec"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "indexmap",
  "proc-macro2",
@@ -2652,6 +2670,7 @@ dependencies = [
 [[package]]
 name = "rspec-lib"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "builtin",
  "builtin_macros",
@@ -3057,6 +3076,7 @@ dependencies = [
 [[package]]
 name = "syn_verus"
 version = "1.0.95"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3380,6 +3400,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vest"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "builtin",
  "builtin_macros",
@@ -3389,6 +3410,7 @@ dependencies = [
 [[package]]
 name = "vstd"
 version = "0.1.0"
+source = "git+https://github.com/verdict-x509/verdict.git?branch=main#5ce8f4ff74419a574e00f76b71baa886d071c771"
 dependencies = [
  "builtin",
  "builtin_macros",

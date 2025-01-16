@@ -31,8 +31,8 @@ webpki = { workspace = true }
 pki-types = { workspace = true }
 zeroize = { workspace = true }
 zlib-rs = { workspace = true, optional = true }
-chain = { path = "/home/zhengyao/work/x509/chain" }
-parser = { path = "/home/zhengyao/work/x509/parser" }
+chain = { git = "https://github.com/verdict-x509/verdict.git", branch = "main" }
+parser = { git = "https://github.com/verdict-x509/verdict.git", branch = "main" }
 
 [features]
 default = ["aws_lc_rs", "logging", "std", "tls12"]
