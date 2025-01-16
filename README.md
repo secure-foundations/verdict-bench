@@ -7,7 +7,7 @@ We are using the Tranco list generated on Jan 13, 2024.
 
 ## Usage
 
-Run perform the same evaluation in the paper, do the following steps:
+To run the same evaluation in the paper, do the following steps:
 ```
 # Install Python dependencies
 python3 -m venv .venv
