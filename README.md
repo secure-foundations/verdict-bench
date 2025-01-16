@@ -46,3 +46,12 @@ git submodule update --init
 cargo build --release
 ```
 which should work like in a normal Rust package, with all verification annotations stripped.
+
+## Tracing
+
+Use
+```
+RUSTFLAGS="--cfg trace" vargo build [--release]
+```
+to build a version with tracing enabled.
+This will print out every successfully parsed construct and the result of each predicate in the policy DSL.
