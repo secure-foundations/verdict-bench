@@ -1,0 +1,38 @@
+HTTP/1.1 400 Bad Request
+Content-Encoding: gzip
+Pragma: no-cache
+Cache-Control: private, no-cache, no-store, must-revalidate
+Expires: Sat, 01 Jan 2000 00:00:00 GMT
+content-security-policy: default-src data: blob: 'self' https://*.fbsbx.com *.facebook.com *.fbcdn.net;script-src *.facebook.com *.fbcdn.net *.facebook.net 127.0.0.1:* 'unsafe-inline' blob: data: 'self' connect.facebook.net 'wasm-unsafe-eval' https://*.google-analytics.com *.google.com;style-src *.fbcdn.net data: *.facebook.com 'unsafe-inline' https://fonts.googleapis.com;connect-src *.facebook.com facebook.com *.fbcdn.net *.facebook.net wss://*.facebook.com:* wss://*.whatsapp.com:* wss://*.fbcdn.net attachment.fbsbx.com ws://localhost:* blob: *.cdninstagram.com 'self' http://localhost:3103 wss://gateway.facebook.com wss://edge-chat.facebook.com wss://snaptu-d.facebook.com wss://kaios-d.facebook.com/ v.whatsapp.net *.fbsbx.com *.fb.com https://*.google-analytics.com;font-src data: *.facebook.com *.fbcdn.net *.fbsbx.com https://fonts.gstatic.com;img-src *.fbcdn.net *.facebook.com data: https://*.fbsbx.com facebook.com *.cdninstagram.com fbsbx.com fbcdn.net connect.facebook.net *.carriersignal.info blob: android-webview-video-poster: *.whatsapp.net *.fb.com *.oculuscdn.com *.tenor.co *.tenor.com *.giphy.com https://paywithmybank.com/ https://*.paywithmybank.com/ https://www.googleadservices.com https://googleads.g.doubleclick.net https://*.google-analytics.com;media-src *.cdninstagram.com blob: *.fbcdn.net *.fbsbx.com www.facebook.com *.facebook.com data: *.tenor.co *.tenor.com https://*.giphy.com;frame-src *.facebook.com *.fbsbx.com fbsbx.com data: www.instagram.com *.fbcdn.net https://paywithmybank.com/ https://*.paywithmybank.com/ https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com https://td.doubleclick.net *.google.com *.doubleclick.net;worker-src blob: *.facebook.com data:;block-all-mixed-content;upgrade-insecure-requests;
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+reporting-endpoints: coop_report="https://www.facebook.com/browser_reporting/coop/?minimize=0", default="https://www.facebook.com/ajax/browser_error_reports/?device_level=unknown&brsid=7459940281288298048"
+report-to: {"max_age":2592000,"endpoints":[{"url":"https:\/\/www.facebook.com\/browser_reporting\/coop\/?minimize=0"}],"group":"coop_report","include_subdomains":true}, {"max_age":259200,"endpoints":[{"url":"https:\/\/www.facebook.com\/ajax\/browser_error_reports\/?device_level=unknown&brsid=7459940281288298048"}]}
+cross-origin-opener-policy: same-origin-allow-popups
+Vary: Sec-Fetch-Site, Sec-Fetch-Mode, Accept-Encoding
+origin-agent-cluster: ?1
+Strict-Transport-Security: max-age=15552000; preload
+Content-Type: text/html; charset="utf-8"
+X-FB-Debug: C5lRxlYFHs6HvfVi8T4PYPYFgbJbBVpWhNuwgjlt0dUvS/wUwOP9eewaX/5NKbb1ZeK2asZSgWkfvEAeo5kuig==
+Date: Wed, 15 Jan 2025 00:58:17 GMT
+Proxy-Status: http_request_error; e_proxy="AcLXMo9e1Tu_vQYWTkv3vs0LwrV0Lf7mifobwaGO0T_LojRKy5Sz5w7mtTYULTZ7BlUUi5rHBztrKWWehmq9"; e_fb_binaryversion="AcLs2fiAYyNoQRM_SgQ8tLHly5SCMiasEE8Aypb63o8k7uILCoZjqc4S7PRaLlO2V1A8OZAkEZGBPdscxl8BLrf7jvVb5moYf4A"; e_fb_httpversion="AcK1uXWVXl_mQcq1K6aHxqsQk7pmtujfHypGk3a8zEFve0u7qvvkklMXwXJp"; e_fb_responsebytes="AcL5kVC-ui0YBfAMPGfSJBDpYLukprbi-zPf2VaZdIk3gY6VOL903cT8Ag7I"; e_fb_requesttime="AcIlliwWKqjtwbCI2rYLbiIJS7duXdbk_9x_PJNj6WqctrR9auexttJbcujcTjK1_1nB16c-MQ"; e_fb_requesthandler="AcLYViPCpnvLdEKc1vRTK3Eu7Gykq81zLSJDQrqLr_z5PW5HJp8HB0nCgheN7XeY6eq0J-TW"; e_fb_hostheader="AcJsOYQl-iyvhmgkrl_ZHEWazWIvctrq0Cd99JXkuNb1BAq8-VIV_GzFY-uUBqvQ0FiCLHJoywzunw"; e_fb_requestsequencenumber="AcKPfgk4IDdS0lgEu0tciAsZj_psniLhfs8o5dzKdmwPwTXZ71oTo50SPFUR"; e_upip="AcImNC3CpZR_QJo4nCX9KoiXWnuKdemCzJ3hlah4yZlwEqT9XJ3R3aLEn0EwhKRduXpEb5hpyqIWsGNu5m_KL_39vxwu7g465wkX094"; e_fb_builduser="AcI7SO9xoiexfRe9jbG3q3SO3Yn3yncUrC6orEHZOimFjsv_OcP4xTGiyRW7jRsSz4Y"; e_fb_vipport="AcLNEzBZUFEouPFD8HKBxc81RS8rlcT_SPatTBcj0cojafqZhHrHKzM75_T3"; e_clientaddr="AcJI4AlxE20gS31V0N_ghRTzeyrQBEVJnHihHBXCMbM6Pju9VJa0V-1Jn95038qcG3ML5lQeM1xewuv9M3qtqhS19VgEtPvJYqcKRIqtmsLNvB4GFg"; e_fb_vipaddr="AcIle0FBZGjgOOOENXUEbGCqf0tdYKe6V2ZjPTPA7xujztZEhr53PJDkfIcBMwKL6vDjicwHmpqzxnx7HorY4Rw7oHhlnR4O2g"; e_fb_configversion="AcIJ8VyuAhb2zuU0_vwduGTMo1fRaC0Y2VhIIZw1QYI7uCkRik812wAH607DFw", http_request_error; e_proxy="AcKnSobiwtfI1yCoK0pPY2ezgJuWqZb6A8H7E_Apofunp10kDGm15WQKjR6xKH7ueqFac2Ca-Y23NdY"; e_fb_binaryversion="AcKGb3ocSHew4hCJqTFTiMa38om-GTQIHueYzAuExLcHzWiR1j9ot2qIGlqL1KiTM4pI83cig2vve5mHE-cjrrBkhhJ3cEfRzLE"; e_fb_httpversion="AcJA6Fryb7xamm73Al2esKtUvteVwBnivly29qasdR4ugU_0BY0u75-xds4y"; e_fb_responsebytes="AcJ1BQfkSlHoQ5_7Qfvd_z66Dloj-AEjD0OPutivUKXlQ5DQFoT1Y6JRq-7O"; e_fb_requesttime="AcIRlLGn6IPk8TO7B0vLAEOq2fbhtndxrAbLzlQWTsSheziBooka5ivEEByCe5riZ05VWTWOgg"; e_fb_requesthandler="AcKsXflRzMdl2RaJmqnJIBMTuJ3J87fB3D2Tpc_HlpJ7GBEo0AeiUSrRlUUAK7BZZU2dWhn7"; e_fb_hostheader="AcIcjMC55sRWyXeLKgq_CbaqtuYih1lJuIX9b6iv-_egnsj1xJ4w9hw7sehjamWVjhNRzYLKf4U7YA"; e_fb_requestsequencenumber="AcJjGJcyYPSQ41MpyCh2XdSCxcaTllNHaIJTBBWi_TF7TaWtquVy4rz-Yw"; e_upip="AcL0kSUG9XwqT-ZUMvgge_IjhZxJrnBhblznAyPEYnlIGypeJodxVLfj5KArTdWkC3lODfuLVJgjNS9WR-hIxEVG7iMsL4IPkg"; e_fb_builduser="AcKxCB7r9tplV0yb9a5Pz4Jlmft59LaTZi-vStkylQXh9V_Ka4OgpuMZUHYH05N6hOA"; e_fb_vipport="AcKozGOvtrwgI6l_HMFHTLatf8wKMAfVxsWFGPW126L6drniwCfLXoHL7pLr"; e_clientaddr="AcLsstwcpGs4uJgEDoz0ZjEQ51BSn0zVgmBbqANHoRWHX2rzOegYg1ceMPWN6jcT90h0T4PZY3xybJWvrJEzPHCbejlboetEYFIVuY9X89YSQKf-3w"; e_fb_vipaddr="AcL3ni5hzkYXgaFPTrW4E0d4hUZxEEWaAl7YXGgNEYyDCvfb-ut-gpAIfhdZqN74rJ6cu0v4pAUJQIzptN5DfxAp-jSGx0vM0Ao5z9I"; e_fb_configversion="AcLWXhs1dN5o--yT5DAQJg_Ajq-W_xSXoVBAHhg5nbKmhE77j5oHRfXhb0i2wg"
+X-FB-Connection-Quality: EXCELLENT; q=0.9, rtt=37, rtx=0, c=10, mss=1380, tbw=3428, tp=-1, tpl=-1, uplat=34, ullat=0
+Alt-Svc: h3=":443"; ma=86400
+Connection: keep-alive
+Content-Length: 835
+
+<!DOCTYPE html><html lang="en" id="facebook"><head><title>Error</title><meta charset="utf-8" /><meta http-equiv="Cache-Control" content="no-cache" /><meta name="robots" content="noindex,nofollow" /><style nonce="azdaRUlr">html, body { color: #333; font-family: 'Lucida Grande', 'Tahoma', 'Verdana', 'Arial', sans-serif; margin: 0; padding: 0; text-align: center;}
+#header { height: 30px; padding-bottom: 10px; padding-top: 10px; text-align: center;}
+#icon { width: 30px;}
+.core { margin: auto; padding: 1em 0; text-align: left; width: 904px;}
+h1 { font-size: 18px;}
+p { font-size: 13px;}
+.footer { border-top: 1px solid #ddd; color: #777; float: left; font-size: 11px; padding: 5px 8px 6px 0; width: 904px;}</style></head><body><div id="header"><a href="//www.facebook.com/"><img id="icon" src="//static.facebook.com/images/logos/facebook_2x.png" /></a></div><div class="core"><h1>Sorry, something went wrong.</h1><p>We&#039;re working on getting this fixed as soon as we can.</p><p><a id="back" href="//www.facebook.com/">Go back</a></p><div class="footer"> Meta &#169; 2024 &#183; <a href="//www.facebook.com/help/?ref=href052">Help</a></div></div><script nonce="azdaRUlr">
+              document.getElementById("back").onclick = function() {
+                if (history.length > 1) {
+                  history.back();
+                  return false;
+                }
+              };
+            </script></body></html><!-- @codegen-command : phps GenerateErrorPages --><!-- @generated SignedSource<<f06de9d674e466d31c38de4e1e683a0e>> -->

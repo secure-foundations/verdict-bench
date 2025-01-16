@@ -1,0 +1,672 @@
+### testing domain okcdn.ru (out/okcdn.ru)
+server started
+took 39.89 s
+default: 82929.79, verdict-chrome: 82957.34 (0.03%), t-stat: -0.894, p-value: 0.373
+default: 82929.79, verdict-firefox: 82991.6 (0.07%), t-stat: -2.195, p-value: 0.03
+default: 82929.79, verdict-openssl: 82909.05 (-0.03%), t-stat: 0.595, p-value: 0.553
+num different domains: 1
+### testing domain spotify.com (out/spotify.com)
+server started
+took 15.46 s
+default: 31868.59, verdict-chrome: 32167.85 (0.94%), t-stat: -10.46, p-value: 0.0
+default: 31868.59, verdict-firefox: 32074.42 (0.65%), t-stat: -8.36, p-value: 0.0
+default: 31868.59, verdict-openssl: 32100.55 (0.73%), t-stat: -8.502, p-value: 0.0
+num different domains: 2
+### testing domain apple.com (out/apple.com)
+server started
+took 25.47 s
+default: 52440.76, verdict-chrome: 53084.42 (1.23%), t-stat: -18.412, p-value: 0.0
+default: 52440.76, verdict-firefox: 53027.61 (1.12%), t-stat: -17.3, p-value: 0.0
+default: 52440.76, verdict-openssl: 53033.2 (1.13%), t-stat: -18.136, p-value: 0.0
+num different domains: 3
+### testing domain youtube.com (out/youtube.com)
+server started
+took 58.1 s
+default: 121199.21, verdict-chrome: 120227.63 (-0.8%), t-stat: 1.161, p-value: 0.247
+default: 121199.21, verdict-firefox: 121241.81 (0.04%), t-stat: -0.064, p-value: 0.949
+default: 121199.21, verdict-openssl: 120891.03 (-0.25%), t-stat: 0.453, p-value: 0.651
+### testing domain pki.goog (out/pki.goog)
+server started
+took 39.7 s
+default: 82560.97, verdict-chrome: 82718.99 (0.19%), t-stat: -2.664, p-value: 0.008
+default: 82560.97, verdict-firefox: 82702.52 (0.17%), t-stat: -2.393, p-value: 0.018
+default: 82560.97, verdict-openssl: 82550.66 (-0.01%), t-stat: 0.141, p-value: 0.888
+num different domains: 4
+### testing domain nih.gov (out/nih.gov)
+server started
+took 39.45 s
+default: 82038.14, verdict-chrome: 82029.82 (-0.01%), t-stat: 0.349, p-value: 0.727
+default: 82038.14, verdict-firefox: 82008.7 (-0.04%), t-stat: 1.398, p-value: 0.164
+default: 82038.14, verdict-openssl: 82049.23 (0.01%), t-stat: -0.418, p-value: 0.676
+### testing domain whatsapp.net (out/whatsapp.net)
+server started
+took 15.23 s
+default: 31442.8, verdict-chrome: 31639.61 (0.63%), t-stat: -8.509, p-value: 0.0
+default: 31442.8, verdict-firefox: 31588.18 (0.46%), t-stat: -5.902, p-value: 0.0
+default: 31442.8, verdict-openssl: 31606.5 (0.52%), t-stat: -7.045, p-value: 0.0
+num different domains: 5
+### testing domain app-analytics-services.com (out/app-analytics-services.com)
+server started
+took 39.45 s
+default: 81999.43, verdict-chrome: 82019.06 (0.02%), t-stat: -0.769, p-value: 0.443
+default: 81999.43, verdict-firefox: 82008.58 (0.01%), t-stat: -0.381, p-value: 0.704
+default: 81999.43, verdict-openssl: 82009.43 (0.01%), t-stat: -0.416, p-value: 0.678
+### testing domain gravatar.com (out/gravatar.com)
+server started
+took 15.36 s
+default: 31695.63, verdict-chrome: 31911.37 (0.68%), t-stat: -7.476, p-value: 0.0
+default: 31695.63, verdict-firefox: 31843.51 (0.47%), t-stat: -5.65, p-value: 0.0
+default: 31695.63, verdict-openssl: 31911.41 (0.68%), t-stat: -7.387, p-value: 0.0
+num different domains: 6
+### testing domain snapchat.com (out/snapchat.com)
+server started
+took 15.5 s
+default: 32021.06, verdict-chrome: 32205.52 (0.58%), t-stat: -8.13, p-value: 0.0
+default: 32021.06, verdict-firefox: 32078.03 (0.18%), t-stat: -1.93, p-value: 0.056
+default: 32021.06, verdict-openssl: 32200.52 (0.56%), t-stat: -8.888, p-value: 0.0
+num different domains: 7
+### testing domain wordpress.com (out/wordpress.com)
+server started
+took 43.42 s
+default: 90403.02, verdict-chrome: 89354.89 (-1.16%), t-stat: 1.448, p-value: 0.149
+default: 90403.02, verdict-firefox: 90242.57 (-0.18%), t-stat: 0.224, p-value: 0.823
+default: 90403.02, verdict-openssl: 90941.75 (0.6%), t-stat: -0.767, p-value: 0.444
+### testing domain bing.com (out/bing.com)
+server started
+took 49.5 s
+default: 102939.32, verdict-chrome: 102936.87 (-0.0%), t-stat: 0.083, p-value: 0.934
+default: 102939.32, verdict-firefox: 102968.83 (0.03%), t-stat: -1.029, p-value: 0.305
+default: 102939.32, verdict-openssl: 102990.26 (0.05%), t-stat: -1.907, p-value: 0.058
+### testing domain roblox.com (out/roblox.com)
+server started
+took 39.45 s
+default: 81999.36, verdict-chrome: 81999.14 (-0.0%), t-stat: 0.019, p-value: 0.984
+default: 81999.36, verdict-firefox: 82048.35 (0.06%), t-stat: -2.378, p-value: 0.019
+default: 81999.36, verdict-openssl: 82069.59 (0.09%), t-stat: -2.798, p-value: 0.006
+num different domains: 8
+### testing domain yandex.net (out/yandex.net)
+server started
+took 30.46 s
+default: 63064.03, verdict-chrome: 63385.02 (0.51%), t-stat: -9.647, p-value: 0.0
+default: 63064.03, verdict-firefox: 63336.68 (0.43%), t-stat: -9.246, p-value: 0.0
+default: 63064.03, verdict-openssl: 63342.22 (0.44%), t-stat: -9.589, p-value: 0.0
+num different domains: 9
+### testing domain microsoft.com (out/microsoft.com)
+server started
+took 52.27 s
+default: 109940.14, verdict-chrome: 108159.45 (-1.62%), t-stat: 2.496, p-value: 0.013
+default: 109940.14, verdict-firefox: 108649.24 (-1.17%), t-stat: 1.8, p-value: 0.073
+default: 109940.14, verdict-openssl: 108301.8 (-1.49%), t-stat: 2.287, p-value: 0.023
+num different domains: 10
+### testing domain office365.com (out/office365.com)
+server started
+took 54.69 s
+default: 113778.85, verdict-chrome: 113821.13 (0.04%), t-stat: -0.217, p-value: 0.828
+default: 113778.85, verdict-firefox: 113892.9 (0.1%), t-stat: -0.613, p-value: 0.54
+default: 113778.85, verdict-openssl: 113869.73 (0.08%), t-stat: -0.491, p-value: 0.624
+### testing domain qq.com (out/qq.com)
+server started
+took 25.5 s
+default: 52996.94, verdict-chrome: 53052.33 (0.1%), t-stat: -2.249, p-value: 0.026
+default: 52996.94, verdict-firefox: 52881.3 (-0.22%), t-stat: 3.785, p-value: 0.0
+default: 52996.94, verdict-openssl: 52900.17 (-0.18%), t-stat: 2.57, p-value: 0.011
+num different domains: 11
+### testing domain cloudflare.net (out/cloudflare.net)
+server started
+took 15.33 s
+default: 31624.97, verdict-chrome: 31899.89 (0.87%), t-stat: -12.872, p-value: 0.0
+default: 31624.97, verdict-firefox: 31761.1 (0.43%), t-stat: -5.593, p-value: 0.0
+default: 31624.97, verdict-openssl: 31840.72 (0.68%), t-stat: -10.091, p-value: 0.0
+num different domains: 12
+### testing domain github.io (out/github.io)
+server started
+took 15.46 s
+default: 31903.75, verdict-chrome: 32167.2 (0.83%), t-stat: -9.73, p-value: 0.0
+default: 31903.75, verdict-firefox: 32038.79 (0.42%), t-stat: -5.413, p-value: 0.0
+default: 31903.75, verdict-openssl: 32111.4 (0.65%), t-stat: -8.291, p-value: 0.0
+num different domains: 13
+### testing domain app-measurement.com (out/app-measurement.com)
+server started
+took 39.45 s
+default: 82019.82, verdict-chrome: 82018.76 (-0.0%), t-stat: 0.053, p-value: 0.958
+default: 82019.82, verdict-firefox: 81959.37 (-0.07%), t-stat: 2.028, p-value: 0.044
+default: 82019.82, verdict-openssl: 82118.84 (0.12%), t-stat: -2.987, p-value: 0.003
+num different domains: 14
+### testing domain googledomains.com (out/googledomains.com)
+server started
+took 63.89 s
+default: 132829.98, verdict-chrome: 133087.35 (0.19%), t-stat: -0.56, p-value: 0.576
+default: 132829.98, verdict-firefox: 133433.29 (0.45%), t-stat: -1.357, p-value: 0.176
+default: 132829.98, verdict-openssl: 132445.45 (-0.29%), t-stat: 0.755, p-value: 0.451
+### testing domain youtu.be (out/youtu.be)
+server started
+took 59.49 s
+default: 123797.66, verdict-chrome: 123820.37 (0.02%), t-stat: -0.515, p-value: 0.607
+default: 123797.66, verdict-firefox: 123736.14 (-0.05%), t-stat: 1.126, p-value: 0.262
+default: 123797.66, verdict-openssl: 123720.89 (-0.06%), t-stat: 1.807, p-value: 0.072
+### testing domain mts.ru (out/mts.ru)
+server started
+took 30.53 s
+default: 63327.87, verdict-chrome: 63462.41 (0.21%), t-stat: -5.444, p-value: 0.0
+default: 63327.87, verdict-firefox: 63476.92 (0.24%), t-stat: -6.225, p-value: 0.0
+default: 63327.87, verdict-openssl: 63484.79 (0.25%), t-stat: -6.112, p-value: 0.0
+num different domains: 15
+### testing domain fastly.net (out/fastly.net)
+server started
+took 79.86 s
+default: 168394, verdict-chrome: 163020.36 (-3.19%), t-stat: 1.317, p-value: 0.189
+default: 168394, verdict-firefox: 166567.79 (-1.08%), t-stat: 0.489, p-value: 0.625
+default: 168394, verdict-openssl: 167975.27 (-0.25%), t-stat: 0.115, p-value: 0.909
+### testing domain myfritz.net (out/myfritz.net)
+server started
+took 15.48 s
+default: 31959.72, verdict-chrome: 32193.11 (0.73%), t-stat: -8.586, p-value: 0.0
+default: 31959.72, verdict-firefox: 32112.89 (0.48%), t-stat: -6.467, p-value: 0.0
+default: 31959.72, verdict-openssl: 32129.83 (0.53%), t-stat: -6.387, p-value: 0.0
+num different domains: 16
+### testing domain gstatic.com (out/gstatic.com)
+server started
+took 39.48 s
+default: 82220.4, verdict-chrome: 82069.21 (-0.18%), t-stat: 3.371, p-value: 0.001
+default: 82220.4, verdict-firefox: 82119.07 (-0.12%), t-stat: 2.025, p-value: 0.044
+default: 82220.4, verdict-openssl: 82019.39 (-0.24%), t-stat: 4.137, p-value: 0.0
+num different domains: 17
+### testing domain samsung.com (out/samsung.com)
+server started
+took 59.52 s
+default: 123900.28, verdict-chrome: 123837.91 (-0.05%), t-stat: 1.556, p-value: 0.121
+default: 123900.28, verdict-firefox: 123869.58 (-0.02%), t-stat: 0.744, p-value: 0.458
+default: 123900.28, verdict-openssl: 123717.42 (-0.15%), t-stat: 3.431, p-value: 0.001
+num different domains: 18
+### testing domain github.com (out/github.com)
+server started
+took 30.46 s
+default: 62958.01, verdict-chrome: 63406.43 (0.71%), t-stat: -16.003, p-value: 0.0
+default: 62958.01, verdict-firefox: 63376.68 (0.66%), t-stat: -17.002, p-value: 0.0
+default: 62958.01, verdict-openssl: 63413.2 (0.72%), t-stat: -18.561, p-value: 0.0
+num different domains: 19
+### testing domain instagram.com (out/instagram.com)
+server started
+took 30.31 s
+default: 62861.04, verdict-chrome: 63089.96 (0.36%), t-stat: -2.206, p-value: 0.03
+default: 62861.04, verdict-firefox: 62987.64 (0.2%), t-stat: -6.03, p-value: 0.0
+default: 62861.04, verdict-openssl: 62880.68 (0.03%), t-stat: -0.535, p-value: 0.594
+num different domains: 20
+### testing domain criteo.com (out/criteo.com)
+server started
+took 36.39 s
+default: 76314.25, verdict-chrome: 75484.74 (-1.09%), t-stat: 1.414, p-value: 0.159
+default: 76314.25, verdict-firefox: 75435.26 (-1.15%), t-stat: 1.496, p-value: 0.136
+default: 76314.25, verdict-openssl: 75173.24 (-1.5%), t-stat: 2.007, p-value: 0.046
+num different domains: 21
+### testing domain azure.com (out/azure.com)
+server started
+took 58.14 s
+default: 120230.16, verdict-chrome: 121118.29 (0.74%), t-stat: -1.265, p-value: 0.207
+default: 120230.16, verdict-firefox: 121556.64 (1.1%), t-stat: -1.93, p-value: 0.055
+default: 120230.16, verdict-openssl: 120776.46 (0.45%), t-stat: -0.757, p-value: 0.45
+### testing domain zoom.us (out/zoom.us)
+server started
+took 30.51 s
+default: 63331.5, verdict-chrome: 63499 (0.26%), t-stat: -6.719, p-value: 0.0
+default: 63331.5, verdict-firefox: 63446.02 (0.18%), t-stat: -4.466, p-value: 0.0
+default: 63331.5, verdict-openssl: 63414.01 (0.13%), t-stat: -2.394, p-value: 0.018
+num different domains: 22
+### testing domain amazon-adsystem.com (out/amazon-adsystem.com)
+server started
+took 39.89 s
+default: 82936.98, verdict-chrome: 82971.24 (0.04%), t-stat: -1.254, p-value: 0.212
+default: 82936.98, verdict-firefox: 82958.98 (0.03%), t-stat: -0.777, p-value: 0.438
+default: 82936.98, verdict-openssl: 82910.14 (-0.03%), t-stat: 0.835, p-value: 0.405
+### testing domain skype.com (out/skype.com)
+server started
+took 39.49 s
+default: 82049.78, verdict-chrome: 82175.89 (0.15%), t-stat: -2.419, p-value: 0.017
+default: 82049.78, verdict-firefox: 82129.55 (0.1%), t-stat: -1.979, p-value: 0.049
+default: 82049.78, verdict-openssl: 82038.3 (-0.01%), t-stat: 0.362, p-value: 0.718
+num different domains: 23
+### testing domain opera.com (out/opera.com)
+server started
+took 20.28 s
+default: 42018.28, verdict-chrome: 42096.35 (0.19%), t-stat: -2.221, p-value: 0.028
+default: 42018.28, verdict-firefox: 42063.05 (0.11%), t-stat: -1.391, p-value: 0.166
+default: 42018.28, verdict-openssl: 42200.9 (0.43%), t-stat: -6.71, p-value: 0.0
+num different domains: 24
+### testing domain apache.org (out/apache.org)
+server started
+took 15.51 s
+default: 32015.7, verdict-chrome: 32283.51 (0.84%), t-stat: -11.251, p-value: 0.0
+default: 32015.7, verdict-firefox: 32185.46 (0.53%), t-stat: -7.307, p-value: 0.0
+default: 32015.7, verdict-openssl: 32107.78 (0.29%), t-stat: -3.011, p-value: 0.003
+num different domains: 25
+### testing domain epicgames.com (out/epicgames.com)
+server started
+took 39.89 s
+default: 82929.47, verdict-chrome: 82939.63 (0.01%), t-stat: -0.333, p-value: 0.74
+default: 82929.47, verdict-firefox: 82942.04 (0.02%), t-stat: -0.415, p-value: 0.679
+default: 82929.47, verdict-openssl: 82960.01 (0.04%), t-stat: -1.059, p-value: 0.291
+### testing domain wordpress.org (out/wordpress.org)
+server started
+took 25.35 s
+default: 52533.8, verdict-chrome: 52791.86 (0.49%), t-stat: -9.356, p-value: 0.0
+default: 52533.8, verdict-firefox: 52562.95 (0.06%), t-stat: -0.785, p-value: 0.434
+default: 52533.8, verdict-openssl: 52792.7 (0.49%), t-stat: -9.735, p-value: 0.0
+num different domains: 26
+### testing domain icloud.com (out/icloud.com)
+server started
+took 15.46 s
+default: 31644.2, verdict-chrome: 32243.64 (1.89%), t-stat: -21.995, p-value: 0.0
+default: 31644.2, verdict-firefox: 32139.24 (1.56%), t-stat: -18.667, p-value: 0.0
+default: 31644.2, verdict-openssl: 32153.88 (1.61%), t-stat: -18.24, p-value: 0.0
+num different domains: 27
+### testing domain t-online.de (out/t-online.de)
+server started
+took 63.9 s
+default: 132990.14, verdict-chrome: 133142.24 (0.11%), t-stat: -0.335, p-value: 0.738
+default: 132990.14, verdict-firefox: 132339.64 (-0.49%), t-stat: 1.332, p-value: 0.184
+default: 132990.14, verdict-openssl: 133195.43 (0.15%), t-stat: -0.461, p-value: 0.645
+### testing domain doubleclick.net (out/doubleclick.net)
+server started
+took 44.51 s
+default: 92508.3, verdict-chrome: 92507.67 (-0.0%), t-stat: 0.014, p-value: 0.989
+default: 92508.3, verdict-firefox: 92548.4 (0.04%), t-stat: -0.896, p-value: 0.371
+default: 92508.3, verdict-openssl: 92777.77 (0.29%), t-stat: -5.972, p-value: 0.0
+num different domains: 28
+### testing domain bit.ly (out/bit.ly)
+server started
+took 20.55 s
+default: 42560.95, verdict-chrome: 42662.47 (0.24%), t-stat: -4.006, p-value: 0.0
+default: 42560.95, verdict-firefox: 42638.71 (0.18%), t-stat: -2.892, p-value: 0.004
+default: 42560.95, verdict-openssl: 42693.78 (0.31%), t-stat: -5.051, p-value: 0.0
+num different domains: 29
+### testing domain intuit.com (out/intuit.com)
+server started
+took 54.45 s
+default: 113268.21, verdict-chrome: 113321.74 (0.05%), t-stat: -1.035, p-value: 0.302
+default: 113268.21, verdict-firefox: 113353.57 (0.08%), t-stat: -1.966, p-value: 0.051
+default: 113268.21, verdict-openssl: 113271.63 (0.0%), t-stat: -0.074, p-value: 0.941
+### testing domain sharepoint.com (out/sharepoint.com)
+server started
+took 54.53 s
+default: 113220.15, verdict-chrome: 113887.45 (0.59%), t-stat: -2.254, p-value: 0.026
+default: 113220.15, verdict-firefox: 112949.54 (-0.24%), t-stat: 0.65, p-value: 0.517
+default: 113220.15, verdict-openssl: 113649.15 (0.38%), t-stat: -1.296, p-value: 0.197
+num different domains: 30
+### testing domain dropbox.com (out/dropbox.com)
+server started
+took 30.53 s
+default: 63331.92, verdict-chrome: 63532.25 (0.32%), t-stat: -7.868, p-value: 0.0
+default: 63331.92, verdict-firefox: 63423.87 (0.15%), t-stat: -3.589, p-value: 0.0
+default: 63331.92, verdict-openssl: 63491.22 (0.25%), t-stat: -6.185, p-value: 0.0
+num different domains: 31
+### testing domain twitter.com (out/twitter.com)
+server started
+took 15.47 s
+default: 31918.27, verdict-chrome: 32202.33 (0.89%), t-stat: -10.504, p-value: 0.0
+default: 31918.27, verdict-firefox: 31980.52 (0.2%), t-stat: -1.857, p-value: 0.065
+default: 31918.27, verdict-openssl: 32175.81 (0.81%), t-stat: -9.67, p-value: 0.0
+num different domains: 32
+### testing domain wa.me (out/wa.me)
+server started
+took 15.22 s
+default: 31415.41, verdict-chrome: 31601.84 (0.59%), t-stat: -7.367, p-value: 0.0
+default: 31415.41, verdict-firefox: 31563.39 (0.47%), t-stat: -6.485, p-value: 0.0
+default: 31415.41, verdict-openssl: 31615.81 (0.64%), t-stat: -8.702, p-value: 0.0
+num different domains: 33
+### testing domain tiktok.com (out/tiktok.com)
+server started
+took 30.52 s
+default: 63326.11, verdict-chrome: 63479.46 (0.24%), t-stat: -5.513, p-value: 0.0
+default: 63326.11, verdict-firefox: 63418.01 (0.15%), t-stat: -3.135, p-value: 0.002
+default: 63326.11, verdict-openssl: 63436.42 (0.17%), t-stat: -3.988, p-value: 0.0
+num different domains: 34
+### testing domain facebook.com (out/facebook.com)
+server started
+took 15.21 s
+default: 31385.82, verdict-chrome: 31601.38 (0.69%), t-stat: -8.783, p-value: 0.0
+default: 31385.82, verdict-firefox: 31585.1 (0.63%), t-stat: -8.133, p-value: 0.0
+default: 31385.82, verdict-openssl: 31617.68 (0.74%), t-stat: -9.951, p-value: 0.0
+num different domains: 35
+### testing domain workers.dev (out/workers.dev)
+server started
+took 15.44 s
+default: 31661.88, verdict-chrome: 32152.99 (1.55%), t-stat: -18.29, p-value: 0.0
+default: 31661.88, verdict-firefox: 32059.59 (1.26%), t-stat: -15.311, p-value: 0.0
+default: 31661.88, verdict-openssl: 32161.85 (1.58%), t-stat: -19.741, p-value: 0.0
+num different domains: 36
+### testing domain appsflyersdk.com (out/appsflyersdk.com)
+server started
+took 39.88 s
+default: 82929.74, verdict-chrome: 82909.36 (-0.02%), t-stat: 0.635, p-value: 0.526
+default: 82929.74, verdict-firefox: 82957.86 (0.03%), t-stat: -1.024, p-value: 0.307
+default: 82929.74, verdict-openssl: 82879.63 (-0.06%), t-stat: 1.342, p-value: 0.181
+### testing domain whatsapp.com (out/whatsapp.com)
+server started
+took 15.23 s
+default: 31441, verdict-chrome: 31656.8 (0.69%), t-stat: -9.191, p-value: 0.0
+default: 31441, verdict-firefox: 31568.59 (0.41%), t-stat: -5.072, p-value: 0.0
+default: 31441, verdict-openssl: 31603.63 (0.52%), t-stat: -6.365, p-value: 0.0
+num different domains: 37
+### testing domain sentry.io (out/sentry.io)
+server started
+took 35.45 s
+default: 73588.02, verdict-chrome: 73764.51 (0.24%), t-stat: -6.449, p-value: 0.0
+default: 73588.02, verdict-firefox: 73675.22 (0.12%), t-stat: -2.781, p-value: 0.006
+default: 73588.02, verdict-openssl: 73772.03 (0.25%), t-stat: -7.062, p-value: 0.0
+num different domains: 38
+### testing domain blogspot.com (out/blogspot.com)
+server started
+took 49.5 s
+default: 102920.57, verdict-chrome: 102967.03 (0.05%), t-stat: -1.356, p-value: 0.177
+default: 102920.57, verdict-firefox: 102979.92 (0.06%), t-stat: -1.874, p-value: 0.063
+default: 102920.57, verdict-openssl: 102982.44 (0.06%), t-stat: -1.976, p-value: 0.05
+### testing domain pinterest.com (out/pinterest.com)
+server started
+took 54.48 s
+default: 113210.32, verdict-chrome: 113187.26 (-0.02%), t-stat: 0.458, p-value: 0.648
+default: 113210.32, verdict-firefox: 113298.87 (0.08%), t-stat: -1.965, p-value: 0.051
+default: 113210.32, verdict-openssl: 113719.54 (0.45%), t-stat: -9.611, p-value: 0.0
+num different domains: 39
+### testing domain googleusercontent.com (out/googleusercontent.com)
+server started
+took 39.45 s
+default: 82011.81, verdict-chrome: 82029.47 (0.02%), t-stat: -0.923, p-value: 0.357
+default: 82011.81, verdict-firefox: 81995.41 (-0.02%), t-stat: 0.635, p-value: 0.527
+default: 82011.81, verdict-openssl: 82039.4 (0.03%), t-stat: -1.356, p-value: 0.177
+### testing domain baidu.com (out/baidu.com)
+server started
+took 30.54 s
+default: 63332.85, verdict-chrome: 63605.75 (0.43%), t-stat: -2.628, p-value: 0.01
+default: 63332.85, verdict-firefox: 63457.79 (0.2%), t-stat: -5.183, p-value: 0.0
+default: 63332.85, verdict-openssl: 63479.41 (0.23%), t-stat: -5.837, p-value: 0.0
+num different domains: 40
+### testing domain ui.com (out/ui.com)
+server started
+took 39.89 s
+default: 82909.64, verdict-chrome: 82918.79 (0.01%), t-stat: -0.253, p-value: 0.801
+default: 82909.64, verdict-firefox: 82928.97 (0.02%), t-stat: -0.606, p-value: 0.545
+default: 82909.64, verdict-openssl: 82979.89 (0.08%), t-stat: -2.573, p-value: 0.011
+num different domains: 41
+### testing domain googleapis.com (out/googleapis.com)
+server started
+took 39.47 s
+default: 82099.6, verdict-chrome: 82060.2 (-0.05%), t-stat: 1.11, p-value: 0.268
+default: 82099.6, verdict-firefox: 82048.83 (-0.06%), t-stat: 1.425, p-value: 0.156
+default: 82099.6, verdict-openssl: 82059.74 (-0.05%), t-stat: 0.986, p-value: 0.325
+### testing domain gandi.net (out/gandi.net)
+server started
+took 49.5 s
+default: 102948.51, verdict-chrome: 102997.06 (0.05%), t-stat: -1.437, p-value: 0.153
+default: 102948.51, verdict-firefox: 102966.04 (0.02%), t-stat: -0.698, p-value: 0.486
+default: 102948.51, verdict-openssl: 102977.8 (0.03%), t-stat: -1.118, p-value: 0.265
+### testing domain digicert.com (out/digicert.com)
+server started
+took 25.5 s
+default: 52827.16, verdict-chrome: 53019.73 (0.36%), t-stat: -5.028, p-value: 0.0
+default: 52827.16, verdict-firefox: 52961.24 (0.25%), t-stat: -3.355, p-value: 0.001
+default: 52827.16, verdict-openssl: 53008.68 (0.34%), t-stat: -4.704, p-value: 0.0
+num different domains: 42
+### testing domain mozilla.org (out/mozilla.org)
+server started
+took 39.46 s
+default: 82059.36, verdict-chrome: 82050.43 (-0.01%), t-stat: 0.306, p-value: 0.76
+default: 82059.36, verdict-firefox: 82040.37 (-0.02%), t-stat: 0.709, p-value: 0.479
+default: 82059.36, verdict-openssl: 82049.19 (-0.01%), t-stat: 0.314, p-value: 0.754
+### testing domain tumblr.com (out/tumblr.com)
+server started
+took 20.48 s
+default: 42117.29, verdict-chrome: 42674.97 (1.32%), t-stat: -19.258, p-value: 0.0
+default: 42117.29, verdict-firefox: 42619.59 (1.19%), t-stat: -16.589, p-value: 0.0
+default: 42117.29, verdict-openssl: 42639.99 (1.24%), t-stat: -16.921, p-value: 0.0
+num different domains: 43
+### testing domain nginx.com (out/nginx.com)
+server started
+took 40.32 s
+default: 83706.3, verdict-chrome: 83918.58 (0.25%), t-stat: -6.125, p-value: 0.0
+default: 83706.3, verdict-firefox: 83866.91 (0.19%), t-stat: -5.201, p-value: 0.0
+default: 83706.3, verdict-openssl: 83833.8 (0.15%), t-stat: -2.586, p-value: 0.011
+num different domains: 44
+### testing domain office.com (out/office.com)
+server started
+took 54.43 s
+default: 113269.71, verdict-chrome: 113270.21 (0.0%), t-stat: -0.011, p-value: 0.992
+default: 113269.71, verdict-firefox: 113213.6 (-0.05%), t-stat: 1.209, p-value: 0.228
+default: 113269.71, verdict-openssl: 113220.13 (-0.04%), t-stat: 1.06, p-value: 0.291
+### testing domain x.com (out/x.com)
+server started
+took 15.48 s
+default: 31812.32, verdict-chrome: 32223.8 (1.29%), t-stat: -11.339, p-value: 0.0
+default: 31812.32, verdict-firefox: 32153.02 (1.07%), t-stat: -9.903, p-value: 0.0
+default: 31812.32, verdict-openssl: 32176.22 (1.14%), t-stat: -10.103, p-value: 0.0
+num different domains: 45
+### testing domain nginx.org (out/nginx.org)
+server started
+took 15.52 s
+default: 31964.3, verdict-chrome: 32283.84 (1.0%), t-stat: -10.121, p-value: 0.0
+default: 31964.3, verdict-firefox: 32176.48 (0.66%), t-stat: -6.891, p-value: 0.0
+default: 31964.3, verdict-openssl: 32280.73 (0.99%), t-stat: -11.242, p-value: 0.0
+num different domains: 46
+### testing domain vk.com (out/vk.com)
+server started
+took 30.52 s
+default: 63110.77, verdict-chrome: 63488.4 (0.6%), t-stat: -16.006, p-value: 0.0
+default: 63110.77, verdict-firefox: 63508.64 (0.63%), t-stat: -15.244, p-value: 0.0
+default: 63110.77, verdict-openssl: 63599.88 (0.78%), t-stat: -4.658, p-value: 0.0
+num different domains: 47
+### testing domain google-analytics.com (out/google-analytics.com)
+server started
+took 44.54 s
+default: 92604.79, verdict-chrome: 92502.26 (-0.11%), t-stat: 2.03, p-value: 0.044
+default: 92604.79, verdict-firefox: 92909.63 (0.33%), t-stat: -6.526, p-value: 0.0
+default: 92604.79, verdict-openssl: 92500.71 (-0.11%), t-stat: 1.998, p-value: 0.047
+num different domains: 48
+### testing domain t.me (out/t.me)
+server started
+took 39.45 s
+default: 82049.44, verdict-chrome: 81998.02 (-0.06%), t-stat: 1.64, p-value: 0.103
+default: 82049.44, verdict-firefox: 82029.28 (-0.02%), t-stat: 0.75, p-value: 0.454
+default: 82049.44, verdict-openssl: 82029.26 (-0.02%), t-stat: 0.751, p-value: 0.453
+### testing domain reddit.com (out/reddit.com)
+server started
+took 35.47 s
+default: 73614.5, verdict-chrome: 73775.95 (0.22%), t-stat: -5.524, p-value: 0.0
+default: 73614.5, verdict-firefox: 73748.23 (0.18%), t-stat: -5.311, p-value: 0.0
+default: 73614.5, verdict-openssl: 73809.56 (0.26%), t-stat: -7.239, p-value: 0.0
+num different domains: 49
+### testing domain nic.ru (out/nic.ru)
+server started
+took 59.7 s
+default: 124228.31, verdict-chrome: 124401.35 (0.14%), t-stat: -2.766, p-value: 0.006
+default: 124228.31, verdict-firefox: 124166 (-0.05%), t-stat: 1.125, p-value: 0.262
+default: 124228.31, verdict-openssl: 124116.3 (-0.09%), t-stat: 2.174, p-value: 0.031
+num different domains: 50
+### testing domain fbcdn.net (out/fbcdn.net)
+server started
+took 15.46 s
+default: 31788.82, verdict-chrome: 32172.28 (1.21%), t-stat: -11.775, p-value: 0.0
+default: 31788.82, verdict-firefox: 32117.68 (1.03%), t-stat: -10.428, p-value: 0.0
+default: 31788.82, verdict-openssl: 32097 (0.97%), t-stat: -9.769, p-value: 0.0
+num different domains: 51
+### testing domain mail.ru (out/mail.ru)
+server started
+took 54.78 s
+default: 113978.73, verdict-chrome: 113968.23 (-0.01%), t-stat: 0.428, p-value: 0.669
+default: 113978.73, verdict-firefox: 113971.72 (-0.01%), t-stat: 0.279, p-value: 0.781
+default: 113978.73, verdict-openssl: 113932.59 (-0.04%), t-stat: 1.369, p-value: 0.173
+### testing domain googlesyndication.com (out/googlesyndication.com)
+server started
+took 52.49 s
+default: 109190.17, verdict-chrome: 109548.72 (0.33%), t-stat: -0.501, p-value: 0.617
+default: 109190.17, verdict-firefox: 109510.23 (0.29%), t-stat: -0.445, p-value: 0.657
+default: 109190.17, verdict-openssl: 109150.51 (-0.04%), t-stat: 0.055, p-value: 0.956
+### testing domain telekom.de (out/telekom.de)
+server started
+took 54.47 s
+default: 113393.24, verdict-chrome: 113288.85 (-0.09%), t-stat: 2.134, p-value: 0.034
+default: 113393.24, verdict-firefox: 113345.79 (-0.04%), t-stat: 0.848, p-value: 0.398
+default: 113393.24, verdict-openssl: 113257.45 (-0.12%), t-stat: 2.668, p-value: 0.008
+num different domains: 52
+### testing domain cloudflare-dns.com (out/cloudflare-dns.com)
+server started
+took 30.29 s
+default: 62737.58, verdict-chrome: 63034.41 (0.47%), t-stat: -7.244, p-value: 0.0
+default: 62737.58, verdict-firefox: 62947.66 (0.33%), t-stat: -5.354, p-value: 0.0
+default: 62737.58, verdict-openssl: 63010.25 (0.43%), t-stat: -6.993, p-value: 0.0
+num different domains: 53
+### testing domain cloudflare.com (out/cloudflare.com)
+server started
+took 44.32 s
+default: 91765.97, verdict-chrome: 92773.49 (1.1%), t-stat: -1.696, p-value: 0.091
+default: 91765.97, verdict-firefox: 91826.24 (0.07%), t-stat: -0.094, p-value: 0.925
+default: 91765.97, verdict-openssl: 92855.47 (1.19%), t-stat: -1.83, p-value: 0.069
+### testing domain msn.com (out/msn.com)
+server started
+took 39.9 s
+default: 82950.25, verdict-chrome: 82959.43 (0.01%), t-stat: -0.364, p-value: 0.717
+default: 82950.25, verdict-firefox: 83008.94 (0.07%), t-stat: -2.559, p-value: 0.011
+default: 82950.25, verdict-openssl: 82928.83 (-0.03%), t-stat: 0.758, p-value: 0.45
+num different domains: 54
+### testing domain dzen.ru (out/dzen.ru)
+server started
+took 39.89 s
+default: 82936.24, verdict-chrome: 82988.67 (0.06%), t-stat: -2.054, p-value: 0.041
+default: 82936.24, verdict-firefox: 82910.91 (-0.03%), t-stat: 0.792, p-value: 0.429
+default: 82936.24, verdict-openssl: 82926.49 (-0.01%), t-stat: 0.329, p-value: 0.743
+num different domains: 55
+### testing domain wikipedia.org (out/wikipedia.org)
+server started
+took 15.37 s
+default: 31699.64, verdict-chrome: 31906.69 (0.65%), t-stat: -7.127, p-value: 0.0
+default: 31699.64, verdict-firefox: 31845.14 (0.46%), t-stat: -5.616, p-value: 0.0
+default: 31699.64, verdict-openssl: 31952.96 (0.8%), t-stat: -8.253, p-value: 0.0
+num different domains: 56
+### testing domain outlook.com (out/outlook.com)
+server started
+took 25.51 s
+default: 52927.53, verdict-chrome: 53042.46 (0.22%), t-stat: -4.701, p-value: 0.0
+default: 52927.53, verdict-firefox: 52908.71 (-0.04%), t-stat: 0.501, p-value: 0.617
+default: 52927.53, verdict-openssl: 53051.55 (0.23%), t-stat: -5.211, p-value: 0.0
+num different domains: 57
+### testing domain europa.eu (out/europa.eu)
+server started
+took 15.47 s
+default: 31920.05, verdict-chrome: 32103.19 (0.57%), t-stat: -6.51, p-value: 0.0
+default: 31920.05, verdict-firefox: 32091.53 (0.54%), t-stat: -6.582, p-value: 0.0
+default: 31920.05, verdict-openssl: 32116.35 (0.61%), t-stat: -7.595, p-value: 0.0
+num different domains: 58
+### testing domain ntp.org (out/ntp.org)
+server started
+took 15.52 s
+default: 31940.93, verdict-chrome: 32287.71 (1.09%), t-stat: -12.575, p-value: 0.0
+default: 31940.93, verdict-firefox: 32184.55 (0.76%), t-stat: -8.471, p-value: 0.0
+default: 31940.93, verdict-openssl: 32238.99 (0.93%), t-stat: -11.741, p-value: 0.0
+num different domains: 59
+### testing domain vimeo.com (out/vimeo.com)
+server started
+took 39.27 s
+default: 81005.29, verdict-chrome: 82324.78 (1.63%), t-stat: -2.171, p-value: 0.031
+default: 81005.29, verdict-firefox: 81691.68 (0.85%), t-stat: -1.072, p-value: 0.285
+default: 81005.29, verdict-openssl: 81686.45 (0.84%), t-stat: -1.064, p-value: 0.289
+num different domains: 60
+### testing domain windows.com (out/windows.com)
+server started
+took 49.51 s
+default: 102969.15, verdict-chrome: 102990.19 (0.02%), t-stat: -0.939, p-value: 0.349
+default: 102969.15, verdict-firefox: 102999.77 (0.03%), t-stat: -1.51, p-value: 0.133
+default: 102969.15, verdict-openssl: 102939.34 (-0.03%), t-stat: 0.916, p-value: 0.361
+### testing domain goo.gl (out/goo.gl)
+server started
+took 39.44 s
+default: 82019.2, verdict-chrome: 82019.08 (-0.0%), t-stat: 0.006, p-value: 0.995
+default: 82019.2, verdict-firefox: 82020.1 (0.0%), t-stat: -0.048, p-value: 0.962
+default: 82019.2, verdict-openssl: 82009.52 (-0.01%), t-stat: 0.546, p-value: 0.585
+### testing domain netflix.com (out/netflix.com)
+server started
+took 63.26 s
+default: 150090.14, verdict-chrome: 126719.73 (-15.57%), t-stat: 5.684, p-value: 0.0
+default: 150090.14, verdict-firefox: 126523.68 (-15.7%), t-stat: 5.732, p-value: 0.0
+default: 150090.14, verdict-openssl: 124237.39 (-17.22%), t-stat: 6.238, p-value: 0.0
+num different domains: 61
+### testing domain linkedin.com (out/linkedin.com)
+server started
+took 49.75 s
+default: 103475.23, verdict-chrome: 103518.04 (0.04%), t-stat: -0.813, p-value: 0.417
+default: 103475.23, verdict-firefox: 103488.08 (0.01%), t-stat: -0.248, p-value: 0.804
+default: 103475.23, verdict-openssl: 103458.97 (-0.02%), t-stat: 0.296, p-value: 0.767
+### testing domain googleadservices.com (out/googleadservices.com)
+server started
+took 39.48 s
+default: 82120.93, verdict-chrome: 82041.43 (-0.1%), t-stat: 2.235, p-value: 0.027
+default: 82120.93, verdict-firefox: 82127.83 (0.01%), t-stat: -0.168, p-value: 0.867
+default: 82120.93, verdict-openssl: 82039.21 (-0.1%), t-stat: 2.475, p-value: 0.014
+num different domains: 62
+### testing domain tiktokv.com (out/tiktokv.com)
+server started
+took 15.41 s
+default: 31655.2, verdict-chrome: 32064.75 (1.29%), t-stat: -13.81, p-value: 0.0
+default: 31655.2, verdict-firefox: 32010.43 (1.12%), t-stat: -14.254, p-value: 0.0
+default: 31655.2, verdict-openssl: 32022.13 (1.16%), t-stat: -14.093, p-value: 0.0
+num different domains: 63
+### testing domain dns.google (out/dns.google)
+server started
+took 39.45 s
+default: 82050.47, verdict-chrome: 82038.54 (-0.01%), t-stat: 0.431, p-value: 0.667
+default: 82050.47, verdict-firefox: 82010.19 (-0.05%), t-stat: 1.318, p-value: 0.189
+default: 82050.47, verdict-openssl: 82018.03 (-0.04%), t-stat: 1.3, p-value: 0.196
+### testing domain google.com (out/google.com)
+server started
+took 52.64 s
+default: 109599.8, verdict-chrome: 110524.05 (0.84%), t-stat: -1.339, p-value: 0.182
+default: 109599.8, verdict-firefox: 110192.95 (0.54%), t-stat: -0.856, p-value: 0.393
+default: 109599.8, verdict-openssl: 108488.25 (-1.01%), t-stat: 1.556, p-value: 0.121
+### testing domain amazon.com (out/amazon.com)
+server started
+took 39.48 s
+default: 82352.72, verdict-chrome: 82000.32 (-0.43%), t-stat: 8.186, p-value: 0.0
+default: 82352.72, verdict-firefox: 82068.33 (-0.35%), t-stat: 6.002, p-value: 0.0
+default: 82352.72, verdict-openssl: 82018.68 (-0.41%), t-stat: 7.476, p-value: 0.0
+num different domains: 64
+### testing domain googletagmanager.com (out/googletagmanager.com)
+server started
+took 39.45 s
+default: 82009.15, verdict-chrome: 82083.17 (0.09%), t-stat: -2.562, p-value: 0.011
+default: 82009.15, verdict-firefox: 82008.65 (-0.0%), t-stat: 0.031, p-value: 0.975
+default: 82009.15, verdict-openssl: 82010.03 (0.0%), t-stat: -0.055, p-value: 0.956
+num different domains: 65
+### testing domain userapi.com (out/userapi.com)
+server started
+took 30.51 s
+default: 63096.95, verdict-chrome: 63522.14 (0.67%), t-stat: -15.191, p-value: 0.0
+default: 63096.95, verdict-firefox: 63477.39 (0.6%), t-stat: -13.624, p-value: 0.0
+default: 63096.95, verdict-openssl: 63479.65 (0.61%), t-stat: -13.884, p-value: 0.0
+num different domains: 66
+### testing domain 3ona.co (out/3ona.co)
+server started
+took 15.38 s
+default: 31517.01, verdict-chrome: 32017.81 (1.59%), t-stat: -18.019, p-value: 0.0
+default: 31517.01, verdict-firefox: 31998.7 (1.53%), t-stat: -16.907, p-value: 0.0
+default: 31517.01, verdict-openssl: 31998.72 (1.53%), t-stat: -17.255, p-value: 0.0
+num different domains: 67
+### testing domain yahoo.com (out/yahoo.com)
+server started
+took 40.21 s
+default: 83519.54, verdict-chrome: 83634.05 (0.14%), t-stat: -4.024, p-value: 0.0
+default: 83519.54, verdict-firefox: 83642.55 (0.15%), t-stat: -4.446, p-value: 0.0
+default: 83519.54, verdict-openssl: 83670.58 (0.18%), t-stat: -5.589, p-value: 0.0
+num different domains: 68
+### testing domain live.com (out/live.com)
+server started
+took 25.5 s
+default: 52809.97, verdict-chrome: 53039.14 (0.43%), t-stat: -5.808, p-value: 0.0
+default: 52809.97, verdict-firefox: 52995.76 (0.35%), t-stat: -4.585, p-value: 0.0
+default: 52809.97, verdict-openssl: 52999.65 (0.36%), t-stat: -4.927, p-value: 0.0
+num different domains: 69
+### testing domain unity3d.com (out/unity3d.com)
+server started
+took 30.52 s
+default: 63299.79, verdict-chrome: 63469.85 (0.27%), t-stat: -6.079, p-value: 0.0
+default: 63299.79, verdict-firefox: 63434.49 (0.21%), t-stat: -4.823, p-value: 0.0
+default: 63299.79, verdict-openssl: 63457.58 (0.25%), t-stat: -5.578, p-value: 0.0
+num different domains: 70
+all percentage diff: [0.03322087274066763, 0.07453292719059366, -0.025009107101309058, 0.9390437418159963, 0.6458710598743092, 0.7278640190858746, 1.2274040269439195, 1.1190722636361459, 1.129731910826607, -0.8016388885703147, 0.03514874395632716, -0.2542755847996101, 0.19139794505806323, 0.1714490515312537, -0.01248774087804161, -0.010141624371289296, -0.035885747775366836, 0.013518102677603986, 0.6259302606638127, 0.4623634027503944, 0.520627933899019, 0.02393919079681976, 0.01115861415135292, 0.01219520672277844, 0.6806616558812617, 0.46656274066802705, 0.6807878562439011, 0.5760583815776215, 0.17791416024328213, 0.5604436580175645, -1.15939710863642, -0.17748300886408117, 0.5959203575278745, -0.002380042922385383, 0.028667374138467944, 0.04948546386355357, -0.00026829477693626405, 0.05974436873654287, 0.0856470099278774, 0.508990624290896, 0.43233837101752215, 0.44112309346548634, -1.6196904970286579, -1.1741844243603785, -1.4902109457019035, 0.037159806062373485, 0.10023831318385479, 0.07987424727881333, 0.1045154682515621, -0.21820127728129096, -0.1825954479636071, 0.869313077609238, 0.43045100121833274, 0.682214085894785, 0.8257649962778693, 0.4232731261999008, 0.6508639266543947, -0.0012923705514255256, -0.0737016979554596, 0.12072691698176066, 0.19375896917246793, 0.45419716241769936, -0.2894903695686763, 0.01834445012934158, -0.049693992600509634, -0.06201248068824893, 0.21244990554711674, 0.2353624083677465, 0.24778979618294167, -3.191111322256146, -1.0844863831252847, -0.24866087865363998, 0.7302629685116122, 0.479259517918174, 0.532263736978924, -0.1838838049924201, -0.12324192049660083, -0.2444770397614154, -0.05033886929068711, -0.024777990816483294, -0.14758642999031202, 0.7122524997216371, 0.6649987825218717, 0.7230056985600324, 0.36416833065440574, 0.20139660431962078, 0.03124351744737188, -1.086966064660263, -1.1518032346514644, -1.495146712442296, 0.738691522992226, 1.1032839014769638, 0.4543785020331029, 0.264481340249323, 0.18082628707672613, 0.13028271871028166, 0.04130847301168829, 0.026526164806097353, -0.03236192106343456, 0.1536993761592055, 0.09722146726049001, -0.013991506132004164, 0.18580008510581517, 0.10654886397064343, 0.4346203604716867, 0.8364958442264191, 0.5302398510730623, 0.2876088918874118, 0.012251374571673366, 0.015157458500569742, 0.03682647435223401, 0.4912266007789226, 0.055488085765724504, 0.49282557134643634, 1.8943123858400552, 1.564394106976953, 1.6106585093002834, 0.11436938106838349, -0.4891340064759687, 0.15436482734733492, -0.0006810199733479662, 0.04334746179531055, 0.2912927812963822, 0.23852851028937108, 0.18270268873228168, 0.3120935975348336, 0.047259509089089366, 0.07536095079104771, 0.003019382049030574, 0.5893827203019983, -0.23901222529735264, 0.37890781808715146, 0.3163175851924302, 0.14518745049890222, 0.25153192892305004, 0.8899605147772774, 0.19502936719314673, 0.8068733048501716, 0.5934348779786744, 0.4710427143876192, 0.6379035002248943, 0.24215919784114096, 0.1451218146827611, 0.17419355144346885, 0.6868069720657333, 0.634936413960186, 0.7387412532156259, 1.551108146452455, 1.2561161876679436, 1.5790913236990272, -0.024575019769752873, 0.03390822158612259, -0.06042464380088564, 0.6863649375019856, 0.405807703317325, 0.5172545402499953, 0.23983523405031237, 0.11849754892168193, 0.25005428872796787, 0.045141607746626206, 0.05766582909518599, 0.060114319226948834, -0.020369167757861847, 0.07821725086545851, 0.4497999828990737, 0.021533484018952262, -0.01999711992698878, 0.03364149626742357, 0.4308980252744057, 0.19727518973171482, 0.2314122923569758, 0.01103611112048512, 0.023314538574768562, 0.08473079849339595, -0.047990489600447175, -0.06183952175163347, -0.048550784656686, 0.04715949750025806, 0.017027929787423672, 0.02845111599964696, 0.36452839789229574, 0.25380883621227124, 0.34361112730647797, -0.01088236613106362, -0.023141784191352745, -0.012393467363135971, 1.3241117840202927, 1.1926218424784587, 1.2410580072934347, 0.25360098343852117, 0.19187325207302267, 0.1523182842868458, 0.00044142427838828226, -0.049536632520733544, -0.043771631444983604, 1.293461149642653, 1.0709687316109002, 1.143896452695061, 0.9996777655071466, 0.6638030552835517, 0.989948160917024, 0.5983606284632633, 0.6304312243377836, 0.7750024282701679, -0.1107178149208036, 0.32918383595493395, -0.11239159443046866, -0.06266953193098973, -0.024570551608887874, -0.024594927156123873, 0.21931820497320106, 0.1816625800623463, 0.26497497096359773, 0.13929192146299677, -0.05015764925080094, -0.09016463316613964, 1.2062731488617668, 1.0345146501191318, 0.9694603322803435, -0.00921224512678813, -0.006150270317974908, -0.04048123715714276, 0.32837205034116435, 0.29312162440996076, -0.036321950959508076, -0.09206016161104437, -0.04184552800503067, -0.11975140669761984, 0.4731295022855547, 0.33485512192214256, 0.4346198881117159, 1.0979233369407027, 0.06567794139810659, 1.187259285767916, 0.011066874421708211, 0.070753252702677, -0.02582270698400337, 0.06321723772381412, -0.03054153407485286, -0.011756018840497229, 0.6531619917450143, 0.45899574884762095, 0.799125794488517, 0.21714597299363922, -0.035558054570088024, 0.23432039998844473, 0.57374596844303, 0.5372172036071359, 0.6149739740382589, 1.0856916188727093, 0.7627204342515981, 0.9331600551392878, 1.6288936191698165, 0.8473397231217856, 0.8408833546549905, 0.02043330453830895, 0.02973706202295532, -0.02895041864480543, -0.00014630720611191452, 0.0010973040458925852, -0.01180211462681057, -15.57091625072774, -15.701537755911227, -17.22481570075157, 0.041372220192211866, 0.012418430961695683, -0.015713905637121814, -0.09680845065928992, 0.0084022428874207, -0.09951178097957077, 1.2937842755692563, 1.1221852965705463, 1.1591460486744682, -0.0145398313989031, -0.04909173585477186, -0.03953664128919959, 0.8432953344805374, 0.5411962430588324, -1.0141898069157087, -0.42791543497287543, -0.34533164174783715, -0.4056210893823642, 0.09025822118629943, -0.0006096880652951531, 0.0010730509949251476, 0.673867754305085, 0.6029451502806432, 0.6065269398917132, 1.5889832189030715, 1.5283492945555506, 1.528412752351834, 0.13710564018912139, 0.14728289930716731, 0.18084390790467497, 0.4339521495656942, 0.3518085694803479, 0.3591746028259442, 0.26865807927640467, 0.2127969144921288, 0.24927412871354054]
+all p-values: [np.float64(0.37259201221791916), np.float64(0.02971067274596294), np.float64(0.5525690651945955), np.float64(1.2610880696378992e-20), np.float64(1.3117279889014015e-14), np.float64(4.5179739213701256e-15), np.float64(1.4834068757810128e-41), np.float64(1.3768722174082138e-37), np.float64(5.769555474768892e-38), np.float64(0.2472982991297174), np.float64(0.9487157987447188), np.float64(0.6507334511247556), np.float64(0.008383600974695352), np.float64(0.01769977986243702), np.float64(0.8876523605610445), np.float64(0.7271991512458575), np.float64(0.16409597932542222), np.float64(0.6763382348154199), np.float64(4.316347358576257e-15), np.float64(1.555834619192999e-08), np.float64(3.0066394328049625e-11), np.float64(0.44319283628065687), np.float64(0.7039401305945029), np.float64(0.6780363072899772), np.float64(2.4234075623915386e-12), np.float64(5.91825894689792e-08), np.float64(4.095550112100243e-12), np.float64(2.2295874567056848e-13), np.float64(0.05589345045934481), np.float64(1.8832268489564844e-15), np.float64(0.1491124507583056), np.float64(0.8228722111546429), np.float64(0.4439694788998614), np.float64(0.9342160518636066), np.float64(0.30472504705348313), np.float64(0.058472341701494825), np.float64(0.9844837218864175), np.float64(0.018992367050521108), np.float64(0.006044397530169719), np.float64(5.9612625437219684e-18), np.float64(4.5006742587437107e-17), np.float64(4.5483717662020504e-18), np.float64(0.01339396263797764), np.float64(0.07336297362072397), np.float64(0.023265462864437335), np.float64(0.8281333881701468), np.float64(0.5404778327199187), np.float64(0.6240511297450801), np.float64(0.025640728639946615), np.float64(0.00020834159214586356), np.float64(0.011122599553771532), np.float64(6.506802458950343e-28), np.float64(7.582192936830649e-08), np.float64(1.4394523044780606e-19), np.float64(1.771222909127994e-18), np.float64(1.784864287724856e-07), np.float64(1.6946366502762446e-14), np.float64(0.9575332544459204), np.float64(0.04442910965374817), np.float64(0.003345006193928186), np.float64(0.5761821298112806), np.float64(0.17635103846225386), np.float64(0.45134356571165246), np.float64(0.60697666604726), np.float64(0.2616990439184951), np.float64(0.07223037418748665), np.float64(1.5347015485723656e-07), np.float64(2.8265665288538736e-09), np.float64(5.226353446943407e-09), np.float64(0.18942718106410528), np.float64(0.6254178031735614), np.float64(0.9086459698907582), np.float64(5.0921941147805875e-15), np.float64(8.118486224437002e-10), np.float64(1.4619314102705935e-09), np.float64(0.0009448484636416998), np.float64(0.044292049927893776), np.float64(5.366032391885674e-05), np.float64(0.1212991825315051), np.float64(0.45780039514269744), np.float64(0.0007553244616757656), np.float64(1.6991810147765013e-35), np.float64(1.2691350313928888e-39), np.float64(4.0105772508387144e-44), np.float64(0.029558468166169798), np.float64(8.843140052127604e-09), np.float64(0.593779778651167), np.float64(0.15907105221901333), np.float64(0.13636172822290588), np.float64(0.04620088367699551), np.float64(0.20748429617282477), np.float64(0.05510523139581152), np.float64(0.44982616196623126), np.float64(2.053600294031214e-10), np.float64(1.3745654096237741e-05), np.float64(0.017902042708548657), np.float64(0.21164307050183295), np.float64(0.4381175337469767), np.float64(0.4046334152522444), np.float64(0.016819371109701796), np.float64(0.04937862645358308), np.float64(0.7176885112678032), np.float64(0.027580991744051733), np.float64(0.16572644833431213), np.float64(2.1983288835545938e-10), np.float64(4.398399867265444e-22), np.float64(1.092904868534036e-11), np.float64(0.003106979520801834), np.float64(0.7398065989406315), np.float64(0.6786666114402096), np.float64(0.29108993383847076), np.float64(2.1039947372601456e-17), np.float64(0.43367186242155953), np.float64(1.5785934359413307e-18), np.float64(6.215617139241188e-55), np.float64(3.141544603732042e-45), np.float64(2.9667397152836113e-44), np.float64(0.7379516952016691), np.float64(0.18445443570870002), np.float64(0.6450247129096688), np.float64(0.9885374704838761), np.float64(0.3713870961004362), np.float64(1.1186908521061428e-08), np.float64(8.75525723641141e-05), np.float64(0.004271322868052687), np.float64(1.0080365460215438e-06), np.float64(0.3020085318060304), np.float64(0.050683394410964484), np.float64(0.9407745230620823), np.float64(0.025884740900829383), np.float64(0.5167788732664551), np.float64(0.1966646484447429), np.float64(2.4483605219246487e-13), np.float64(0.0004210797316760321), np.float64(3.6299069728975705e-09), np.float64(1.1246927857092029e-20), np.float64(0.06508879548427067), np.float64(2.7339009002790052e-18), np.float64(4.871508468059345e-12), np.float64(6.989919394589606e-10), np.float64(1.2774060819265152e-15), np.float64(1.1008428861862924e-07), np.float64(0.0019824146719700122), np.float64(9.41502684435455e-05), np.float64(7.948246475119483e-16), np.float64(4.701137604394492e-14), np.float64(3.5549135622612863e-19), np.float64(2.94938501316671e-44), np.float64(2.051570834936945e-35), np.float64(1.1691024414356325e-48), np.float64(0.5258714565522928), np.float64(0.3070295326168317), np.float64(0.18128490510211873), np.float64(5.424289483259765e-17), np.float64(9.16729913192702e-07), np.float64(1.3952006286297586e-09), np.float64(8.44510419244963e-10), np.float64(0.0059864707487923005), np.float64(2.7548316168370366e-11), np.float64(0.17678603544232607), np.float64(0.06290521422001448), np.float64(0.0500988470288236), np.float64(0.6477069134589946), np.float64(0.05081279994879744), np.float64(4.686807761164341e-18), np.float64(0.3570886695544714), np.float64(0.5267586366787353), np.float64(0.17711539200396315), np.float64(0.009880891559519663), np.float64(5.453697397425705e-07), np.float64(2.2647177928804543e-08), np.float64(0.800840182467015), np.float64(0.5449255468484074), np.float64(0.010959180015652223), np.float64(0.2683021778152647), np.float64(0.15588156545238147), np.float64(0.32528440610316134), np.float64(0.15252289526659224), np.float64(0.4858325054094098), np.float64(0.26511370130815526), np.float64(1.6500929697793488e-06), np.float64(0.001012586191899169), np.float64(6.4355951430258105e-06), np.float64(0.7598579517023415), np.float64(0.4791061440099512), np.float64(0.7541008767153835), np.float64(3.2316538481150353e-47), np.float64(4.166215231369509e-39), np.float64(5.726054032404513e-40), np.float64(4.813064715311937e-09), np.float64(5.109748130519622e-07), np.float64(0.010629485012730056), np.float64(0.9915553697404726), np.float64(0.22811738771576062), np.float64(0.2905462857814313), np.float64(4.0533574598741976e-23), np.float64(1.037608415795423e-18), np.float64(1.793715323116546e-19), np.float64(1.4526065235600958e-19), np.float64(7.514214275319884e-11), np.float64(5.433488854606529e-23), np.float64(1.92608893639399e-37), np.float64(1.5365066282047054e-34), np.float64(9.498402151071056e-06), np.float64(0.0436983526884409), np.float64(6.47729257064086e-10), np.float64(0.04710667282620842), np.float64(0.10267702444392514), np.float64(0.4543586990278502), np.float64(0.4534881817872207), np.float64(1.0411314036841339e-07), np.float64(3.0524571915505366e-07), np.float64(9.903489804070775e-12), np.float64(0.006207166473403247), np.float64(0.2620244322742334), np.float64(0.031075499946957852), np.float64(2.470454837871158e-24), np.float64(3.169202761354089e-20), np.float64(2.309412159270734e-18), np.float64(0.6692294978922833), np.float64(0.780589207866801), np.float64(0.17280053283169153), np.float64(0.6170120993165038), np.float64(0.6571301605865131), np.float64(0.9558318073310377), np.float64(0.0341400148035851), np.float64(0.3975776333210118), np.float64(0.00828229729462224), np.float64(2.010525889880043e-11), np.float64(3.6070285132676854e-07), np.float64(1.208877610304186e-10), np.float64(0.09141229012485903), np.float64(0.9251763596007334), np.float64(0.06882867583314374), np.float64(0.7165790408953698), np.float64(0.011310846481303354), np.float64(0.4496057813093409), np.float64(0.04134099645767326), np.float64(0.4292528515119107), np.float64(0.7425519852007442), np.float64(1.9448437800545042e-11), np.float64(6.61873013130381e-08), np.float64(2.57486134782514e-14), np.float64(4.848815612222858e-06), np.float64(0.6172343559696828), np.float64(4.7565868299e-07), np.float64(6.179449390608197e-10), np.float64(4.069509405076323e-10), np.float64(1.2006591797793979e-12), np.float64(1.5438901866479303e-26), np.float64(9.138737678010595e-15), np.float64(2.2598190962233327e-24), np.float64(0.0311429505615235), np.float64(0.2851097395925403), np.float64(0.2886063394610748), np.float64(0.3490479718009164), np.float64(0.1330046552635513), np.float64(0.3612269724588072), np.float64(0.9950617083793494), np.float64(0.9617785304080531), np.float64(0.5854849964746514), np.float64(6.341877873687251e-08), np.float64(5.0181880418052853e-08), np.float64(4.06320499586333e-09), np.float64(0.41715684791040486), np.float64(0.8044231381377879), np.float64(0.7674842727935819), np.float64(0.02665939478433193), np.float64(0.8666184459631011), np.float64(0.014405343586806315), np.float64(9.656864248002043e-30), np.float64(4.5438274796892165e-32), np.float64(2.174591234260492e-31), np.float64(0.666861816615453), np.float64(0.18901039411922427), np.float64(0.19555694906777557), np.float64(0.1820296489864239), np.float64(0.3932208225256846), np.float64(0.12124022477577139), np.float64(7.21321885865628e-13), np.float64(1.503941860794571e-08), np.float64(1.4010605918083552e-11), np.float64(0.011478566349867292), np.float64(0.9751932337603886), np.float64(0.9564212081277554), np.float64(5.326462187542575e-35), np.float64(3.270351125499367e-30), np.float64(4.932870245079981e-31), np.float64(3.1546683374181972e-37), np.float64(9.771265035834479e-36), np.float64(1.0748552615016031e-35), np.float64(8.169018941695075e-05), np.float64(1.456188685756741e-05), np.float64(7.482867118113785e-08), np.float64(4.239409411149991e-08), np.float64(9.607594646678752e-06), np.float64(2.5651353833967938e-06), np.float64(6.1999030145274974e-09), np.float64(2.828037271345974e-06), np.float64(7.956897430906192e-08)]
