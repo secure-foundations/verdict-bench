@@ -55,12 +55,10 @@ run_with_timer() {
 make reduce-noise ISOLATE_CORES=2,4,6,8 CORE_FREQUENCY=2401000
 
 harnesses=(
-    # verdict-chrome
-    chrome # firefox openssl
-    # verdict-firefox verdict-openssl
-	# verdict-chrome-aws-lc verdict-firefox-aws-lc verdict-openssl-aws-lc
-	# chrome firefox openssl
-	# hammurabi-chrome hammurabi-firefox armor ceres
+    verdict-chrome verdict-firefox verdict-openssl
+	verdict-chrome-aws-lc chrome verdict-firefox-aws-lc verdict-openssl-aws-lc
+	chrome firefox openssl
+	hammurabi-chrome hammurabi-firefox armor ceres
 )
 
 for harness in "${harnesses[@]}"; do

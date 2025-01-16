@@ -29,3 +29,7 @@
 	path = verus
 	url = git@github.com:zhengyao-lin/verus.git
 	branch = x509
+[submodule "rustls"]
+	path = rustls
+	url = https://github.com/secure-foundations/verdict-bench.git
+	branch = rustls
