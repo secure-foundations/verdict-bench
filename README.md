@@ -7,7 +7,7 @@ There are three main evaluations:
 - Eval 2: Differential testing with Chrome, Firefox, OpenSSL
 - Eval 3: End-to-End HTTPS performance in Rustls
 
-Note that for 1. and 2., we do not have the 10M chains from CT logs publically available,
+Note that for Evals 1 and 2, we do not have the 10M chains from CT logs publically available,
 so you might need to prepare your own test cases in the following directory structure:
 ```
 test_suite/
