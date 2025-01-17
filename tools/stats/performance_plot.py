@@ -14,12 +14,12 @@ mpl.rcParams["font.family"] = "serif"
 mpl.rcParams["font.serif"] = ["Times"]
 mpl.rcParams["text.latex.preamble"] = r"\usepackage{mathptmx}"
 
-mpl.rcParams["font.size"] = 22
-mpl.rcParams["axes.titlesize"] = 22
-mpl.rcParams["axes.labelsize"] = 22
-mpl.rcParams["xtick.labelsize"] = 22
-mpl.rcParams["ytick.labelsize"] = 22
-mpl.rcParams["legend.fontsize"] = 22
+mpl.rcParams["font.size"] = 24
+mpl.rcParams["axes.titlesize"] = 24
+mpl.rcParams["axes.labelsize"] = 24
+mpl.rcParams["xtick.labelsize"] = 24
+mpl.rcParams["ytick.labelsize"] = 24
+mpl.rcParams["legend.fontsize"] = 24
 
 slow_group = ["CERES", "ARMOR", "HM/Firefox", "HM/Chrome"]
 
@@ -156,7 +156,7 @@ def plot_two_groups(combined_df):
 
 
 def plot_simple(combined_df):
-    plt.figure(figsize=(20, 5))
+    plt.figure(figsize=(20, 4.5))
 
     combined_df = combined_df[~combined_df["impl"].isin(slow_group)]
 

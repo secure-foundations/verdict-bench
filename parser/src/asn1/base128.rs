@@ -15,8 +15,7 @@ verus! {
 ///
 /// e.g. 0b11111111 (0xff) => 0b1 * 128 + 0b01111111 => 0b10000001 0b011111111
 ///
-/// NOTE: the first and second arc of an OID are encoded differently
-/// than this combinator
+/// NOTE: the first and second arcs of an OID are encoded differently
 #[derive(Debug, View)]
 pub struct Base128UInt;
 
@@ -81,7 +80,7 @@ impl SecureSpecCombinator for Base128UInt {
 }
 
 impl Base128UInt {
-    /// last_byte is true iff s includes the last byte (which much exists and have the highest bit set to 0)
+    /// last_byte is true iff s[-1] is the last byte (which must exist and have the highest bit set to 0)
     pub open spec fn spec_parse_helper(s: Seq<u8>, last_byte: bool) -> Option<UInt>
         decreases s.len()
     {
