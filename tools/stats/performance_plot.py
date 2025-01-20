@@ -30,17 +30,17 @@ implementations = [
     ("HM/Firefox", "~/work/verdict-bench/bench-results/hammurabi-firefox.txt"),
     ("HM/Chrome", "~/work/verdict-bench/bench-results/hammurabi-chrome.txt"),
 
-    ("OpenSSL", "~/work/verdict-bench/bench-results/openssl.txt"),
-    ("\\textbf{V/OpenSSL}", "~/work/verdict-bench/bench-results/verdict-openssl.txt"),
-    ("\\textbf{V/OpenSSL$^\\star$}", "~/work/verdict-bench/bench-results/verdict-openssl-aws-lc.txt"),
+    ("Chrome", "~/work/verdict-bench/bench-results/chrome.txt"),
+    ("\\textbf{V/Chrome}", "~/work/verdict-bench/bench-results/verdict-chrome.txt"),
+    ("\\textbf{V/Chrome$^\\star$}", "~/work/verdict-bench/bench-results/verdict-chrome-aws-lc.txt"),
 
     ("Firefox", "~/work/verdict-bench/bench-results/firefox.txt"),
     ("\\textbf{V/Firefox}", "~/work/verdict-bench/bench-results/verdict-firefox.txt"),
     ("\\textbf{V/Firefox$^\\star$}", "~/work/verdict-bench/bench-results/verdict-firefox-aws-lc.txt"),
 
-    ("Chrome", "~/work/verdict-bench/bench-results/chrome.txt"),
-    ("\\textbf{V/Chrome}", "~/work/verdict-bench/bench-results/verdict-chrome.txt"),
-    ("\\textbf{V/Chrome$^\\star$}", "~/work/verdict-bench/bench-results/verdict-chrome-aws-lc.txt"),
+    ("OpenSSL", "~/work/verdict-bench/bench-results/openssl.txt"),
+    ("\\textbf{V/OpenSSL}", "~/work/verdict-bench/bench-results/verdict-openssl.txt"),
+    ("\\textbf{V/OpenSSL$^\\star$}", "~/work/verdict-bench/bench-results/verdict-openssl-aws-lc.txt"),
 ]
 
 num_measurements = 10

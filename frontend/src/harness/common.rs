@@ -97,7 +97,8 @@ impl Instance for CommonBenchInstance {
                 err: if res_fst == "OK" { "".to_string() } else { res_fst.trim().to_string() },
 
                 // Parse the rest as a space separated list of integers (time in microseconds)
-                stats: res.map(|s| s.parse().unwrap()).collect(),
+                stats: res.map(|s| s.parse()).collect::<Result<Vec<_>, _>>()
+                    .map_err(|_| Error::CommonBenchError("failed to parse results".to_string()))?,
             })
         } else if line.starts_with("error:") {
             Err(Error::CommonBenchError(line["error:".len()..].trim().to_string()))
