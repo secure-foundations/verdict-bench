@@ -1,18 +1,18 @@
 [workspace]
 members = [
-    "chain",
-    "frontend",
-    "macros",
-    "parser",
-    "polyfill",
-    "rspec",
-    "rspec_lib",
-    "rspec_test",
+    "verdict",
+    "verdict-core",
+    "verdict-macros",
+    "verdict-parser",
+    "verdict-polyfill",
+    "verdict-rspec",
+    "verdict-rspec-lib",
+    "verdict-rspec-test",
     "deps/vest",
 ]
 
 default-members = [
-    "frontend",
+    "verdict",
 ]
 
 exclude = [

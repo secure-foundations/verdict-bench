@@ -1,0 +1,11 @@
+[package]
+name = "verdict-rspec-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+builtin_macros = { path = "../deps/verus/source/builtin_macros" }
+builtin = { path = "../deps/verus/source/builtin" }
+vstd = { path = "../deps/verus/source/vstd" }
+verdict-rspec = { path = "../verdict-rspec" }
+verdict-rspec-lib = { path = "../verdict-rspec-lib" }
