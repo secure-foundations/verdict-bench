@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use clap::Parser;
 
-use verdict_core::parser::parse_x509_der;
+use verdict::parser::parse_x509_der;
 
 use crate::error::*;
 use crate::utils::*;

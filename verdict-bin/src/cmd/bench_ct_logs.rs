@@ -12,7 +12,7 @@ use crossbeam::channel;
 use crossbeam::channel::Receiver;
 use crossbeam::channel::Sender;
 use csv::{ReaderBuilder, WriterBuilder};
-use verdict_core::policy::{ExecTask, ExecPurpose};
+use verdict::policy::{ExecTask, ExecPurpose};
 
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;

@@ -1,11 +1,18 @@
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, ChildStdout};
 
-use verdict_core::policy::{ExecTask, ExecPurpose};
+use verdict::policy::{ExecTask, ExecPurpose};
 use clap::{Parser, ValueEnum};
 
 use crate::error::*;
-use super::*;
+use super::verdict::*;
+use super::chrome::*;
+use super::firefox::*;
+use super::openssl::*;
+use super::verdict::*;
+use super::armor::*;
+use super::hammurabi::*;
+use super::ceres::*;
 
 #[derive(Debug)]
 pub struct ValidationResult {
@@ -250,19 +257,19 @@ pub fn get_harness_from_args(args: &HarnessArgs, debug: bool) -> Result<Box<dyn 
 
         HarnessName::VerdictChrome =>
             Box::new(VerdictHarness {
-                policy: verdict::PolicyName::Chrome,
+                policy: VerdictPolicyName::Chrome,
                 debug,
             }),
 
         HarnessName::VerdictFirefox =>
             Box::new(VerdictHarness {
-                policy: verdict::PolicyName::Firefox,
+                policy: VerdictPolicyName::Firefox,
                 debug,
             }),
 
         HarnessName::VerdictOpenSSL =>
             Box::new(VerdictHarness {
-                policy: verdict::PolicyName::OpenSSL,
+                policy: VerdictPolicyName::OpenSSL,
                 debug,
             }),
     })

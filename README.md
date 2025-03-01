@@ -64,9 +64,9 @@ This will print out every successfully parsed construct and the result of each p
 ## Project Structure
 
 If you are considering using Verdict or any of its components, see these crates:
-- `verdict` builds an executable front-end of Verdict that can, e.g., validate given certificate chains and run benchmarks against other X.509 validators.
-  This crate is unverified and is used for calling the main validation procedure in `verdict-core`.
-- `verdict-core` is the main verified X.509 validation library. It includes implementations of different policies (`verdict-core/src/policy`) as well as the policy-independent validation procedure (`verdict-core/validator.rs`).
+- `verdict` is the main verified X.509 validation library. It includes implementations of different policies (`verdict/src/policy`) as well as the policy-independent validation procedure (`verdict/src/validator.rs`).
+- `verdict-bin` builds an executable front-end of Verdict that can, e.g., validate given certificate chains and run benchmarks against other X.509 validators.
+  This crate is unverified and is used for calling the main validation procedure in `verdict`.
 - `verdict-parser` contains the verified parsers and serializers of X.509 and various ASN.1 components.
 
 Other crates include supporting tools and macros.

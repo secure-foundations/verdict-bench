@@ -164,7 +164,7 @@ struct ValidatorCache<'a, 'b, 'c> {
 }
 
 impl<'a, 'b, 'c> ValidatorCache<'a, 'b, 'c> {
-    closed spec fn wf<P: Policy>(&self, validator: &Validator<P>) -> bool {
+    closed spec fn wf<P: Policy>(&self, validator: &Validator<'_, P>) -> bool {
         &&& Validator::<P>::is_abs_cache(self.bundle@, self.bundle_abs_cache.deep_view())
 
         // Valid `root_issuers` cache
@@ -173,7 +173,7 @@ impl<'a, 'b, 'c> ValidatorCache<'a, 'b, 'c> {
             ==> validator.spec_root_issuers(self.bundle@[i], #[trigger] self.root_issuers@[i]@)
     }
 
-    closed spec fn get_query<P: Policy>(&self, validator: &Validator<P>) -> Query<P> {
+    closed spec fn get_query<P: Policy>(&self, validator: &Validator<'_, P>) -> Query<P> {
         Query {
             policy: validator.policy,
             roots: validator.roots@,
@@ -278,7 +278,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     }
 
     /// Convert each certificate in a list to the abstract representation
-    fn get_abs_cache(certs: &VecDeep<CertificateValue>) -> (res: Result<Vec<policy::ExecCertificate>, ValidationError>)
+    fn get_abs_cache(certs: &VecDeep<CertificateValue<'_>>) -> (res: Result<Vec<policy::ExecCertificate>, ValidationError>)
         ensures
             res matches Ok(res) ==> Self::is_abs_cache(certs@, res.deep_view()),
     {
@@ -310,8 +310,7 @@ impl<'a, P: Policy> Validator<'a, P> {
 
     fn check_interm_likely_issued(
         &self,
-        cache: &ValidatorCache,
-
+        cache: &ValidatorCache<'_, '_, '_>,
         issuer_idx: usize,
         subject_idx: usize,
     ) -> (res: bool)
@@ -335,7 +334,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     /// that uses RSA public key cache of root certs
     fn check_root_likely_issued(
         &self,
-        bundle: &VecDeep<CertificateValue>,
+        bundle: &VecDeep<CertificateValue<'_>>,
         bundle_abs_cache: &Vec<policy::ExecCertificate>,
 
         root_idx: usize,
@@ -384,7 +383,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     #[verifier::loop_isolation(false)]
     fn check_chain_policy(
         &self,
-        cache: &ValidatorCache,
+        cache: &ValidatorCache<'_, '_, '_>,
         path: &Vec<usize>,
         root_idx: usize,
     ) -> (res: Result<bool, ValidationError>)
@@ -439,7 +438,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     #[allow(unexpected_cfgs)]
     fn check_simple_path(
         &self,
-        cache: &ValidatorCache,
+        cache: &ValidatorCache<'_, '_, '_>,
         path: &Vec<usize>,
     ) -> (res: Result<bool, ValidationError>)
         requires
@@ -503,7 +502,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     #[verifier::loop_isolation(false)]
     fn get_root_issuer(
         &self,
-        bundle: &VecDeep<CertificateValue>,
+        bundle: &VecDeep<CertificateValue<'_>>,
         bundle_abs_cache: &Vec<policy::ExecCertificate>,
         idx: usize,
     ) -> (res: Vec<usize>)
@@ -597,7 +596,7 @@ impl<'a, P: Policy> Validator<'a, P> {
     #[verifier::loop_isolation(false)]
     pub fn validate(
         &self,
-        bundle: &VecDeep<CertificateValue>,
+        bundle: &VecDeep<CertificateValue<'_>>,
         task: &policy::ExecTask,
     ) -> (res: Result<bool, ValidationError>)
         requires self.wf()
@@ -756,7 +755,7 @@ impl<'a, P: Policy> Validator<'a, P> {
                 }).valid(),
     {
         let bundle_len = bundle.len();
-        let mut bundle_parsed: VecDeep<CertificateValue> = VecDeep::with_capacity(bundle_len);
+        let mut bundle_parsed: VecDeep<CertificateValue<'_>> = VecDeep::with_capacity(bundle_len);
 
         for i in 0..bundle_len
             invariant
@@ -890,7 +889,7 @@ impl<'a, P: Policy> Validator<'a, P> {
             }
         }
 
-        let print_cert = |cert: &x509::CertificateValue| {
+        let print_cert = |cert: &x509::CertificateValue<'_>| {
             eprintln!("  subject: {}", cert.get().cert.get().subject);
             eprintln!("  issued by: {}", cert.get().cert.get().issuer);
             eprintln!("  signed with: {:?}", cert.get().sig_alg);

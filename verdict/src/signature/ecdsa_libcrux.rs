@@ -68,7 +68,7 @@ fn p256_verify_internal(
 /// through libcrux/EverCrypt
 #[verifier::external_body]
 pub fn p256_verify(
-    alg: &AlgorithmIdentifierValue,
+    alg: &AlgorithmIdentifierValue<'_>,
     pub_key: &[u8],
     sig: &[u8],
     msg: &[u8],
@@ -121,7 +121,7 @@ pub fn p256_verify(
 /// since only P-384 + SHA-384 is verified in AWS-LC)
 #[verifier::external_body]
 pub fn p384_verify(
-    alg: &AlgorithmIdentifierValue,
+    alg: &AlgorithmIdentifierValue<'_>,
     pub_key: &[u8],
     sig: &[u8],
     msg: &[u8],

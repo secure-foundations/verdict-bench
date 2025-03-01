@@ -135,7 +135,7 @@ fn hacl_rsa_decrypt(
 /// `msg` is the message expected to be signed
 #[verifier::external_body]
 pub fn pkcs1_v1_5_verify(
-    alg: &AlgorithmIdentifierValue,
+    alg: &AlgorithmIdentifierValue<'_>,
     pub_key: &RSAPublicKeyInternal,
     sig: &[u8],
     msg: &[u8],

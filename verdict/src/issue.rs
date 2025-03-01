@@ -175,7 +175,7 @@ fn char_lower(c: char) -> (res: String)
     c.to_lowercase().to_string()
 }
 
-pub fn verify_signature(issuer: &CertificateValue, subject: &CertificateValue) -> (res: bool)
+pub fn verify_signature(issuer: &CertificateValue<'_>, subject: &CertificateValue<'_>) -> (res: bool)
     ensures res == spec_verify_signature(issuer@, subject@)
 {
     let tbs_cert = subject.get().cert.serialize();

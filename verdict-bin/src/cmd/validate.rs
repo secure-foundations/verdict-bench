@@ -1,4 +1,4 @@
-use verdict_core::policy::{ExecPurpose, ExecTask};
+use verdict::policy::{ExecPurpose, ExecTask};
 use clap::Parser;
 
 use crate::error::*;
@@ -8,7 +8,7 @@ use crate::harness::*;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Policy to use
-    pub policy: verdict::PolicyName,
+    pub policy: VerdictPolicyName,
 
     /// Path to the root certificates
     roots: String,

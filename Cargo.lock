@@ -1277,24 +1277,6 @@ dependencies = [
 name = "verdict"
 version = "0.1.0"
 dependencies = [
- "chrono",
- "clap",
- "crossbeam",
- "csv",
- "limbo-harness-support",
- "rand",
- "regex",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 1.0.69",
- "verdict-core",
-]
-
-[[package]]
-name = "verdict-core"
-version = "0.1.0"
-dependencies = [
  "aws-lc-rs",
  "builtin",
  "builtin_macros",
@@ -1308,6 +1290,24 @@ dependencies = [
  "verdict-rspec-lib",
  "vest",
  "vstd",
+]
+
+[[package]]
+name = "verdict-bin"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "crossbeam",
+ "csv",
+ "limbo-harness-support",
+ "rand",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "verdict",
 ]
 
 [[package]]

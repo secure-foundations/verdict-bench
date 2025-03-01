@@ -5,9 +5,9 @@ use std::time::Instant;
 
 use clap::ValueEnum;
 
-use verdict_core::policy::{self, Policy, ExecTask};
-use verdict_core::validator::{RootStore, Validator};
-use verdict_core::parser::{parse_x509_der, decode_base64};
+use verdict::policy::{self, Policy, ExecTask};
+use verdict::validator::{RootStore, Validator};
+use verdict::parser::{parse_x509_der, decode_base64};
 
 use crossbeam::channel;
 use crossbeam::channel::Receiver;
@@ -19,7 +19,7 @@ use crate::utils::*;
 use super::common::*;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum PolicyName {
+pub enum VerdictPolicyName {
     Chrome,
     Firefox,
     #[clap(name="openssl")]
@@ -27,7 +27,7 @@ pub enum PolicyName {
 }
 
 pub struct VerdictHarness {
-    pub policy: PolicyName,
+    pub policy: VerdictPolicyName,
     pub debug: bool,
 }
 
@@ -101,11 +101,11 @@ impl Harness for VerdictHarness {
             rx_res: Some(rx_res),
             handle: Some(thread::spawn(move ||
                 match policy_name {
-                    PolicyName::Chrome =>
+                    VerdictPolicyName::Chrome =>
                         VerdictInstance::worker(timestamp, roots_base64, policy::ChromePolicy::default(), rx_job, tx_res, debug),
-                    PolicyName::Firefox =>
+                    VerdictPolicyName::Firefox =>
                         VerdictInstance::worker(timestamp, roots_base64, policy::FirefoxPolicy::default(), rx_job, tx_res, debug),
-                    PolicyName::OpenSSL =>
+                    VerdictPolicyName::OpenSSL =>
                         VerdictInstance::worker(timestamp, roots_base64, policy::OpenSSLPolicy::default(), rx_job, tx_res, debug),
                 })),
         }))

@@ -4,7 +4,7 @@ mod common;
 mod chrome;
 mod firefox;
 mod openssl;
-pub mod verdict;
+mod verdict;
 mod armor;
 mod hammurabi;
 mod ceres;

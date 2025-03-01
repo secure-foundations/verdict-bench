@@ -119,7 +119,7 @@ impl policy::Certificate {
     }
 
     /// Exec version of spec_from
-    pub fn from(c: &CertificateValue) -> (res: Result<policy::ExecCertificate, ValidationError>)
+    pub fn from(c: &CertificateValue<'_>) -> (res: Result<policy::ExecCertificate, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(c@),
     {
@@ -248,10 +248,10 @@ impl policy::Certificate {
         })
     }
 
-    pub fn from_exts(exts: &VecDeep<ExtensionValue>) -> (res: Vec<policy::ExecExtension>)
+    pub fn from_exts(exts: &VecDeep<ExtensionValue<'_>>) -> (res: Vec<policy::ExecExtension>)
         ensures res.deep_view() =~= Self::spec_from_exts(exts@),
     {
-        vec_map(exts.to_vec(), |ext: &ExtensionValue| -> (res: policy::ExecExtension)
+        vec_map(exts.to_vec(), |ext: &ExtensionValue<'_>| -> (res: policy::ExecExtension)
             ensures res.deep_view() == (policy::Extension {
                 oid: Self::spec_oid_to_string(ext@.id),
                 critical: ext.critical.to_opt(),
@@ -337,7 +337,7 @@ impl policy::Certificate {
     /// Convert an X.509 Time to a UNIX timestamp
     /// NOTE: this implementation is unverified and trusted
     #[verifier::external_body]
-    pub fn time_to_timestamp(time: &TimeValue) -> (res: Option<i64>)
+    pub fn time_to_timestamp(time: &TimeValue<'_>) -> (res: Option<i64>)
         ensures res == Self::spec_time_to_timestamp(time@)
     {
         // Convert UTCTime/GeneralizedTime to chrono::NaiveDateTime
@@ -456,7 +456,7 @@ impl policy::AuthorityKeyIdentifier {
         }
     }
 
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecAuthorityKeyIdentifier, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecAuthorityKeyIdentifier, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -493,7 +493,7 @@ impl policy::SubjectKeyIdentifier {
         }
     }
 
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecSubjectKeyIdentifier, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecSubjectKeyIdentifier, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -519,7 +519,7 @@ impl policy::ExtendedKeyUsage {
         }
     }
 
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecExtendedKeyUsage, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecExtendedKeyUsage, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -600,7 +600,7 @@ impl policy::BasicConstraints {
     }
 
     /// Exec version of spec_from
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecBasicConstraints, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecBasicConstraints, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -638,7 +638,7 @@ impl policy::KeyUsage {
         }
     }
 
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecKeyUsage, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecKeyUsage, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -673,7 +673,7 @@ impl policy::SubjectAltName {
     }
 
     /// Exec version of spec_from
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecSubjectAltName, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecSubjectAltName, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -709,7 +709,7 @@ impl policy::NameConstraints {
         }
     }
 
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecNameConstraints, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecNameConstraints, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -763,7 +763,7 @@ impl policy::CertificatePolicies {
     }
 
     /// Exec version of spec_from
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecCertificatePolicies, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecCertificatePolicies, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -798,7 +798,7 @@ impl policy::AuthorityInfoAccess {
         }
     }
 
-    pub fn from(ext: &ExtensionValue) -> (res: Result<policy::ExecAuthorityInfoAccess, ValidationError>)
+    pub fn from(ext: &ExtensionValue<'_>) -> (res: Result<policy::ExecAuthorityInfoAccess, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(ext@),
     {
@@ -829,7 +829,7 @@ impl policy::GeneralName {
     }
 
     /// Exec version of spec_from
-    pub fn from(name: &GeneralNameValue) -> (res: policy::ExecGeneralName)
+    pub fn from(name: &GeneralNameValue<'_>) -> (res: policy::ExecGeneralName)
         ensures res.deep_view() =~= Self::spec_from(name@),
     {
         match name {
@@ -860,7 +860,7 @@ impl policy::GeneralName {
     }
 
     /// Exec version of spec_from_names
-    pub fn from_names(names: &GeneralNamesValue) -> (res: Vec<policy::ExecGeneralName>)
+    pub fn from_names(names: &GeneralNamesValue<'_>) -> (res: Vec<policy::ExecGeneralName>)
         ensures res.deep_view() =~= Self::spec_from_names(names@),
     {
         let len = names.len();
@@ -893,7 +893,7 @@ impl policy::GeneralName {
         }
     }
 
-    pub fn from_general_subtrees(subtrees: &GeneralSubtreesValue) -> (res: Vec<policy::ExecGeneralName>)
+    pub fn from_general_subtrees(subtrees: &GeneralSubtreesValue<'_>) -> (res: Vec<policy::ExecGeneralName>)
         ensures
             res.deep_view() =~= Self::spec_from_general_subtrees(subtrees@)
     {
@@ -945,7 +945,7 @@ impl policy::SubjectKey {
     }
 
     /// Exec version of spec_from
-    pub fn from(spki: &PublicKeyInfoValue) -> (res: Result<policy::ExecSubjectKey, ValidationError>)
+    pub fn from(spki: &PublicKeyInfoValue<'_>) -> (res: Result<policy::ExecSubjectKey, ValidationError>)
         ensures
             res matches Ok(res) ==> Some(res.deep_view()) =~= Self::spec_from(spki@),
     {
@@ -1008,7 +1008,7 @@ impl policy::DistinguishedName {
     }
 
     /// Exec version of spec_from
-    pub fn from(name: &NameValue) -> (res: policy::ExecDistinguishedName)
+    pub fn from(name: &NameValue<'_>) -> (res: policy::ExecDistinguishedName)
         ensures res.deep_view() == Self::spec_from(name@),
     {
         let len = name.len();
