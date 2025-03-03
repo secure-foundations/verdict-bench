@@ -68,7 +68,8 @@ COPY firefox .
 RUN make inner-build
 
 # Resolve symlinks in obj-*/dist/bin/modules for later use
-RUN cp -rL mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules-resolved
+RUN cp -rL mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin \
+           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved
 
 ##########################################################################
 # Environment for building other tools: ARMOR, CERES, Hammurabi, OpenSSL #
@@ -157,31 +158,9 @@ COPY --from=firefox-build \
     /verdict-bench/firefox/cert_bench.sh \
     /verdict-bench/firefox/
 
-# COPY --from=firefox-build \
-#     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu \
-#     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu
-
 COPY --from=firefox-build \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/toolkit/library/build/libxul.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/sandbox/linux/libmozsandbox.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/lgpllibs/liblgpllibs.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/sqlite/libmozsqlite3.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/widget/gtk/mozgtk/gtk3/libmozgtk.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/widget/gtk/mozwayland/libmozwayland.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/nspr/pr/libnspr4.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/nspr/libc/libplc4.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/nspr/ds/libplds4.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/nss/nss_nss3/libnss3.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/util/util_nssutil3/libnssutil3.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/ssl/ssl_ssl3/libssl3.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/smime/smime_smime3/libsmime3.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/run-mozilla.sh \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/
-
-COPY --from=firefox-build \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules-resolved \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin
 
 # Install ARMOR
 COPY --from=armor-build /verdict-bench/armor/src/armor-driver /verdict-bench/armor/src/armor-driver
