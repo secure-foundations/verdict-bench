@@ -94,18 +94,27 @@ ENV PATH="$PATH:/root/.cargo/bin"
 
 WORKDIR /verdict-bench
 
+# Build ARMOR and CERES
+FROM other-build AS armor-build
 COPY armor armor
 RUN cd armor && make
 
+FROM other-build AS ceres-build
 COPY ceres ceres
 RUN cd ceres && make
 
+# Build Hammurabi
+FROM other-build AS hammurabi-build
 COPY hammurabi hammurabi
 RUN cd hammurabi && make
 
+# Build OpenSSL
+FROM other-build AS openssl-build
 COPY openssl openssl
 RUN cd openssl && make
 
+# Build Verdict
+FROM other-build AS verdict-build
 COPY verdict verdict
 SHELL [ "/bin/bash", "-c" ]
 RUN cd verdict && \
@@ -159,25 +168,24 @@ COPY --from=firefox-build \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules
 
 # Install ARMOR
-COPY --from=other-build /verdict-bench/armor/src/armor-driver /verdict-bench/armor/src/armor-driver
+COPY --from=armor-build /verdict-bench/armor/src/armor-driver /verdict-bench/armor/src/armor-driver
 
 # Install CERES
-COPY --from=other-build /verdict-bench/ceres /verdict-bench/ceres
+COPY --from=ceres-build /verdict-bench/ceres /verdict-bench/ceres
 
 # Install Hammurabi
-COPY --from=other-build \
+COPY --from=hammurabi-build \
     /verdict-bench/hammurabi/target/release/bench \
     /verdict-bench/hammurabi/target/release/bench
-COPY --from=other-build \
+COPY --from=hammurabi-build \
     /verdict-bench/hammurabi/prolog/bin \
     /verdict-bench/hammurabi/prolog/bin
 
 # Install OpenSSL
-COPY --from=other-build /verdict-bench/openssl/openssl/libcrypto.so /verdict-bench/openssl/openssl/libcrypto.so
-COPY --from=other-build /verdict-bench/openssl/cert_bench /verdict-bench/openssl/cert_bench
+COPY --from=openssl-build /verdict-bench/openssl/cert_bench /verdict-bench/openssl/cert_bench
 
 # Install Verdict
-COPY --from=other-build \
+COPY --from=verdict-build \
     /verdict-bench/verdict/target/release/verdict-aws-lc \
     /verdict-bench/verdict/target/release/verdict \
     /verdict-bench/verdict/target/release/
