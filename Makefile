@@ -7,5 +7,5 @@ src/armor-agda/src/Main: agda/agda
 	cd src/armor-agda && PATH="$(realpath agda):$$PATH" ./compile.sh
 
 agda/agda:
-	git submodule update --init
-	cd agda && stack install --stack-yaml stack-8.8.4.yaml --install-path .
+# git submodule update --init
+	cd agda && stack install --stack-yaml stack-8.8.4.yaml --local-bin-path .
