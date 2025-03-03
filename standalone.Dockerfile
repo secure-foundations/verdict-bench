@@ -67,6 +67,9 @@ WORKDIR /verdict-bench/firefox
 COPY firefox .
 RUN make inner-build
 
+# Resolve symlinks in obj-*/dist/bin/modules for later use
+RUN cp -rL mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules-resolved
+
 ##########################################################################
 # Environment for building other tools: ARMOR, CERES, Hammurabi, OpenSSL #
 ##########################################################################
@@ -123,21 +126,23 @@ RUN cd verdict && \
     mv target/release/verdict target/release/verdict-aws-lc && \
     vargo build --release
 
-###############
-# Final Image #
-###############
-FROM ubuntu:24.04 AS final
+#############################
+# Preparing the final image #
+#############################
+FROM ubuntu:24.04 AS final-tmp
 
 # Some runtime dependencies
 COPY requirements.txt requirements.txt
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        make libfaketime python3-pip libnspr4 libgtk-3-0 \
-        libnss3 libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog && \
+        make libfaketime python3-pip libgtk-3-0 file \
+        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install -r requirements.txt \
         --break-system-packages \
-        --no-cache-dir
+        --no-cache-dir && \
+    DEBIAN_FRONTEND=noninteractive apt-get purge -y python3-pip && \
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 
 # Copy compiled binaries from previous stages
 WORKDIR /verdict-bench
@@ -152,6 +157,10 @@ COPY --from=firefox-build \
     /verdict-bench/firefox/cert_bench.sh \
     /verdict-bench/firefox/
 
+# COPY --from=firefox-build \
+#     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu \
+#     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu
+
 COPY --from=firefox-build \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/toolkit/library/build/libxul.so \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/sandbox/linux/libmozsandbox.so \
@@ -159,12 +168,19 @@ COPY --from=firefox-build \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/sqlite/libmozsqlite3.so \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/widget/gtk/mozgtk/gtk3/libmozgtk.so \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/widget/gtk/mozwayland/libmozwayland.so \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/nspr/pr/libnspr4.so \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/nspr/libc/libplc4.so \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/config/external/nspr/ds/libplds4.so \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/nss/nss_nss3/libnss3.so \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/util/util_nssutil3/libnssutil3.so \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/ssl/ssl_ssl3/libssl3.so \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/security/nss/lib/smime/smime_smime3/libsmime3.so \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/run-mozilla.sh \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/
 
 COPY --from=firefox-build \
-    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules \
+    /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules-resolved \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/modules
 
 # Install ARMOR
@@ -190,6 +206,17 @@ COPY --from=verdict-build \
     /verdict-bench/verdict/target/release/verdict \
     /verdict-bench/verdict/target/release/
 
+# Strip all ELF binaries
+RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \;
+
 # Misc
 COPY data data
 COPY Makefile Makefile
+
+###############
+# Final image #
+###############
+FROM scratch AS final
+COPY --from=final-tmp / /
+WORKDIR /verdict-bench
+ENTRYPOINT [ "/bin/bash" ]
