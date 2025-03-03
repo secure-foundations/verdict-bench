@@ -1,0 +1,81 @@
+HTTP/1.1 400 Bad Request
+Content-Encoding: gzip
+Pragma: no-cache
+Cache-Control: private, no-cache, no-store, must-revalidate
+Expires: Sat, 01 Jan 2000 00:00:00 GMT
+content-security-policy: default-src 'self' data: blob:;script-src 'nonce-AFDmiLkB' *.facebook.com *.fbcdn.net *.whatsapp.com *.whatsapp.net https://*.facebook.net 'self' data: blob:;style-src 'self' 'unsafe-inline' data: blob: * https://fonts.googleapis.com;connect-src 'self' https://*.whatsapp.com data: blob:;font-src https://*.fbcdn.net https://static.whatsapp.net data: https://fonts.gstatic.com;img-src *;frame-src whatsapp: 'self' data: blob:;block-all-mixed-content;upgrade-insecure-requests;
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+reporting-endpoints: coop_report="https://www.facebook.com/browser_reporting/coop/?minimize=0", coep_report="https://www.facebook.com/browser_reporting/coep/?minimize=0", default="https://www.whatsapp.com/whatsapp_browser_error_reports/?device_level=unknown&brsid=7459940662734879488"
+report-to: {"max_age":2592000,"endpoints":[{"url":"https:\/\/www.facebook.com\/browser_reporting\/coop\/?minimize=0"}],"group":"coop_report","include_subdomains":true}, {"max_age":86400,"endpoints":[{"url":"https:\/\/www.facebook.com\/browser_reporting\/coep\/?minimize=0"}],"group":"coep_report"}, {"max_age":259200,"endpoints":[{"url":"https:\/\/www.whatsapp.com\/whatsapp_browser_error_reports\/?device_level=unknown&brsid=7459940662734879488"}]}
+cross-origin-embedder-policy-report-only: require-corp;report-to="coep_report"
+cross-origin-opener-policy: same-origin-allow-popups
+Vary: Sec-Fetch-Site, Sec-Fetch-Mode, Accept-Encoding
+origin-agent-cluster: ?1
+Strict-Transport-Security: max-age=31536000; preload; includeSubDomains
+Content-Type: text/html; charset="utf-8"
+X-FB-Debug: KrhFWXwZ45cc6LVWFwFXEsesoYb1og172FFtBnWhXli+TjQRZ27QBm6bmM/1NjhVhP5zC+G/4A1Fs/ABboxDSQ==
+Proxy-Status: http_request_error; e_proxy="AcLd0ySUaAEx7DGxRLWsbWLVg9P8fbdjUEQmtawo8TO7b-YkSjnnQj3SrG1YV2uvHFLr9ei4HhOkJ4cNKxKj"; e_fb_binaryversion="AcJbJ4wZZi750jqjxRuZ2ecfyb-Iqjg8cRvLZ8NbuJK2S2JPMyQyaVO3RoXWXvAs5urxAqBXQX-wChpYgdexOVwS3EeDO_FAuWs"; e_fb_httpversion="AcJEdj_OfFQ6MQFHxmjXARwuMDgXBlEm9oilrSU4E7nTCt9_r4FDfMidC0FE"; e_fb_responsebytes="AcK3HfJGlYu3nG_Q0swq9izDsZ7lURw_6cYN_sRo_CC4BXNMUM6bqOrv7L3NYg"; e_fb_requesttime="AcKOowgbVHexCwpwQGksmfPB_azA7lexaovSa2Qr_RvVT8DA7EPMwUTo7Mkwz7Xvvhe5c0OWqg"; e_fb_requesthandler="AcJgXbH7XoFiOszvZhMDAzqfJfhlUineIH6ExOfHa_qFTP6_yhoKoe4_KiSu8GZ0gsmO562sfik"; e_fb_hostheader="AcIp1EsOu3ef5BlGaHyy499ETJyoPal4E02iTzLs8ByI3RTNrFl1jPQ-hipHtvg-huhSAJRFl35Sng"; e_fb_requestsequencenumber="AcK21aJVhASXOLbcHkhudVnYjbUw9Ynw-hbtX6acqy36vUokpku-q4yVDRQ"; e_upip="AcJAxQqEZQEP5XqiG2VAEetGlZw6q0239E1cHcyepgqA7xeGVmIaHAR_r1lg-J4WHw88XMqKTHAyfmldFsBvptLMbRS7_nWuejJBFQo"; e_fb_builduser="AcJDxg5q_c_OF40sc__FXxY89fcxvL5ImkAeQwhzbXuzCKa-NPPqVx3Zw5wAUeH55rU"; e_fb_vipport="AcK_WzfKiExeNf8aKri7m0ZWlIuHDCLJZJTeXOqLrkI-gY0gMfQ5hMFzPd0E"; e_clientaddr="AcLwItZSfr3r-wAEdvrvlzzP4Qy_9iEPf0ET7oMq9drTwopNb2wm5orgt_VzRvzJtp2dfIkX9DHQvydtM9a1eAiq5TN7M4G5hUG8znKuO7yUIhSc4A"; e_fb_vipaddr="AcI3ZEQgjSbji4CHDRKtspf3f4kkSCTSKu6Ty20-64dp5mOcKSXY0_RsgftgEYud59CzgBhBSO_oncUgAndBGaYXKxS-fnCm_g"; e_fb_configversion="AcJQFwnV8sV8SigakDR5Xw73UeePp_Dn0yUrMUTr9d-II15MUyvLtNZtE5J5rg", http_request_error; e_proxy="AcI2VUa_NP18zmy1yLYN6h5zbTSB6JKdmDg_mShk6Nhyi3fM55Bc2yRZ5CQ3Z49evNSYoQ7VlZU5ybFC"; e_fb_binaryversion="AcJikmpWq776lXU_crvOYJYwfYwl3FF_1x4H0sMf1nsdSeozOVXMb7OW-tbLrGtZ4AYwqn--LB5K6N8Afjrn-rDQqLnEUZFzbqE"; e_fb_httpversion="AcIbrIf0f_qFQv1Sv6BBycIGJw0hpcwK_3CfMRlM4CGA9YQU8LrsvLH5E_Df"; e_fb_responsebytes="AcKjYHvHFbshXLznX30Jw044VOxjFvw6cR52Iu5uizXqRaU5yqdwf6yRP7Vz6Q"; e_fb_requesttime="AcIwbgGdk0gPQqgL02ovHehyt1274SJXa_mtZUxBCLPlwQH0Qo4P6dO4IjT_IfExC2mYwLfBTg"; e_fb_requesthandler="AcL5zr9flE7Z5cOgqgIZ3XPfE1ufOYd5e03U93eVn5OtGFQGkwYHjTKB4wxUbsl3xyDxN4i1DUgN7Kkt"; e_fb_hostheader="AcJwim2uP1K_VB_SkLwwJkY3Dqb-lrwfGWE8rYBnUKRCBYVXfVwQ79lNILHlXhjm5RI74si9X0Akpg"; e_fb_requestsequencenumber="AcKpilKz0wkRS-ZK4jVGC2GJc4oT4Bef98gaKbaiJ4uebSP_Iceq2dXCCg"; e_upip="AcIzHd6p6uxse63iD1vKN6f6ClyGy91QyZTqr1EANA3CwKAkyaifThQBT77tdJKQqbXgoU5knN_lxQ_mFSL4H0mCgjET4_27zA"; e_fb_builduser="AcLWlkkRnk5dUG1J0vOmXT8GOaODRpRcuur5b1z5-1gR4sbgwkghb1kGIa2w-jnMp6E"; e_fb_vipport="AcKgNlQmKECVdEFWiz9SzRPbEnNTeFI40ZqKWEiCdNavYbtxQ2dfvW6QYZce"; e_clientaddr="AcK5BeUlRXlfbiv8GGiM2zx5l-26rF9RyMEYfGeh5JprOtC-GesJyx-mHX41G5RUGBki9Q2acfYguLw-gPRcwaWqNI1rfUc7KvqKJYT86PaWNUD_FQ"; e_fb_vipaddr="AcI0jpsIiZCM74oy5ww3DJneUbMMGQoJG5lNHnMl1yZWqO6uLha6pzDzbrhjq6SISdeTDBdaVZao-DtKoO4V7kC5-ME0EYQVxRtZ"; e_fb_configversion="AcL45PUH3BDRih6tDYGo0Yk44Z3zr2JVA_S3Liih7BOKC4BdZJvhjHPkfxVNrw"
+Date: Wed, 15 Jan 2025 00:59:46 GMT
+X-FB-Connection-Quality: EXCELLENT; q=0.9, rtt=35, rtx=0, c=13, mss=1380, tbw=3364, tp=-1, tpl=-1, uplat=42, ullat=0
+Alt-Svc: h3=":443"; ma=86400
+Connection: keep-alive
+Content-Length: 2638
+
+<!DOCTYPE html>
+<html lang="en" id="whatsapp">
+  <head>
+    <title>Error</title>
+    <meta charset="utf-8"/>
+    <meta http-equiv="Cache-Control" content="no-cache"/>
+    <meta name="robots" content="noindex,nofollow"/>
+    <style>
+      html, body { color: #fff; background-color: #1ebea5; font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Open Sans', 'Helvetica Neue', sans-serif; margin: 0; padding: 0; }
+      div#core { display: flex; flex-direction: column; margin: auto; width: 50rem; }
+      div#top { padding-bottom: 1rem; padding-top: 1.5rem; }
+      div#footer { border-top: 1px solid #ddd; font-size: 1rem; padding: 0.4rem 0 0 0; }
+      #icon { height: 4rem; }
+      h1 { font-size: 2rem;}
+      p { font-size: 1rem;}
+      a { color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div id="core">
+      <div id="top">
+        <a href="//www.whatsapp.com/">
+          <svg id="icon"
+          xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"
+            viewBox="0 0 138 39" width="138" height="39" style="enable-background:new 0 0 138 39;" xml:space="preserve">
+            <style type="text/css">
+              .st0 { fill: #00E676; }
+              .icon_logo_white { fill: #FFFFFF; }
+            </style>
+            <path class="st0" d="M10.7,32.8l0.6,0.3c2.5,1.5,5.3,2.2,8.1,2.2l0,0c8.8,0,16-7.2,16-16c0-4.2-1.7-8.3-4.7-11.3c-3-3-7-4.7-11.3-4.7c-8.8,0-16,7.2-15.9,16.1c0,3,0.9,5.9,2.4,8.4l0.4,0.6l-1.6,5.9L10.7,32.8z" />
+            <path class="icon_logo_white" d="M32.4,6.4C29,2.9,24.3,1,19.5,1C9.3,1,1.1,9.3,1.2,19.4c0,3.2,0.9,6.3,2.4,9.1L1,38l9.7-2.5c2.7,1.5,5.7,2.2,8.7,2.2l0,0c10.1,0,18.3-8.3,18.3-18.4C37.7,14.4,35.8,9.8,32.4,6.4z M19.5,34.6L19.5,34.6c-2.7,0-5.4-0.7-7.7-2.1l-0.6-0.3l-5.8,1.5L6.9,28l-0.4-0.6c-4.4-7.1-2.3-16.5,4.9-20.9s16.5-2.3,20.9,4.9s2.3,16.5-4.9,20.9C25.1,33.8,22.3,34.6,19.5,34.6z M28.3,23.5L27.2,23c0,0-1.6-0.7-2.6-1.2c-0.1,0-0.2-0.1-0.3-0.1c-0.3,0-0.5,0.1-0.7,0.2l0,0c0,0-0.1,0.1-1.5,1.7c-0.1,0.2-0.3,0.3-0.5,0.3h-0.1c-0.1,0-0.3-0.1-0.4-0.2l-0.5-0.2l0,0c-1.1-0.5-2.1-1.1-2.9-1.9c-0.2-0.2-0.5-0.4-0.7-0.6c-0.7-0.7-1.4-1.5-1.9-2.4l-0.1-0.2c-0.1-0.1-0.1-0.2-0.2-0.4c0-0.2,0-0.4,0.1-0.5c0,0,0.4-0.5,0.7-0.8c0.2-0.2,0.3-0.5,0.5-0.7c0.2-0.3,0.3-0.7,0.2-1c-0.1-0.5-1.3-3.2-1.6-3.8c-0.2-0.3-0.4-0.4-0.7-0.5h-0.3c-0.2,0-0.5,0-0.8,0c-0.2,0-0.4,0.1-0.6,0.1l-0.1,0.1c-0.2,0.1-0.4,0.3-0.6,0.4c-0.2,0.2-0.3,0.4-0.5,0.6c-0.7,0.9-1.1,2-1.1,3.1l0,0c0,0.8,0.2,1.6,0.5,2.3l0.1,0.3c0.9,1.9,2.1,3.6,3.7,5.1l0.4,0.4c0.3,0.3,0.6,0.5,0.8,0.8c2.1,1.8,4.5,3.1,7.2,3.8c0.3,0.1,0.7,0.1,1,0.2l0,0c0.3,0,0.7,0,1,0c0.5,0,1.1-0.2,1.5-0.4c0.3-0.2,0.5-0.2,0.7-0.4l0.2-0.2c0.2-0.2,0.4-0.3,0.6-0.5c0.2-0.2,0.4-0.4,0.5-0.6c0.2-0.4,0.3-0.9,0.4-1.4c0-0.2,0-0.5,0-0.7C28.6,23.7,28.5,23.6,28.3,23.5z" />
+            <path class="icon_logo_white" d="M56.2,23.5h-0.1l-2.7-10h-2.1l-2.6,10h-0.1l-2.3-10h-2.5l3.6,13.4h2.3l2.7-9.5h0.1l2.7,9.5h2.2l3.5-13.3h-2.4L56.2,23.5z M68.4,16.5c-0.7,0-1.4,0.2-2,0.5c-0.5,0.3-1,0.8-1.2,1.3h-0.2v-5.5h-2.3v14.1h2.3V21c0-0.7,0.2-1.3,0.7-1.8c0.5-0.5,1.1-0.7,1.8-0.7c0.6,0,1.2,0.2,1.6,0.6c0.4,0.5,0.6,1.1,0.5,1.7v6H72v-6.5c0.1-1-0.3-2-0.9-2.8C70.4,16.8,69.4,16.5,68.4,16.5L68.4,16.5z M78.4,16.5c-1.1,0-2.1,0.2-3,0.8c-0.7,0.5-1.2,1.3-1.3,2.1h2.2c0.1-0.3,0.4-0.6,0.7-0.8c0.4-0.2,0.9-0.3,1.3-0.3c0.5,0,1,0.1,1.4,0.4c0.3,0.3,0.5,0.7,0.5,1.2v0.9l-2.6,0.2c-1,0-2,0.3-2.9,0.9c-0.7,0.5-1,1.3-1,2.2c0,0.8,0.3,1.6,0.9,2.2c0.7,0.6,1.5,0.9,2.4,0.8c0.6,0,1.2-0.1,1.8-0.4c0.5-0.3,0.9-0.7,1.2-1.1h0.2v1.4h2.2v-7c0.1-1-0.3-1.9-1.1-2.5C80.5,16.7,79.4,16.4,78.4,16.5L78.4,16.5z M80.2,23.2c0,0.6-0.2,1.1-0.7,1.5c-0.5,0.4-1.1,0.6-1.7,0.6c-0.5,0-0.9-0.1-1.3-0.4c-0.3-0.2-0.5-0.6-0.5-1c0-0.8,0.6-1.3,1.9-1.4l2.3-0.1L80.2,23.2L80.2,23.2z M87.8,14.3h-2.3v2.5h-1.7v1.8h1.7v5.5c-0.1,0.8,0.2,1.6,0.8,2.1c0.7,0.5,1.6,0.7,2.5,0.6c0.4,0,0.8,0,1.2-0.1V25c-0.3,0-0.5,0-0.8,0c-0.4,0-0.8-0.1-1.1-0.3c-0.2-0.3-0.4-0.7-0.3-1.1v-5H90v-1.8h-2.2C87.8,16.8,87.8,14.3,87.8,14.3z M97,21.1l-1.8-0.4c-0.4-0.1-0.8-0.2-1.1-0.5c-0.2-0.2-0.4-0.4-0.4-0.7c0-0.4,0.2-0.7,0.5-0.9c0.4-0.2,0.9-0.4,1.3-0.3c0.5,0,0.9,0.1,1.3,0.3c0.3,0.2,0.5,0.5,0.6,0.9h2.2c0-0.9-0.5-1.7-1.2-2.2c-0.9-0.5-1.9-0.8-2.9-0.8c-1,0-2.1,0.3-2.9,0.9c-0.7,0.5-1.1,1.4-1.1,2.2c0,0.7,0.2,1.3,0.7,1.8c0.6,0.5,1.4,0.9,2.2,1l1.8,0.4c0.9,0.2,1.4,0.6,1.4,1.2c0,0.4-0.2,0.7-0.5,0.9c-0.4,0.2-0.9,0.4-1.4,0.3c-0.5,0-1-0.1-1.4-0.3c-0.3-0.2-0.6-0.5-0.7-0.9h-2.3c0,0.9,0.5,1.7,1.3,2.2c0.9,0.6,2,0.8,3,0.8c1.1,0,2.2-0.3,3.1-0.9c0.8-0.5,1.2-1.4,1.2-2.4c0-0.7-0.2-1.3-0.7-1.8C98.4,21.5,97.7,21.2,97,21.1L97,21.1z M105.4,13.5l-4.8,13.4h2.4l1.2-3.4h5l1.1,3.4h2.6l-4.8-13.4H105.4L105.4,13.5z M104.8,21.6l1.8-5.5h0.2l1.8,5.5H104.8L104.8,21.6z M120,16.6c-0.7,0-1.3,0.2-1.9,0.5c-0.5,0.3-1,0.8-1.3,1.4h-0.2v-1.7h-2.2v13.4h2.3v-4.8h0.2c0.3,0.5,0.7,1,1.2,1.3c0.6,0.3,1.2,0.5,1.9,0.4c1.2,0,2.3-0.5,3-1.4c0.8-1.1,1.2-2.5,1.1-3.8c0.1-1.4-0.3-2.7-1.1-3.8C122.3,17,121.1,16.5,120,16.6L120,16.6z M121.1,24.2c-0.8,1-2.4,1.2-3.4,0.3c-0.1-0.1-0.2-0.2-0.3-0.3c-0.5-0.7-0.7-1.5-0.7-2.4c0-0.9,0.2-1.7,0.7-2.4c0.9-1,2.4-1.2,3.4-0.3c0.1,0.1,0.2,0.2,0.3,0.3c0.5,0.7,0.7,1.6,0.7,2.4C121.8,22.7,121.6,23.5,121.1,24.2L121.1,24.2z M134.6,18c-0.7-0.9-1.9-1.5-3.1-1.4c-0.7,0-1.3,0.2-1.9,0.5c-0.5,0.3-1,0.8-1.3,1.4h-0.2v-1.7H126v13.4h2.3v-4.8h0.2c0.2,0.5,0.6,1,1.2,1.3c0.6,0.3,1.2,0.5,1.9,0.4c1.2,0.1,2.3-0.5,3.1-1.4c0.8-1.1,1.2-2.5,1.1-3.8C135.8,20.4,135.4,19.1,134.6,18z M132.7,24.2c-0.8,1-2.4,1.2-3.4,0.3c-0.1-0.1-0.2-0.2-0.3-0.3c-0.5-0.7-0.7-1.5-0.7-2.4c0-0.9,0.2-1.7,0.7-2.4c0.9-1,2.4-1.2,3.4-0.3c0.1,0.1,0.2,0.2,0.3,0.3c0.5,0.7,0.7,1.6,0.7,2.4C133.4,22.7,133.1,23.5,132.7,24.2L132.7,24.2z" />
+          </svg>
+        </a>
+        <h1>Sorry, something went wrong.</h1>
+        <p>We're working on getting this fixed as soon as we can.</p>
+        <p>
+          <a id="back" href="//www.whatsapp.com/">Go Back</a>
+        </p>
+      </div>
+      <div id="footer"> WhatsApp &#xA9; <noscript>2020</noscript>
+        <script type="text/javascript" nonce="AFDmiLkB">
+          document.write(new Date().getFullYear());
+        </script> &#xB7; <a href="//faq.whatsapp.com">Help</a>
+      </div>
+    </div>
+    <script nonce="AFDmiLkB">
+      document.getElementById("back").onclick = function() {
+        if (history.length > 1) {
+          history.back();
+          return false;
+        }
+      };
+      </script>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+HTTP/1.1 200 OK
+Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+Content-Length: 2105
+Content-Security-Policy: default-src 'none'; frame-ancestors https://*.dzen.ru https://dzen.ru; connect-src 'self'; script-src 'nonce-79ea6bb0998dfd0b7b1ab00b264cc677' 'self'; img-src 'self'
+Content-Type: text/html; charset=utf-8
+Date: Wed, 15 Jan 2025 00:58:00 GMT
+ETag: W/"839-AGeh2LDtZmcg121RB6UepyD7Gg0"
+Expires: 0
+Pragma: no-cache
+Referrer-Policy: origin
+Set-Cookie: mda2_beacon=1736902680625; Domain=.passport.yandex.ru; Expires=Tue, 19 Jan 2038 03:14:07 GMT; Secure; Path=/; SameSite=None, ys=c_chck.1273520519; Domain=.yandex.ru; Secure; Path=/; SameSite=None, i=rE5DGsgY4aw0/9hjpjL25MZQg7yYFRRu+4QZr2oR5WdFXiHUJdhZNf7Upq4BHEwW045EClQnwUdFkknDk0gTJxBsj6o=; Domain=.yandex.ru; Expires=Sat, 13 Jan 2035 00:58:00 GMT; Secure; HttpOnly; Path=/; SameSite=None, yandexuid=9422591671736902680; Domain=.yandex.ru; Expires=Sat, 13 Jan 2035 00:58:00 GMT; Secure; Path=/; SameSite=None, mda2_domains=dzen.ru; Domain=.passport.yandex.ru; Expires=Tue, 19 Jan 2038 03:14:07 GMT; Secure; Path=/
+Strict-Transport-Security: max-age=315360000; includeSubDomains; preload
+Surrogate-Control: no-store
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-E: d
+X-XSS-Protection: 1; mode=block
+
+<body></body><script nonce='79ea6bb0998dfd0b7b1ab00b264cc677'>var it = {"host":"https:\u002F\u002Fsso.dzen.ru\u002Finstall?uuid=fbe2417b-1195-4954-aa28-01c94e231052","retpath":"https:\u002F\u002Fdzen.ru\u002F?is_autologin_ya=true"};(function() { var form = document.createElement('form'); var element1 = document.createElement('input'); var element2 = document.createElement('input'); element1.name = 'retpath'; element1.type = 'hidden'; element1.value = it.retpath; form.appendChild(element1); element2.name = 'container'; element2.type = 'hidden'; element2.value = '1736902740.10151690.IckH8irtnTpPUKoR.sPNhMN_XH6E3nODHTSWFfddAtu3Y5SPzrW6S_IjA3VpPjiVVOteqOs6RKDNtWknPIKgSDbt7DHJZBliPFBjBcmVEjBS_HzRstdFlriQurPfoqTsZWnF6l_6EFw2hl48Zp36fcqOZPglb5moNfol81ZRz6yEufJQp4DJlGv1015jVGTSOzvvqFw9BREG2wzVtaHUzXzQMBeg3naDLLwu9oMk8kYE5eYS5pu93YB8uqA70lPCirPDCc-O5QphTKog1JpdCs6wTd_qnOTOSNZkDZWxclTa0RFYJRiKaeaplVcviV8FMwiLzYaaJ-gtzyGPnA8OCCMThnC-S2RVIqeJCDpMjT_s5cqSlaFE-o6nmhed_fFTSN4SWBSmLUFSKBUZyvz-10Vbz-2lcOgtLhKXRV0SfLgpll40rIakc2GG325lZkAs7lgbxuMnJCK7unHyCb6QmOq2x37LodqDxNcgp7H43yOv3Per0XpvD1wXQIRWWS35UQ3nVhBz0Ua24L99cKa-ROMsoWQdnyJ9dcl2lTesphPOCnL_fx8Ssh8k4IxWdtKQtHKxkBRZ4dfCq0x8LYGZlgXQD_m-UUjc5UUryEYN8O34z-OEsyiDPVHwpgtgme2IL3b-7TazuySe3BD_zC8XgeMVE_iAccLshsgipHOFPLFlb5vrStEJVaKNdm3daeFcnrtE7757G9km6Sy3zfoRC-TKXNsdrs9dAJPzTmdltCvWMbI3tR8nMDY44FFIz51e0-BQcGjDdQCAX86IgCls6sm2VCA5QrqRdMiD0SVjmjwJ59WoAMCacqZcP-VnZaBc5JK7hYpWNHgtpgvTQvrqfC80Xgp2dL-sTeP3PLW_n2165asgxaIVxloRMn9EhA5nX-j44bWjV-q2W7QGNDp-u0oy-CY3TO_7zJGEqkYhNK7vInjMjR0zIEfPUAu8IHvz_2R52-wOmg_t4KMWtIUaUbWUupeLZecxeGQp33BfGw6dWmMBqVdmze1vgNcCDtqZIY6lBASKP13Lehvfrq0DXvlsibhaZNb1c5QuXfjgTdj4vuhUUmWL2dQBTf8y1a0nnhz1xYuqSoEWBtfa-qlUS7Gz395tA4qBpoQsrVLLRzkwsP29xLcRtm85iWYhxz1jPMD_R6MBIt0XSYpTovEOy-4ZtksDCeWfAk-DsS0e_9vhNl2fxrR69kaCfVaXu5ZjcLCn5xOMsZ2Jmx82GfkMDiemDTxoIEHmzXCoh8Pm9SmJmgNG0o_rbwh3gNtfStIfxGl6ezvhgiB2YyqdrTJdSL6zXHusQFo6V04Q-GgCc9QpPkDRKLYMWMiHjy3Teov2_navbJ54vyATM.V2D2Bk7sWbKDeHeAsH6Pbw'; form.appendChild(element2); form.method = 'POST'; form.action = it.host; document.body.appendChild(form); form.submit();})();</script>

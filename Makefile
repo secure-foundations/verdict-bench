@@ -2,19 +2,17 @@ DOCKER = sudo docker
 DOCKER_IMAGE_TAG = verdict-bench-build
 DOCKER_FLAGS = --privileged
 
-VERUS = verus/source/target-verus/release/verus
-VERUSC = verdict/tools/verusc/target/release/verusc
-
-VERDICT_AWS_LC = verdict/target/release/frontend-aws-lc
-VERDICT_NORMAL = verdict/target/release/frontend
+VERDICT_AWS_LC = verdict/target/release/verdict-aws-lc
+VERDICT_NORMAL = verdict/target/release/verdict
 VERDICT = $(VERDICT_NORMAL)
 
-DEPS = armor ceres openssl hammurabi chromium firefox
+DEPS = armor ceres chromium firefox hammurabi openssl
 
 CURRENT_DIR = $(shell pwd)
 
 # Configurations for benchmarking
-ROOTS = verdict/chain/tests/roots.pem
+ROOTS = data/ct-log/roots.pem
+CT_LOG = data/ct-log
 CT_LOG_INTS = $(CT_LOG)/ints
 CT_LOG_TESTS = $(CT_LOG)/certs/cert-list-*.txt
 TIMESTAMP = 1601603624
@@ -25,8 +23,6 @@ NO_DOMAIN = ceres armor # Implementations that do not support hostname validatio
 ISOLATE_CORES = # e.g. 0,2,4,6
 CORE_FREQUENCY = # e.g. 2401000
 
-# To be configured
-CT_LOG = # Main CT log directory
 BENCH_FLAGS = # Additional benchmarking flags
 BENCH_OUTPUT = > /dev/stdout
 
@@ -42,10 +38,6 @@ do-bench-%: $(VERDICT)
 		echo "CT_LOG is not set"; \
 		exit 1; \
 	fi
-# ceres requires some Python dependencies
-	$(if $(filter ceres,$*),python3 -m venv .venv && \
-	source .venv/bin/activate && \
-	pip3 install -r requirements.txt &&,) \
 	$(if $(ISOLATE_CORES),taskset -c $(ISOLATE_CORES),) $(VERDICT) bench-ct-logs $* \
 		$(ROOTS) $(CT_LOG_INTS) $(CT_LOG_TESTS) \
 		-t $(TIMESTAMP) \
@@ -124,24 +116,14 @@ bench-verdict-openssl-aws-lc: do-bench-verdict-openssl
 
 # Build two versions of Verdict: one with the normal, verified crypto primitives
 # the other $(VERDICT_AWS_LC) with more performance but unverified primitives
-$(VERDICT_NORMAL) $(VERDICT_AWS_LC) &: $(VERUS) $(VERUSC)
+$(VERDICT_NORMAL) $(VERDICT_AWS_LC) &:
 	cd verdict && \
-	PATH="$(dir $(realpath $(VERUS))):$$PATH" \
-	RUSTC_WRAPPER="$(realpath $(VERUSC))" cargo build --release --features aws-lc
+	source tools/activate.sh && \
+	vargo build --release --features aws-lc
 	mv $(VERDICT_NORMAL) $(VERDICT_AWS_LC)
+
 	cd verdict && \
-	PATH="$(dir $(realpath $(VERUS))):$$PATH" \
-	RUSTC_WRAPPER="$(realpath $(VERUSC))" cargo build --release
-
-$(VERUSC):
-	cd verdict/tools/verusc && cargo build --release
-
-# Verus build currently only supports Bash
-$(VERUS): SHELL = /bin/bash
-$(VERUS):
-	cd verus/source && \
-	./tools/get-z3.sh && \
-	source ../tools/activate && \
+	source tools/activate.sh && \
 	vargo build --release
 
 # Build all other X.509 implementations in the docker environment

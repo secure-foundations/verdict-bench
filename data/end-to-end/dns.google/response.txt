@@ -1,0 +1,18 @@
+HTTP/1.1 200 OK
+Content-Security-Policy: object-src 'none';base-uri 'self';script-src 'nonce-mOzhi8rt3GaU60hRTXNgYA' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/honest_dns/1_0;frame-ancestors 'none'
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+X-Content-Type-Options: nosniff
+Content-Type: text/html; charset=UTF-8
+Content-Security-Policy-Report-Only: script-src 'none'; form-action 'none'; frame-src 'none'; report-uri https://csp.withgoogle.com/csp/scaffolding/ntdsgswbsc:55:0
+Cross-Origin-Opener-Policy-Report-Only: same-origin; report-to=coop_reporting
+Report-To: {"group":"coop_reporting","max_age":2592000,"endpoints":[{"url":"https://csp.withgoogle.com/csp/report-to/scaffolding/ntdsgswbsc:55:0"}],}
+Content-Encoding: gzip
+Date: Wed, 15 Jan 2025 01:00:19 GMT
+Server: scaffolding on HTTPServer2
+X-XSS-Protection: 0
+X-Frame-Options: SAMEORIGIN
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Transfer-Encoding: chunked
+
+<!DOCTYPE html>
+<html lang="en"> <head> <title>Google Public DNS</title>  <meta charset="UTF-8"> <link href="/static/93dd5954/favicon.png" rel="shortcut icon" type="image/png"> <link href="/static/e6eca759/matter.min.css" rel="stylesheet"> <link href="/static/f85675c0/shared.css" rel="stylesheet"> <meta name="viewport" content="width=device-width, initial-scale=1">  <link href="/static/d05cd6ba/root.css" rel="stylesheet"> </head> <body> <span class="filler top"></span>   <div class="logo" title="Google Public DNS"> <div class="logo-text"><span>Public DNS</span></div> </div>  <form action="/query" method="GET">  <div class="row"> <label class="matter-textfield-outlined"> <input type="text" name="name" placeholder="&nbsp;"> <span>DNS Name</span> <p class="help"> Enter a domain (like example.com) or IP address (like 8.8.8.8 or 2001:4860:4860::8844) here. </p> </label> <button class="matter-button-contained matter-primary" type="submit">Resolve</button> </div> </form>  <span class="filler bottom"></span> <footer class="row"> <a href="https://developers.google.com/speed/public-dns">Help</a> <a href="/cache">Cache Flush</a> <span class="filler"></span> <a href="https://developers.google.com/speed/public-dns/docs/using"> Get Started with Google Public DNS </a> </footer>   <script nonce="mOzhi8rt3GaU60hRTXNgYA">document.forms[0].name.focus();</script> </body> </html>

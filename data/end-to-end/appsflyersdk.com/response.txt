@@ -1,0 +1,12 @@
+HTTP/1.1 403 Forbidden
+Server: CloudFront
+Date: Wed, 15 Jan 2025 00:58:32 GMT
+Content-Type: text/xml
+Content-Length: 146
+Connection: keep-alive
+X-Cache: Error from cloudfront
+Via: 1.1 48c845a8b811069f1b6c03a4eec109ce.cloudfront.net (CloudFront)
+X-Amz-Cf-Pop: ATL58-P4
+X-Amz-Cf-Id: xQhgnRXkF3Ta_9pKOPMSf7r29_BjzlBDic6bK-zJgVuJDJfn7WezSw==
+
+<?xml version="1.0" encoding="UTF-8"?><Error><Code>MissingKey</Code><Message>Missing Key-Pair-Id query parameter or cookie value</Message></Error>

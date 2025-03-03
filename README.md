@@ -80,3 +80,14 @@ verdict/target/release/frontend diff-results results1.txt results2.txt
 # Eval 3
 
 See `rustls/README.md`.
+
+# Standalone Image
+
+For better reproducibility, we also include a `standalone.Dockerfile`
+to build a Docker image containing all required tools.
+
+To build this image, run
+```
+git submodule update --init --recursive
+docker build -f standalone.Dockerfile .
+```

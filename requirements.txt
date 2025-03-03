@@ -1,2 +1,4 @@
 parsec==3.17
 pysmt==0.9.6
+pem==23.1.0
+cryptography==44.0.2
