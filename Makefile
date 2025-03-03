@@ -58,6 +58,7 @@ src/.fetched:
 		git remote add origin ${CHROMIUM_REPO}; \
 		git fetch --depth 1 origin ${CHROMIUM_COMMIT}; \
 		git checkout FETCH_HEAD; \
+		git apply ../deps.diff; \
 		gclient sync --no-history; \
 		git apply ../${DIFF_FILE}; \
 		touch .fetched; \
