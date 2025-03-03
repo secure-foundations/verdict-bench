@@ -10,7 +10,7 @@ release: openssl/libcrypto.a openssl/libssl.a
 		-Wl,-rpath,openssl
 
 openssl/libcrypto.a openssl/libssl.a &:
-	git submodule update --init
+# git submodule update --init
 	cd openssl && ./Configure && make -j $(JOBS)
 
 .PHONY: clean
