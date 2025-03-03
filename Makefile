@@ -6,7 +6,7 @@ JOBS := $(patsubst -j%,%,$(filter -j%,$(MAKEFLAGS)))
 .PHONY: release
 release: openssl/libcrypto.a openssl/libssl.a
 	$(CC) -o $(TARGET) -I openssl/include $(SOURCE) \
-		-Lopenssl -lcrypto -lssl \
+		-Lopenssl -l:libcrypto.a -l:libssl.a \
 		-Wl,-rpath,openssl
 
 openssl/libcrypto.a openssl/libssl.a &:
