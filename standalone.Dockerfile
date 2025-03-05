@@ -128,25 +128,15 @@ RUN cd verdict && \
     vargo build --release
 
 #############################
-# Preparing the final image #
+# Strip all output binaries #
 #############################
-FROM ubuntu:24.04 AS final-tmp
-
-# Some runtime dependencies
-COPY requirements.txt requirements.txt
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        make libfaketime python3-pip libgtk-3-0 file \
-        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog && \
-    rm -rf /var/lib/apt/lists/* && \
-    python3 -m pip install -r requirements.txt \
-        --break-system-packages \
-        --no-cache-dir && \
-    DEBIAN_FRONTEND=noninteractive apt-get purge -y python3-pip && \
-    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
+FROM ubuntu:24.04 AS strip
 
 # Copy compiled binaries from previous stages
 WORKDIR /verdict-bench
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential file
 
 # Install Chromium
 COPY --from=chromium-build /build/local/src/out/Release/cert_bench chromium/src/out/Release/cert_bench
@@ -161,6 +151,10 @@ COPY --from=firefox-build \
 COPY --from=firefox-build \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved \
     /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin
+
+# Remove some unnecessary binaries
+RUN rm -rf /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/browser \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/chrome
 
 # Install ARMOR
 COPY --from=armor-build /verdict-bench/armor/src/armor-driver /verdict-bench/armor/src/armor-driver
@@ -191,6 +185,26 @@ RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \
 # Misc
 COPY data data
 COPY Makefile Makefile
+COPY requirements.txt requirements.txt
+
+################################
+# Install runtime dependencies #
+################################
+FROM ubuntu:24.04 AS final-tmp
+
+COPY --from=strip verdict-bench verdict-bench
+WORKDIR verdict-bench
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        make libfaketime python3-pip libgtk-3-0 \
+        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog && \
+    rm -rf /var/lib/apt/lists/* && \
+    python3 -m pip install -r requirements.txt \
+        --break-system-packages \
+        --no-cache-dir && \
+    DEBIAN_FRONTEND=noninteractive apt-get purge -y python3-pip file && \
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 
 ###############
 # Final image #
