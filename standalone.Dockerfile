@@ -154,13 +154,28 @@ COPY --from=firefox-build \
 
 # Remove some unnecessary binaries
 RUN rm -rf /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/browser \
-           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/chrome
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/chrome \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/geckodriver \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/hyphenation \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/http3server \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/libmozavcodec.so \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/minidump-analyzer \
+           /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/font
+
+RUN rm -rf $(find /verdict-bench/firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin \
+        -type f -executable \
+        ! -name "*.so*" \
+        ! -name "xpcshell" \
+        ! -name "run-mozilla.sh" -print)
 
 # Install ARMOR
 COPY --from=armor-build /verdict-bench/armor/src/armor-driver /verdict-bench/armor/src/armor-driver
 
 # Install CERES
 COPY --from=ceres-build /verdict-bench/ceres /verdict-bench/ceres
+RUN rm -rf /verdict-bench/ceres/test \
+           /verdict-bench/ceres/src/extras \
+           /verdict-bench/ceres/src/extras.tar.gz
 
 # Install Hammurabi
 COPY --from=hammurabi-build \
@@ -198,13 +213,14 @@ WORKDIR /verdict-bench
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         make libfaketime python3-pip libgtk-3-0 \
-        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog && \
-    rm -rf /var/lib/apt/lists/* && \
+        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox && \
     python3 -m pip install -r requirements.txt \
         --break-system-packages \
         --no-cache-dir && \
     DEBIAN_FRONTEND=noninteractive apt-get purge -y python3-pip file && \
-    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 ###############
 # Final image #
