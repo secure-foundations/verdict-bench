@@ -13,6 +13,7 @@ git submodule update --init
 
 # Build verus
 (cd deps/verus/source &&
+rustup toolchain install &&
 [ -f z3 ] || ./tools/get-z3.sh &&
 source ../tools/activate &&
 vargo build --release) || return 1
