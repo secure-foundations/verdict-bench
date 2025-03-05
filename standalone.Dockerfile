@@ -192,8 +192,8 @@ COPY requirements.txt requirements.txt
 ################################
 FROM ubuntu:24.04 AS final-tmp
 
-COPY --from=strip verdict-bench verdict-bench
-WORKDIR verdict-bench
+COPY --from=strip /verdict-bench /verdict-bench
+WORKDIR /verdict-bench
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
