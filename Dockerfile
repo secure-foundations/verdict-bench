@@ -325,6 +325,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 
 # Misc
 COPY data data
+COPY scripts scripts
 COPY Makefile Makefile
 
 #####################

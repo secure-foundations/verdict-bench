@@ -39,6 +39,11 @@ docker build . --target <tool>-install --output type=tar | (mkdir -p build && ta
 where <tool> is one of `chromium`, `firefox`, `armor`, `ceres`, `hammurabi`, `openssl`, `verdict`.
 The suitable build output will be copied to `build/<tool>` (e.g. `build/chromium/src/out/Release/cert_bench` for Chromium).
 
+### Harness development
+
+To modify the benchmark harnesses, consider doing `cd <tool> && make` instead of using the Docker image.
+Note however that some dependencies need to be installed on the host system.
+
 # Note on CT logs
 Note that for Evals 1 and 2, we do not have the full benchmark set of 10M chains from CT logs publically available,
 but there is a sample of 35,000 chains located in `data/ct-log`.
