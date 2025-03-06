@@ -38,7 +38,7 @@ ENV DEPOT_TOOLS_UPDATE=0
 ENV PATH="/build/depot_tools:${PATH}"
 
 COPY chromium chromium
-WORKDIR chromium
+WORKDIR /build/chromium
 RUN make src/out/Release/cert_bench
 
 FROM scratch AS chromium-install
@@ -84,7 +84,7 @@ RUN . $HOME/.cargo/env && \
 
 # The path must match the final path in the image to avoid a build issue
 COPY firefox firefox
-WORKDIR firefox
+WORKDIR /firefox
 RUN make inner-build
 
 # Remove some unnecessary binaries

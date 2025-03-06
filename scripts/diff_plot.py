@@ -5,21 +5,21 @@ Generate a table to show the differential testing results
 import subprocess
 
 bench_dir = ".."
-results_dir = f"${bench_dir}/results"
+results_dir = f"{bench_dir}/results"
 results = [
     ("CT", (
-        ("Chrome", f"${results_dir}/diff-chrome.txt", f"${results_dir}/diff-verdict-chrome.txt"),
-        ("Firefox", f"${results_dir}/diff-firefox.txt", f"${results_dir}/diff-verdict-firefox.txt"),
-        ("OpenSSL", f"${results_dir}/diff-openssl.txt", f"${results_dir}/diff-verdict-openssl.txt"),
+        ("Chrome", f"{results_dir}/diff-chrome.txt", f"{results_dir}/diff-verdict-chrome.txt"),
+        ("Firefox", f"{results_dir}/diff-firefox.txt", f"{results_dir}/diff-verdict-firefox.txt"),
+        ("OpenSSL", f"{results_dir}/diff-openssl.txt", f"{results_dir}/diff-verdict-openssl.txt"),
     )),
     ("Limbo", (
-        ("Chrome", f"${results_dir}/limbo-chrome.txt", f"${results_dir}/limbo-verdict-chrome.txt"),
-        ("Firefox", f"${results_dir}/limbo-firefox.txt", f"${results_dir}/limbo-verdict-firefox.txt"),
-        ("OpenSSL", f"${results_dir}/limbo-openssl.txt", f"${results_dir}/limbo-verdict-openssl.txt"),
+        ("Chrome", f"{results_dir}/limbo-chrome.txt", f"{results_dir}/limbo-verdict-chrome.txt"),
+        ("Firefox", f"{results_dir}/limbo-firefox.txt", f"{results_dir}/limbo-verdict-firefox.txt"),
+        ("OpenSSL", f"{results_dir}/limbo-openssl.txt", f"{results_dir}/limbo-verdict-openssl.txt"),
     )),
 ]
 
-diff_command = [f"${bench_dir}/verdict/target/release/verdict", "diff-results"]
+diff_command = [f"{bench_dir}/verdict/target/release/verdict", "diff-results"]
 
 print("\\begin{tabular}{clrrrr}")
 print("Test & Impl. & A/A & A/R & R/A & R/R \\\\")

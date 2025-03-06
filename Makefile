@@ -2,11 +2,21 @@ VERDICT_AWS_LC = verdict/target/release/verdict-aws-lc
 VERDICT_NORMAL = verdict/target/release/verdict
 VERDICT = $(VERDICT_NORMAL)
 
-DEPS = armor ceres chromium firefox hammurabi openssl
+# Targets for performance benchmarking (Eval 1)
+BENCH_TARGETS = \
+	chrome verdict-chrome verdict-chrome-aws-lc \
+	firefox verdict-firefox verdict-firefox-aws-lc \
+	openssl verdict-openssl verdict-openssl-aws-lc \
+	armor ceres \
+	hammurabi-chrome hammurabi-firefox
 
-CURRENT_DIR = $(shell pwd)
+# Targets for differential testing (Eval 2)
+DIFF_TARGETS = \
+	chrome verdict-chrome \
+	firefox verdict-firefox \
+	openssl verdict-openssl
 
-# Configurations for benchmarking
+# Common configurations
 ROOTS = data/ct-log/roots.pem
 CT_LOG = data/ct-log
 CT_LOG_INTS = $(CT_LOG)/ints
@@ -14,15 +24,15 @@ CT_LOG_TESTS = $(CT_LOG)/certs/cert-list-*.txt
 TIMESTAMP = 1601603624
 REPEAT = 10
 NO_DOMAIN = ceres armor # Implementations that do not support hostname validation
-
 LIMBO_JSON = data/limbo.json
 
 # Settings for reducing noise (need to be changed on the test machine)
 ISOLATE_CORES = # e.g. 0,2,4,6
 CORE_FREQUENCY = # e.g. 2401000
 
-BENCH_FLAGS = # Additional benchmarking flags
-BENCH_OUTPUT = > /dev/stdout
+# Additional flags (for verdict frontend)
+FLAGS =
+OUTPUT = > /dev/stdout
 
 .PHONY: main
 main:
@@ -31,18 +41,58 @@ main:
 results:
 	mkdir -p results
 
+# Run all Limbo tests
+limbo: $(foreach target,$(DIFF_TARGETS),results/limbo-$(target).csv)
+
+# Run all differential tests (on CT logs)
+diff: $(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv)
+
+# Run all performance benchmarks
+bench: $(foreach target,$(BENCH_TARGETS),results/bench-$(target).csv)
+
 # x509-limbo test command
-.PHONY: limbo-%
-limbo-%: override BENCH_OUTPUT = > results/limbo-$*.csv
-limbo-%: results
+results/limbo-%.csv: override OUTPUT = > $@
+results/limbo-%.csv: results
 	$(VERDICT) limbo $* $(LIMBO_JSON) \
-		--bench-repo . $(BENCH_FLAGS) \
-		$(BENCH_OUTPUT)
+		--bench-repo . $(FLAGS) \
+		$(OUTPUT)
+
+# For differential tests on CT logs, we do not need to
+# repeat validation on each chain
+results/diff-%.csv: override REPEAT = 1
+results/diff-%.csv: override OUTPUT = -o results/diff-$*.csv
+results/diff-%.csv: results run-bench-%
+	@true
+
+# Default output location of all benchmarks
+results/bench-%.csv: override OUTPUT = -o results/bench-$*.csv
+
+# All performance benchmarks
+results/bench-chrome.csv: results run-bench-chrome
+results/bench-firefox.csv: results run-bench-firefox
+results/bench-openssl.csv: results run-bench-openssl
+results/bench-armor.csv: override FLAGS += --sample 0.001
+results/bench-armor.csv: results run-bench-armor
+results/bench-ceres.csv: override FLAGS += --sample 0.001
+results/bench-ceres.csv: results run-bench-ceres
+results/bench-hammurabi-chrome.csv: override FLAGS += --sample 0.01
+results/bench-hammurabi-chrome.csv: results run-bench-hammurabi-chrome
+results/bench-hammurabi-firefox.csv: override FLAGS += --sample 0.01
+results/bench-hammurabi-firefox.csv: results run-bench-hammurabi-firefox
+results/bench-verdict-chrome.csv: results run-bench-verdict-chrome
+results/bench-verdict-firefox.csv: results run-bench-verdict-firefox
+results/bench-verdict-openssl.csv: results run-bench-verdict-openssl
+results/bench-verdict-chrome-aws-lc.csv: override VERDICT = $(VERDICT_AWS_LC)
+results/bench-verdict-chrome-aws-lc.csv: results run-bench-verdict-chrome
+results/bench-verdict-firefox-aws-lc.csv: override VERDICT = $(VERDICT_AWS_LC)
+results/bench-verdict-firefox-aws-lc.csv: results run-bench-verdict-firefox
+results/bench-verdict-openssl-aws-lc.csv: override VERDICT = $(VERDICT_AWS_LC)
+results/bench-verdict-openssl-aws-lc.csv: results run-bench-verdict-openssl
 
 # Benchmarking command
-.PHONY: do-bench-%
-do-bench-%: SHELL = /bin/bash
-do-bench-%: $(VERDICT)
+.PHONY: run-bench-%
+run-bench-%: SHELL = /bin/bash
+run-bench-%: $(VERDICT)
 	@if [ -z "$(CT_LOG)" ]; then \
 		echo "CT_LOG is not set"; \
 		exit 1; \
@@ -53,7 +103,19 @@ do-bench-%: $(VERDICT)
 		-n $(REPEAT) \
 		--bench-repo . \
 		$(if $(filter $(NO_DOMAIN),$*),--no-domain,) \
-		$(BENCH_FLAGS) $(BENCH_OUTPUT)
+		$(FLAGS) $(OUTPUT)
+
+# Build two versions of Verdict: one with the normal, verified crypto primitives
+# the other $(VERDICT_AWS_LC) with more performance but unverified primitives
+$(VERDICT_NORMAL) $(VERDICT_AWS_LC) &:
+	cd verdict && \
+	source tools/activate.sh && \
+	vargo build --release --features aws-lc
+	mv $(VERDICT_NORMAL) $(VERDICT_AWS_LC)
+
+	cd verdict && \
+	source tools/activate.sh && \
+	vargo build --release
 
 # Some configurations to reduce noise
 .PHONY: reduce-noise
@@ -76,64 +138,3 @@ restore-sys:
 	@if [ -n "$(ISOLATE_CORES)" ]; then \
 		sudo cpupower -c $(ISOLATE_CORES) frequency-set --governor powersave; \
 	fi
-
-# Default output location of all benchmarks
-bench-%: override BENCH_OUTPUT = -o results/bench-$*.csv
-
-.PHONY: bench-chrome
-bench-chrome: results do-bench-chrome
-
-.PHONY: bench-firefox
-bench-firefox: results do-bench-firefox
-
-.PHONY: bench-openssl
-bench-openssl: results do-bench-openssl
-
-.PHONY: bench-armor
-bench-armor: override BENCH_FLAGS += --sample 0.001
-bench-armor: results do-bench-armor
-
-.PHONY: bench-ceres
-bench-ceres: override BENCH_FLAGS += --sample 0.001
-bench-ceres: results do-bench-ceres
-
-.PHONY: bench-hammurabi-chrome
-bench-hammurabi-chrome: override BENCH_FLAGS += --sample 0.01
-bench-hammurabi-chrome: results do-bench-hammurabi-chrome
-
-.PHONY: bench-hammurabi-firefox
-bench-hammurabi-firefox: override BENCH_FLAGS += --sample 0.01
-bench-hammurabi-firefox: results do-bench-hammurabi-firefox
-
-.PHONY: bench-verdict-chrome
-bench-verdict-chrome: results do-bench-verdict-chrome
-
-.PHONY: bench-verdict-firefox
-bench-verdict-firefox: results do-bench-verdict-firefox
-
-.PHONY: bench-verdict-openssl
-bench-verdict-openssl: results do-bench-verdict-openssl
-
-.PHONY: bench-verdict-chrome-aws-lc
-bench-verdict-chrome-aws-lc: override VERDICT = $(VERDICT_AWS_LC)
-bench-verdict-chrome-aws-lc: results do-bench-verdict-chrome
-
-.PHONY: bench-verdict-firefox-aws-lc
-bench-verdict-firefox-aws-lc: override VERDICT = $(VERDICT_AWS_LC)
-bench-verdict-firefox-aws-lc: results do-bench-verdict-firefox
-
-.PHONY: bench-verdict-openssl-aws-lc
-bench-verdict-openssl-aws-lc: override VERDICT = $(VERDICT_AWS_LC)
-bench-verdict-openssl-aws-lc: results do-bench-verdict-openssl
-
-# Build two versions of Verdict: one with the normal, verified crypto primitives
-# the other $(VERDICT_AWS_LC) with more performance but unverified primitives
-$(VERDICT_NORMAL) $(VERDICT_AWS_LC) &:
-	cd verdict && \
-	source tools/activate.sh && \
-	vargo build --release --features aws-lc
-	mv $(VERDICT_NORMAL) $(VERDICT_AWS_LC)
-
-	cd verdict && \
-	source tools/activate.sh && \
-	vargo build --release

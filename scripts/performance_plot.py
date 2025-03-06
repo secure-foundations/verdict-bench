@@ -27,22 +27,22 @@ slow_group = ["CERES", "ARMOR", "HM/Firefox", "HM/Chrome"]
 
 # List of implementations and their corresponding CSV file paths
 implementations = [
-    ("CERES", f"${results_dir}/bench-ceres.txt"),
-    ("ARMOR", f"${results_dir}/bench-armor.txt"),
-    ("HM/Firefox", f"${results_dir}/bench-hammurabi-firefox.txt"),
-    ("HM/Chrome", f"${results_dir}/bench-hammurabi-chrome.txt"),
+    ("CERES", f"{results_dir}/bench-ceres.txt"),
+    ("ARMOR", f"{results_dir}/bench-armor.txt"),
+    ("HM/Firefox", f"{results_dir}/bench-hammurabi-firefox.txt"),
+    ("HM/Chrome", f"{results_dir}/bench-hammurabi-chrome.txt"),
 
-    ("Chrome", f"${results_dir}/bench-chrome.txt"),
-    ("\\textbf{V/Chrome}", f"${results_dir}/bench-verdict-chrome.txt"),
-    ("\\textbf{V/Chrome$^\\star$}", f"${results_dir}/bench-verdict-chrome-aws-lc.txt"),
+    ("Chrome", f"{results_dir}/bench-chrome.txt"),
+    ("\\textbf{V/Chrome}", f"{results_dir}/bench-verdict-chrome.txt"),
+    ("\\textbf{V/Chrome$^\\star$}", f"{results_dir}/bench-verdict-chrome-aws-lc.txt"),
 
-    ("Firefox", f"${results_dir}/bench-firefox.txt"),
-    ("\\textbf{V/Firefox}", f"${results_dir}/bench-verdict-firefox.txt"),
-    ("\\textbf{V/Firefox$^\\star$}", f"${results_dir}/bench-verdict-firefox-aws-lc.txt"),
+    ("Firefox", f"{results_dir}/bench-firefox.txt"),
+    ("\\textbf{V/Firefox}", f"{results_dir}/bench-verdict-firefox.txt"),
+    ("\\textbf{V/Firefox$^\\star$}", f"{results_dir}/bench-verdict-firefox-aws-lc.txt"),
 
-    ("OpenSSL", f"${results_dir}/bench-openssl.txt"),
-    ("\\textbf{V/OpenSSL}", f"${results_dir}/bench-verdict-openssl.txt"),
-    ("\\textbf{V/OpenSSL$^\\star$}", f"${results_dir}/bench-verdict-openssl-aws-lc.txt"),
+    ("OpenSSL", f"{results_dir}/bench-openssl.txt"),
+    ("\\textbf{V/OpenSSL}", f"{results_dir}/bench-verdict-openssl.txt"),
+    ("\\textbf{V/OpenSSL$^\\star$}", f"{results_dir}/bench-verdict-openssl-aws-lc.txt"),
 ]
 
 num_measurements = 10
