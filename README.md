@@ -7,13 +7,48 @@ There are three main evaluations:
 - Eval 2: Differential testing with Chrome, Firefox, OpenSSL
 - Eval 3: End-to-End HTTPS performance in Rustls
 
-Note that for Evals 1 and 2, we do not have the 10M chains from CT logs publically available,
-so you might need to prepare your own test cases in the following directory structure:
+# Build
+
+If you do not need to edit the benchmarking code in any of the tools, the recommended
+build method is to use Docker.
+
+First run the following to load all git submodules:
+```
+git submodule update --init --recursive
+```
+
+Then run the following to compile all tools and build a standalone image
+containing all necessary dependencies:
+```
+docker build . -t verdict-bench
+```
+This will take a while, since we need to build large projects such as Firefox and Chromium.
+On our test machine with the Intel Core i9-10980XE CPU,
+the entire build process took **about 1 hour and 120 GB of free disk space**.
+
+The rest of the tutorial assumes that you are in the Docker container:
+```
+docker run -it verdict-bench
+```
+
+### Build a particular tool
+To build a particular X.509 tool, run
+```
+docker build . --target <tool>-install --output TODO
+```
+where <tool> is one of `chromium`, `firefox`, `armor`, `ceres`, `hammurabi`, `openssl`, `verdict`.
+This will output the final binaries of the built tool to the output directory `<output>`.
+
+# Note on CT logs
+Note that for Evals 1 and 2, we do not have the full benchmark set of 10M chains from CT logs publically available,
+but there is a sample of 35,000 chains located in `data/ct-log`.
+
+In general, you can also prepare your own test cases in the following directory structure:
 ```
 test_suite/
   - certs/
-      - test1.csv
-      - test2.csv
+      - cert-list-part-xx.txt
+      - cert-list-part-xx.txt
       ...
   - ints/
       - int1.pem
@@ -27,70 +62,33 @@ where each CSV file in `test_suite/certs` should have columns (without headers)
 
 # Eval 1
 
-Benchmark Verdict against X.509 implementations in Chrome, Firefox, OpenSSL,
-as well as academic work ARMOR, CERES, and Hammurabi.
-
-Dependencies:
-- Docker 27.3.1
-- Python 3.12 (w/ pip and venv)
-- Cargo 1.82.0
-
-Other versions might work too.
-
-## Build
-
-First run the following command to build harnesses for implementations other than Verdict:
+Use
 ```
-make deps
+make bench-<tool>
 ```
-This will take a long time since it needs to download and build large projects such as Chromium and Firefox.
-Note that this command won't install random stuff to your host system, and all dependencies are installed within a Docker container.
-On our test machine, this took 1.5 hours.
-This target also uses `sudo` when calling docker.
+to run `<tool>` on the sample of 35,000 chains in `data/ct-log`,
+where `<tool>` is one of:
+- `verdict-chrome`, `verdict-firefox`, `verdict-openssl` (normal versions of Verdict using verified crypto primitives)
+- `verdict-chrome-aws-lc`, `verdict-firefox-aws-lc`, `verdict-openssl-aws-lc` (Verdict using unverified crypto primitives from AWS-LC)
+- `chromium`
+- `firefox`
+- `armor`
+- `ceres`
+- `hammurabi-chrome`, `hammurabi-firefox` (Hammurabi's Chrome and Firefox policies)
+- `openssl`
 
-Then run an implementation on the CT logs by
-```
-make bench-<impl> CT_LOG=...
-```
-where
-- `<impl>` is one of `verdict-<chrome/firefox/openssl>`, `chrome`, `firefox`, `openssl`, `armor`, `ceres`, `hammurabi`
-- `CT_LOG` specifies the main CT logs directory.
+This target will output to `results/bench-<tool>.csv`.
 
 # Eval 2
 
-First download `limbo.json` from the [x509-limbo](https://github.com/C2SP/x509-limbo) test suite.
-
-Then compile Verdict by
+Use
 ```
-cd verdict && cargo build --release
+make limbo-<tool>
 ```
-You can follow `verdict/README.md` for how to run Verus on it, but this command only compiles without verification.
-
-Then let `<harness>` be any of `verdict-<chrome/firefox/openssl>`, `chrome`, `firefox`, `openssl`, `armor`, `ceres`, `hammurabi`, run
-```
-verdict/target/release/frontend limbo <harness> <path to limbo.json> --bench-repo . -j 32 > results.txt
-```
-to evaluate `<harness>` on x509-limbo (and output to `results.txt`).
-
-To compare results from different harnesses:
-```
-verdict/target/release/frontend diff-results results1.txt results2.txt
-```
+to run `<tool>` on the [x509-limbo](https://github.com/C2SP/x509-limbo) test suite (local copy at `data/limbo.json`).
+The output can be found in `results/limbo-<tool>.csv`.
 
 # Eval 3
 
-See `rustls/README.md`.
-
-# Standalone Image
-
-For better reproducibility, we also include a `standalone.Dockerfile`
-to build a Docker image containing all required tools.
-
-To build this image, run
-```
-git submodule update --init --recursive
-docker build -f standalone.Dockerfile . -t verdict-bench
-```
-
-This requires an X86-64 CPU and around 120 GB of free disk space.
-The build process takes roughly 50 minutes on our test machine.
+Currently this is separate from the Docker image.
+See `rustls/README.md` for details on how to run this evaluation.

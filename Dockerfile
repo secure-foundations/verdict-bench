@@ -97,15 +97,15 @@ RUN rm -rf mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/browser \
            mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/minidump-analyzer \
            mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/font
 
-RUN rm -rf $(find mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin \
+# Resolve symlinks in obj-*/dist/bin/modules for later use
+RUN cp -rL mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin \
+           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved
+
+RUN rm -rf $(find mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved \
                 -type f -executable \
                 ! -name "*.so*" \
                 ! -name "xpcshell" \
                 ! -name "run-mozilla.sh" -print)
-
-# Resolve symlinks in obj-*/dist/bin/modules for later use
-RUN cp -rL mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved
 
 ###############################
 FROM scratch AS firefox-install

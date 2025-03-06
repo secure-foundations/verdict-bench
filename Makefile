@@ -33,7 +33,7 @@ results:
 
 # x509-limbo test command
 .PHONY: limbo-%
-limbo-%: override BENCH_OUTPUT = > results/limbo-$*.txt
+limbo-%: override BENCH_OUTPUT = > results/limbo-$*.csv
 limbo-%: results
 	$(VERDICT) limbo $* $(LIMBO_JSON) \
 		--bench-repo . $(BENCH_FLAGS) \
@@ -78,7 +78,7 @@ restore-sys:
 	fi
 
 # Default output location of all benchmarks
-bench-%: override BENCH_OUTPUT = -o results/bench-$*.txt
+bench-%: override BENCH_OUTPUT = -o results/bench-$*.csv
 
 .PHONY: bench-chrome
 bench-chrome: results do-bench-chrome
