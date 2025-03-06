@@ -92,5 +92,5 @@ git submodule update --init --recursive
 docker build -f standalone.Dockerfile . -t verdict-bench
 ```
 
-This requires an X86-64 CPU and aroung 100 GB of free disk space.
+This requires an X86-64 CPU and around 120 GB of free disk space.
 The build process takes roughly 50 minutes on our test machine.
