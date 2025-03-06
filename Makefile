@@ -19,6 +19,8 @@ TIMESTAMP = 1601603624
 REPEAT = 10
 NO_DOMAIN = ceres armor # Implementations that do not support hostname validation
 
+LIMBO_JSON = data/limbo.json
+
 # Settings for reducing noise (need to be changed on the test machine)
 ISOLATE_CORES = # e.g. 0,2,4,6
 CORE_FREQUENCY = # e.g. 2401000
@@ -29,6 +31,12 @@ BENCH_OUTPUT = > /dev/stdout
 .PHONY: main
 main:
 	@echo "Please see README for the usage of this Makefile"
+
+results:
+	mkdir -p results
+
+do-limbo-%:
+	$(VERDICT) limbo $* $(LIMBO_JSON) --bench-repo .
 
 # Main benchmarking command
 .PHONY: do-bench-%
@@ -67,6 +75,9 @@ restore-sys:
 	@if [ -n "$(ISOLATE_CORES)" ]; then \
 		sudo cpupower -c $(ISOLATE_CORES) frequency-set --governor powersave; \
 	fi
+
+# Default output location of all benchmarks
+bench-%: override BENCH_OUTPUT = -o results/bench-$*.txt
 
 .PHONY: bench-chrome
 bench-chrome: do-bench-chrome
