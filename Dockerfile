@@ -330,6 +330,6 @@ COPY Makefile .
 #####################
 FROM scratch AS final
 #####################
-COPY --from=final-tmp / /
+COPY --from=final-runtime / /
 WORKDIR /verdict-bench
 ENTRYPOINT [ "/bin/bash" ]
