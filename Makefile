@@ -35,10 +35,15 @@ main:
 results:
 	mkdir -p results
 
-do-limbo-%:
-	$(VERDICT) limbo $* $(LIMBO_JSON) --bench-repo .
+# x509-limbo test command
+.PHONY: limbo-%
+limbo-%: override BENCH_OUTPUT = > results/limbo-$*.txt
+limbo-%: results
+	$(VERDICT) limbo $* $(LIMBO_JSON) \
+		--bench-repo . $(BENCH_FLAGS) \
+		$(BENCH_OUTPUT)
 
-# Main benchmarking command
+# Benchmarking command
 .PHONY: do-bench-%
 do-bench-%: SHELL = /bin/bash
 do-bench-%: $(VERDICT)
@@ -80,50 +85,50 @@ restore-sys:
 bench-%: override BENCH_OUTPUT = -o results/bench-$*.txt
 
 .PHONY: bench-chrome
-bench-chrome: do-bench-chrome
+bench-chrome: results do-bench-chrome
 
 .PHONY: bench-firefox
-bench-firefox: do-bench-firefox
+bench-firefox: results do-bench-firefox
 
 .PHONY: bench-openssl
-bench-openssl: do-bench-openssl
+bench-openssl: results do-bench-openssl
 
 .PHONY: bench-armor
 bench-armor: override BENCH_FLAGS += --sample 0.001
-bench-armor: do-bench-armor
+bench-armor: results do-bench-armor
 
 .PHONY: bench-ceres
 bench-ceres: override BENCH_FLAGS += --sample 0.001
-bench-ceres: do-bench-ceres
+bench-ceres: results do-bench-ceres
 
 .PHONY: bench-hammurabi-chrome
 bench-hammurabi-chrome: override BENCH_FLAGS += --sample 0.01
-bench-hammurabi-chrome: do-bench-hammurabi-chrome
+bench-hammurabi-chrome: results do-bench-hammurabi-chrome
 
 .PHONY: bench-hammurabi-firefox
 bench-hammurabi-firefox: override BENCH_FLAGS += --sample 0.01
-bench-hammurabi-firefox: do-bench-hammurabi-firefox
+bench-hammurabi-firefox: results do-bench-hammurabi-firefox
 
 .PHONY: bench-verdict-chrome
-bench-verdict-chrome: do-bench-verdict-chrome
+bench-verdict-chrome: results do-bench-verdict-chrome
 
 .PHONY: bench-verdict-firefox
-bench-verdict-firefox: do-bench-verdict-firefox
+bench-verdict-firefox: results do-bench-verdict-firefox
 
 .PHONY: bench-verdict-openssl
-bench-verdict-openssl: do-bench-verdict-openssl
+bench-verdict-openssl: results do-bench-verdict-openssl
 
 .PHONY: bench-verdict-chrome-aws-lc
 bench-verdict-chrome-aws-lc: override VERDICT = $(VERDICT_AWS_LC)
-bench-verdict-chrome-aws-lc: do-bench-verdict-chrome
+bench-verdict-chrome-aws-lc: results do-bench-verdict-chrome
 
 .PHONY: bench-verdict-firefox-aws-lc
 bench-verdict-firefox-aws-lc: override VERDICT = $(VERDICT_AWS_LC)
-bench-verdict-firefox-aws-lc: do-bench-verdict-firefox
+bench-verdict-firefox-aws-lc: results do-bench-verdict-firefox
 
 .PHONY: bench-verdict-openssl-aws-lc
 bench-verdict-openssl-aws-lc: override VERDICT = $(VERDICT_AWS_LC)
-bench-verdict-openssl-aws-lc: do-bench-verdict-openssl
+bench-verdict-openssl-aws-lc: results do-bench-verdict-openssl
 
 # Build two versions of Verdict: one with the normal, verified crypto primitives
 # the other $(VERDICT_AWS_LC) with more performance but unverified primitives

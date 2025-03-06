@@ -89,7 +89,7 @@ to build a Docker image containing all required tools.
 To build this image, run
 ```
 git submodule update --init --recursive
-docker build -f standalone.Dockerfile .
+docker build -f standalone.Dockerfile . -t verdict-bench
 ```
 
 This requires an X86-64 CPU and aroung 100 GB of free disk space.
