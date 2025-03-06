@@ -197,11 +197,6 @@ COPY --from=verdict-build \
 # Strip all ELF binaries
 RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \;
 
-# Misc
-COPY data data
-COPY Makefile Makefile
-COPY requirements.txt requirements.txt
-
 ################################
 # Install runtime dependencies #
 ################################
@@ -209,6 +204,7 @@ FROM ubuntu:24.04 AS final-tmp
 
 COPY --from=strip /verdict-bench /verdict-bench
 WORKDIR /verdict-bench
+COPY requirements.txt requirements.txt
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -221,6 +217,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Misc
+COPY data data
+COPY Makefile Makefile
 
 ###############
 # Final image #
