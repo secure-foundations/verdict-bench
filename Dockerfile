@@ -37,7 +37,7 @@ RUN mkdir depot_tools && cd depot_tools && \
 ENV DEPOT_TOOLS_UPDATE=0
 ENV PATH="/build/depot_tools:${PATH}"
 
-COPY chromium .
+COPY chromium chromium
 WORKDIR chromium
 RUN make src/out/Release/cert_bench
 
@@ -83,7 +83,7 @@ RUN . $HOME/.cargo/env && \
     rustup default 1.43.0
 
 # The path must match the final path in the image to avoid a build issue
-COPY firefox .
+COPY firefox firefox
 WORKDIR firefox
 RUN make inner-build
 
@@ -165,7 +165,7 @@ ENV PATH="$PATH:/root/.cargo/bin"
 ###############################
 FROM other-build AS armor-build
 ###############################
-COPY armor .
+COPY armor armor
 RUN cd armor && make
 
 #############################
@@ -186,7 +186,7 @@ COPY --from=armor-build /armor/src/armor-driver \
 ###############################
 FROM other-build AS ceres-build
 ###############################
-COPY ceres .
+COPY ceres ceres
 RUN cd ceres && make
 RUN rm -rf /ceres/test \
            /ceres/src/extras \
@@ -209,7 +209,7 @@ COPY --from=ceres-build /ceres /ceres
 ###################################
 FROM other-build AS hammurabi-build
 ###################################
-COPY hammurabi .
+COPY hammurabi hammurabi
 RUN cd hammurabi && make
 
 #################################
@@ -236,7 +236,7 @@ COPY --from=hammurabi-build \
 #################################
 FROM other-build AS openssl-build
 #################################
-COPY openssl .
+COPY openssl openssl
 RUN cd openssl && make
 
 ###############################
@@ -256,7 +256,7 @@ COPY --from=openssl-build /openssl/cert_bench /openssl/cert_bench
 #################################
 FROM other-build AS verdict-build
 #################################
-COPY verdict .
+COPY verdict verdict
 SHELL [ "/bin/bash", "-c" ]
 RUN cd verdict && \
     source tools/activate.sh && \
@@ -310,7 +310,7 @@ FROM ubuntu:24.04 AS final-runtime
 COPY --from=final-strip /verdict-bench /verdict-bench
 WORKDIR /verdict-bench
 
-COPY requirements.txt .
+COPY requirements.txt requirements.txt
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         make libfaketime python3-pip libgtk-3-0 \
@@ -324,8 +324,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Misc
-COPY data .
-COPY Makefile .
+COPY data data
+COPY Makefile Makefile
 
 #####################
 FROM scratch AS final
