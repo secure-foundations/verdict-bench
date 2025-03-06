@@ -50,20 +50,21 @@ src/.fetched:
 	@set -e; \
 	mkdir -p src; \
 	cd src; \
-	if [ -d .git ] && [ "$$(git rev-parse HEAD)" = "${CHROMIUM_COMMIT}" ]; then \
-		touch .fetched; \
-		echo "### chromium@${CHROMIUM_COMMIT} already fetched"; \
-	else \
+	if ! [ -f .init ]; then \
+		echo "### checking out chromium@${CHROMIUM_COMMIT}"; \
+		rm -rf .git; \
 		git init; \
 		git remote add origin ${CHROMIUM_REPO}; \
 		git fetch --depth 1 origin ${CHROMIUM_COMMIT}; \
 		git checkout FETCH_HEAD; \
-		git apply ../deps.diff; \
-		gclient sync --no-history; \
-		git apply ../${DIFF_FILE}; \
-		touch .fetched; \
-		echo "### fetched chromium@${CHROMIUM_COMMIT}"; \
-	fi
+		touch .init; \
+	fi; \
+	echo "### applying gclient sync"; \
+	git apply ../deps.diff; \
+	gclient sync --no-history; \
+	git apply ../${DIFF_FILE}; \
+	touch .fetched; \
+	echo "### fetched chromium@${CHROMIUM_COMMIT}"
 
 src/out/Debug/%: src/.fetched force
 	[ -f "src/out/Debug/build.ninja" ] || (cd src && gn gen out/Debug)
