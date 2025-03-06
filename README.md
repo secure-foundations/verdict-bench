@@ -34,10 +34,10 @@ docker run -it verdict-bench
 ### Build a particular tool
 To build a particular X.509 tool, run
 ```
-docker build . --target <tool>-install --output TODO
+docker build . --target <tool>-install --output type=tar | (mkdir -p build && tar -C build -x)
 ```
 where <tool> is one of `chromium`, `firefox`, `armor`, `ceres`, `hammurabi`, `openssl`, `verdict`.
-This will output the final binaries of the built tool to the output directory `<output>`.
+The suitable build output will be copied to `build/<tool>` (e.g. `build/chromium/src/out/Release/cert_bench` for Chromium).
 
 # Note on CT logs
 Note that for Evals 1 and 2, we do not have the full benchmark set of 10M chains from CT logs publically available,
