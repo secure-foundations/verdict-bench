@@ -65,11 +65,22 @@ where each CSV file in `test_suite/certs` should have columns (without headers)
 <Base64 encoding of the leaf>,<SHA256 hash of the leaf>,<hostname>,<comma separated list of intermediates, e.g. int1,int2>
 ```
 
+Then in all the evaluations below, set an additional variable `CT_LOG=test_suite` for each `make` command.
+
 # Eval 1
 
-Use
+To run performance benchmarks on all supported tools:
 ```
-make bench-<tool>
+make eval-1 [FLAGS=-j<n>]
+```
+the optional flag parallelizes the benchmark but may skew the results.
+
+At the end, a LaTeX table of performance statistics will be printed.
+A PDF containing boxplots of more detailed performance distribution will also be stored at `results/performance.pdf`
+
+To run individual benchmarks, use
+```
+make results/bench-<tool>.csv
 ```
 to run `<tool>` on the sample of 35,000 chains in `data/ct-log`,
 where `<tool>` is one of:
@@ -81,17 +92,33 @@ where `<tool>` is one of:
 - `ceres`
 - `hammurabi-chrome`, `hammurabi-firefox` (Hammurabi's Chrome and Firefox policies)
 - `openssl`
-
-This target will output to `results/bench-<tool>.csv`.
+The results will be saved to `results/bench-<tool>.csv`.
+Note that, as also mentioned in the paper, for ARMOR and CERES, we only sample about 0.1% of the given test cases;
+and for Hammurabi, we only sample 1% of all test cases.
+To override these settings, make suitable adjustments in `Makefile`.
 
 # Eval 2
 
-Use
+To run all differential tests (comparison of Verdict's Chrome, Firefox,
+and OpenSSL policies against their original implementations), run
 ```
-make limbo-<tool>
+make eval-2 [FLAGS=-j<n>]
 ```
-to run `<tool>` on the [x509-limbo](https://github.com/C2SP/x509-limbo) test suite (local copy at `data/limbo.json`).
-The output can be found in `results/limbo-<tool>.csv`.
+Since performance is irrelevant for this evaluation, you can
+set `<n>` to, e.g., the number of CPU cores for faster results.
+
+At the end, a LaTeX table containing results will be printed.
+More detailed results can be found in `results/diff-<tool>.csv` (differential tests on CT logs),
+and `results/limbo-<tool>.csv` (differential tests on [x509-limbo](https://github.com/C2SP/x509-limbo)).
+
+Similar to Eval 1, to run individual tests, run
+```
+make results/diff-<tool>.csv
+```
+or
+```
+make results/limbo-<tool>.csv
+```
 
 # Eval 3
 

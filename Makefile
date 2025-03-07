@@ -44,7 +44,7 @@ results:
 # Main evaluation setup
 .PHONY: eval-1
 eval-1: bench
-	python3 scripts/perf_results.py
+	python3 scripts/perf_results.py -o results/performance.pdf
 
 .PHONY: eval2
 eval-2: limbo diff
