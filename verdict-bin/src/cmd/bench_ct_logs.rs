@@ -114,15 +114,15 @@ fn worker(args: &Args, timestamp: u64, mut instance: Box<dyn Instance>, rx_job: 
 }
 
 /// Collect validation results from `rx_res` and write them to a CSV file (or stdout if not specified)
-fn reducer(out_csv: Option<String>, rx_res: Receiver<CTLogResult>) -> Result<(), Error> {
+fn reducer(mut output_writer: csv::Writer<Box<dyn io::Write + Sync + Send>>, rx_res: Receiver<CTLogResult>) -> Result<(), Error> {
     // Open the output file if it exists, otherwise use stdout
-    let handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
-        Box::new(File::create(out_path)?)
-    } else {
-        Box::new(std::io::stdout())
-    };
-    let mut output_writer =
-        WriterBuilder::new().has_headers(false).from_writer(handle);
+    // let handle: Box<dyn io::Write> = if let Some(out_path) = out_csv {
+    //     Box::new(File::create(out_path)?)
+    // } else {
+    //     Box::new(std::io::stdout())
+    // };
+    // let mut output_writer =
+    //     WriterBuilder::new().has_headers(false).from_writer(handle);
 
     let start = Instant::now();
 
@@ -162,6 +162,14 @@ pub fn main(args: Args) -> Result<(), Error> {
 
     // Main thread: read the input CSV files and send jobs (CTLogEntry's) to worker threads
     let inner = || {
+        let handle: Box<dyn io::Write + Sync + Send> = if let Some(out_path) = &args.out_csv {
+            Box::new(File::create(out_path)?)
+        } else {
+            Box::new(std::io::stdout())
+        };
+        let output_writer =
+            WriterBuilder::new().has_headers(false).from_writer(handle);
+
         for _ in 0..args.num_jobs {
             let args = args.clone();
             let instance = harness.spawn(&args.roots, timestamp)?;
@@ -171,8 +179,7 @@ pub fn main(args: Args) -> Result<(), Error> {
             workers.push(thread::spawn(move || worker(&args, timestamp, instance, rx_job, tx_res)));
         }
 
-        let out_csv = args.out_csv.clone();
-        workers.push(thread::spawn(move || reducer(out_csv, rx_res)));
+        workers.push(thread::spawn(move || reducer(output_writer, rx_res)));
 
         let mut found_hash = false;
         let mut i: usize = 0;
