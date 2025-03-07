@@ -272,6 +272,20 @@ COPY --from=verdict-build \
     /verdict/target/release/verdict \
     /verdict/target/release/
 
+######################################################
+# ██████╗ ██╗   ██╗███████╗████████╗██╗     ███████╗ #
+# ██╔══██╗██║   ██║██╔════╝╚══██╔══╝██║     ██╔════╝ #
+# ██████╔╝██║   ██║███████╗   ██║   ██║     ███████╗ #
+# ██╔══██╗██║   ██║╚════██║   ██║   ██║     ╚════██║ #
+# ██║  ██║╚██████╔╝███████║   ██║   ███████╗███████║ #
+# ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝ #
+######################################################
+
+################################
+FROM other-build AS rustls-build
+################################
+
+
 #########################################
 # ███████╗██╗███╗   ██╗ █████╗ ██╗      #
 # ██╔════╝██║████╗  ██║██╔══██╗██║      #
@@ -314,7 +328,8 @@ COPY requirements.txt requirements.txt
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         make libfaketime python3-pip libgtk-3-0 \
-        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox && \
+        libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox \
+        iproute2 && \
     python3 -m pip install -r requirements.txt \
         --break-system-packages \
         --no-cache-dir && \
