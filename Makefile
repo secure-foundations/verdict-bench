@@ -38,6 +38,9 @@ OUTPUT = > /dev/stdout
 main:
 	@echo "Please see README for the usage of this Makefile"
 
+results:
+	mkdir -p results
+
 # Main evaluation setup
 .PHONY: eval-1
 eval-1: bench
@@ -49,29 +52,28 @@ eval-2: limbo diff
 
 # Run all Limbo tests
 .PHONY: limbo
-limbo: $(foreach target,$(DIFF_TARGETS),results/limbo-$(target).csv)
+limbo: results $(foreach target,$(DIFF_TARGETS),results/limbo-$(target).csv)
 
 # Run all differential tests (on CT logs)
 .PHONY: diff
-diff: $(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv)
+diff: results $(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv)
 
 # Run all performance benchmarks
 .PHONY: bench
-bench: $(foreach target,$(BENCH_TARGETS),results/bench-$(target).csv)
+bench: results $(foreach target,$(BENCH_TARGETS),results/bench-$(target).csv)
 
 # x509-limbo test command
-results/limbo-%.csv: OUTPUT = > $@
 results/limbo-%.csv:
 	$(VERDICT) limbo $* $(LIMBO_JSON) \
-		--bench-repo . $(FLAGS) \
-		$(OUTPUT)
+		--bench-repo . $(FLAGS) > results/limbo-$*.tmp.csv
+	mv results/limbo-$*.tmp.csv results/limbo-$*.csv
 
 # For differential tests on CT logs, we do not need to
 # repeat validation on each chain
 results/diff-%.csv: REPEAT = 1
-results/diff-%.csv: OUTPUT = -o results/diff-$*.csv
+results/diff-%.csv: OUTPUT = -o results/diff-$*.tmp.csv
 results/diff-%.csv: run-bench-%
-	@true
+	mv results/diff-$*.tmp.csv results/diff-$*.csv
 
 # Reduce benchmark size for some implementations
 results/bench-armor.csv: override FLAGS += --sample 0.001
@@ -80,9 +82,9 @@ results/bench-hammurabi-chrome.csv: override FLAGS += --sample 0.01
 results/bench-hammurabi-firefox.csv: override FLAGS += --sample 0.01
 
 # Default output location of all benchmarks
-results/bench-%.csv: OUTPUT = -o results/bench-$*.csv
+results/bench-%.csv: OUTPUT = -o results/bench-$*.tmp.csv
 results/bench-%.csv: run-bench-%
-	@true
+	mv results/bench-$*.tmp.csv results/bench-$*.csv
 
 # Benchmarking command
 .PHONY: run-bench-%
@@ -93,7 +95,7 @@ run-bench-%: $(VERDICT)
 		exit 1; \
 	fi
 	$(if $(ISOLATE_CORES),taskset -c $(ISOLATE_CORES),)
-	$(if $(filter aws-lc,$*),$(VERDICT_AWS_LC),$(VERDICT)) bench-ct-logs \
+	$(if $(filter %-aws-lc,$*),$(VERDICT_AWS_LC),$(VERDICT)) bench-ct-logs \
 		$(patsubst %-aws-lc,%,$*) \
 		$(ROOTS) $(CT_LOG_INTS) $(CT_LOG_TESTS) \
 		-t $(TIMESTAMP) \
