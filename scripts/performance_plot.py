@@ -2,6 +2,7 @@
 Generate a boxplot of performance comparison between implementations
 """
 
+import sys
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -21,28 +22,28 @@ mpl.rcParams["xtick.labelsize"] = 24
 mpl.rcParams["ytick.labelsize"] = 24
 mpl.rcParams["legend.fontsize"] = 24
 
-results_dir = "../results"
+results_dir = f"{sys.path[0]}/../results"
 
 slow_group = ["CERES", "ARMOR", "HM/Firefox", "HM/Chrome"]
 
 # List of implementations and their corresponding CSV file paths
 implementations = [
-    ("CERES", f"{results_dir}/bench-ceres.txt"),
-    ("ARMOR", f"{results_dir}/bench-armor.txt"),
-    ("HM/Firefox", f"{results_dir}/bench-hammurabi-firefox.txt"),
-    ("HM/Chrome", f"{results_dir}/bench-hammurabi-chrome.txt"),
+    ("CERES", f"{results_dir}/bench-ceres.csv"),
+    ("ARMOR", f"{results_dir}/bench-armor.csv"),
+    ("HM/Firefox", f"{results_dir}/bench-hammurabi-firefox.csv"),
+    ("HM/Chrome", f"{results_dir}/bench-hammurabi-chrome.csv"),
 
-    ("Chrome", f"{results_dir}/bench-chrome.txt"),
-    ("\\textbf{V/Chrome}", f"{results_dir}/bench-verdict-chrome.txt"),
-    ("\\textbf{V/Chrome$^\\star$}", f"{results_dir}/bench-verdict-chrome-aws-lc.txt"),
+    ("Chrome", f"{results_dir}/bench-chrome.csv"),
+    ("\\textbf{V/Chrome}", f"{results_dir}/bench-verdict-chrome.csv"),
+    ("\\textbf{V/Chrome$^\\star$}", f"{results_dir}/bench-verdict-chrome-aws-lc.csv"),
 
-    ("Firefox", f"{results_dir}/bench-firefox.txt"),
-    ("\\textbf{V/Firefox}", f"{results_dir}/bench-verdict-firefox.txt"),
-    ("\\textbf{V/Firefox$^\\star$}", f"{results_dir}/bench-verdict-firefox-aws-lc.txt"),
+    ("Firefox", f"{results_dir}/bench-firefox.csv"),
+    ("\\textbf{V/Firefox}", f"{results_dir}/bench-verdict-firefox.csv"),
+    ("\\textbf{V/Firefox$^\\star$}", f"{results_dir}/bench-verdict-firefox-aws-lc.csv"),
 
-    ("OpenSSL", f"{results_dir}/bench-openssl.txt"),
-    ("\\textbf{V/OpenSSL}", f"{results_dir}/bench-verdict-openssl.txt"),
-    ("\\textbf{V/OpenSSL$^\\star$}", f"{results_dir}/bench-verdict-openssl-aws-lc.txt"),
+    ("OpenSSL", f"{results_dir}/bench-openssl.csv"),
+    ("\\textbf{V/OpenSSL}", f"{results_dir}/bench-verdict-openssl.csv"),
+    ("\\textbf{V/OpenSSL$^\\star$}", f"{results_dir}/bench-verdict-openssl-aws-lc.csv"),
 ]
 
 num_measurements = 10

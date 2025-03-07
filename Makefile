@@ -4,9 +4,9 @@ VERDICT = $(VERDICT_NORMAL)
 
 # Targets for performance benchmarking (Eval 1)
 BENCH_TARGETS = \
-	chrome verdict-chrome verdict-chrome-aws-lc \
-	firefox verdict-firefox verdict-firefox-aws-lc \
-	openssl verdict-openssl verdict-openssl-aws-lc \
+	chrome verdict-chrome-aws-lc verdict-chrome \
+	firefox verdict-firefox-aws-lc verdict-firefox \
+	openssl verdict-openssl-aws-lc verdict-openssl \
 	armor ceres \
 	hammurabi-chrome hammurabi-firefox
 
@@ -38,9 +38,6 @@ OUTPUT = > /dev/stdout
 main:
 	@echo "Please see README for the usage of this Makefile"
 
-results:
-	mkdir -p results
-
 # Run all Limbo tests
 limbo: $(foreach target,$(DIFF_TARGETS),results/limbo-$(target).csv)
 
@@ -51,43 +48,29 @@ diff: $(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv)
 bench: $(foreach target,$(BENCH_TARGETS),results/bench-$(target).csv)
 
 # x509-limbo test command
-results/limbo-%.csv: override OUTPUT = > $@
-results/limbo-%.csv: results
+results/limbo-%.csv: OUTPUT = > $@
+results/limbo-%.csv:
 	$(VERDICT) limbo $* $(LIMBO_JSON) \
 		--bench-repo . $(FLAGS) \
 		$(OUTPUT)
 
 # For differential tests on CT logs, we do not need to
 # repeat validation on each chain
-results/diff-%.csv: override REPEAT = 1
-results/diff-%.csv: override OUTPUT = -o results/diff-$*.csv
-results/diff-%.csv: results run-bench-%
+results/diff-%.csv: REPEAT = 1
+results/diff-%.csv: OUTPUT = -o results/diff-$*.csv
+results/diff-%.csv: run-bench-%
 	@true
 
-# Default output location of all benchmarks
-results/bench-%.csv: override OUTPUT = -o results/bench-$*.csv
-
-# All performance benchmarks
-results/bench-chrome.csv: results run-bench-chrome
-results/bench-firefox.csv: results run-bench-firefox
-results/bench-openssl.csv: results run-bench-openssl
+# Special flags
 results/bench-armor.csv: override FLAGS += --sample 0.001
-results/bench-armor.csv: results run-bench-armor
 results/bench-ceres.csv: override FLAGS += --sample 0.001
-results/bench-ceres.csv: results run-bench-ceres
 results/bench-hammurabi-chrome.csv: override FLAGS += --sample 0.01
-results/bench-hammurabi-chrome.csv: results run-bench-hammurabi-chrome
 results/bench-hammurabi-firefox.csv: override FLAGS += --sample 0.01
-results/bench-hammurabi-firefox.csv: results run-bench-hammurabi-firefox
-results/bench-verdict-chrome.csv: results run-bench-verdict-chrome
-results/bench-verdict-firefox.csv: results run-bench-verdict-firefox
-results/bench-verdict-openssl.csv: results run-bench-verdict-openssl
-results/bench-verdict-chrome-aws-lc.csv: override VERDICT = $(VERDICT_AWS_LC)
-results/bench-verdict-chrome-aws-lc.csv: results run-bench-verdict-chrome
-results/bench-verdict-firefox-aws-lc.csv: override VERDICT = $(VERDICT_AWS_LC)
-results/bench-verdict-firefox-aws-lc.csv: results run-bench-verdict-firefox
-results/bench-verdict-openssl-aws-lc.csv: override VERDICT = $(VERDICT_AWS_LC)
-results/bench-verdict-openssl-aws-lc.csv: results run-bench-verdict-openssl
+
+# Default output location of all benchmarks
+results/bench-%.csv: OUTPUT = -o results/bench-$*.csv
+results/bench-%.csv: run-bench-%
+	@true
 
 # Benchmarking command
 .PHONY: run-bench-%
@@ -97,7 +80,9 @@ run-bench-%: $(VERDICT)
 		echo "CT_LOG is not set"; \
 		exit 1; \
 	fi
-	$(if $(ISOLATE_CORES),taskset -c $(ISOLATE_CORES),) $(VERDICT) bench-ct-logs $* \
+	$(if $(ISOLATE_CORES),taskset -c $(ISOLATE_CORES),)
+	$(if $(filter aws-lc,$*),$(VERDICT_AWS_LC),$(VERDICT)) bench-ct-logs \
+		$(patsubst %-aws-lc,%,$*) \
 		$(ROOTS) $(CT_LOG_INTS) $(CT_LOG_TESTS) \
 		-t $(TIMESTAMP) \
 		-n $(REPEAT) \

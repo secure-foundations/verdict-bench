@@ -2,20 +2,21 @@
 Generate a table to show the differential testing results
 """
 
+import sys
 import subprocess
 
-bench_dir = ".."
+bench_dir = f"{sys.path[0]}/.."
 results_dir = f"{bench_dir}/results"
 results = [
     ("CT", (
-        ("Chrome", f"{results_dir}/diff-chrome.txt", f"{results_dir}/diff-verdict-chrome.txt"),
-        ("Firefox", f"{results_dir}/diff-firefox.txt", f"{results_dir}/diff-verdict-firefox.txt"),
-        ("OpenSSL", f"{results_dir}/diff-openssl.txt", f"{results_dir}/diff-verdict-openssl.txt"),
+        ("Chrome", f"{results_dir}/diff-chrome.csv", f"{results_dir}/diff-verdict-chrome.csv"),
+        ("Firefox", f"{results_dir}/diff-firefox.csv", f"{results_dir}/diff-verdict-firefox.csv"),
+        ("OpenSSL", f"{results_dir}/diff-openssl.csv", f"{results_dir}/diff-verdict-openssl.csv"),
     )),
     ("Limbo", (
-        ("Chrome", f"{results_dir}/limbo-chrome.txt", f"{results_dir}/limbo-verdict-chrome.txt"),
-        ("Firefox", f"{results_dir}/limbo-firefox.txt", f"{results_dir}/limbo-verdict-firefox.txt"),
-        ("OpenSSL", f"{results_dir}/limbo-openssl.txt", f"{results_dir}/limbo-verdict-openssl.txt"),
+        ("Chrome", f"{results_dir}/limbo-chrome.csv", f"{results_dir}/limbo-verdict-chrome.csv"),
+        ("Firefox", f"{results_dir}/limbo-firefox.csv", f"{results_dir}/limbo-verdict-firefox.csv"),
+        ("OpenSSL", f"{results_dir}/limbo-openssl.csv", f"{results_dir}/limbo-verdict-openssl.csv"),
     )),
 ]
 
