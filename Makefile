@@ -38,13 +38,25 @@ OUTPUT = > /dev/stdout
 main:
 	@echo "Please see README for the usage of this Makefile"
 
+# Main evaluation setup
+.PHONY: eval-1
+eval-1: bench
+	python3 scripts/perf_results.py
+
+.PHONY: eval2
+eval-2: limbo diff
+	python3 scripts/diff_results.py
+
 # Run all Limbo tests
+.PHONY: limbo
 limbo: $(foreach target,$(DIFF_TARGETS),results/limbo-$(target).csv)
 
 # Run all differential tests (on CT logs)
+.PHONY: diff
 diff: $(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv)
 
 # Run all performance benchmarks
+.PHONY: bench
 bench: $(foreach target,$(BENCH_TARGETS),results/bench-$(target).csv)
 
 # x509-limbo test command
