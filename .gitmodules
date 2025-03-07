@@ -1,4 +1,4 @@
 [submodule "rustls"]
 	path = rustls
-	url = https://github.com/zhengyao-lin/rustls.git
+	url = git@github.com:secure-foundations/verdict-bench.git
 	branch = verdict-anon
