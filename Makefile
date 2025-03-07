@@ -61,7 +61,7 @@ results/diff-%.csv: OUTPUT = -o results/diff-$*.csv
 results/diff-%.csv: run-bench-%
 	@true
 
-# Special flags
+# Reduce benchmark size for some implementations
 results/bench-armor.csv: override FLAGS += --sample 0.001
 results/bench-ceres.csv: override FLAGS += --sample 0.001
 results/bench-hammurabi-chrome.csv: override FLAGS += --sample 0.01
