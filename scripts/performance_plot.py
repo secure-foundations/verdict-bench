@@ -3,6 +3,7 @@ Generate a boxplot of performance comparison between implementations
 """
 
 import sys
+import csv
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -10,10 +11,10 @@ import matplotlib.gridspec as gridspec
 import seaborn as sns
 
 # Set up the same font as the USENIX security template
-mpl.rcParams["text.usetex"] = True
-mpl.rcParams["font.family"] = "serif"
-mpl.rcParams["font.serif"] = ["Times"]
-mpl.rcParams["text.latex.preamble"] = r"\usepackage{mathptmx}"
+# mpl.rcParams["text.usetex"] = True
+# mpl.rcParams["font.family"] = "serif"
+# mpl.rcParams["font.serif"] = ["Times"]
+# mpl.rcParams["text.latex.preamble"] = r"\usepackage{mathptmx}"
 
 mpl.rcParams["font.size"] = 24
 mpl.rcParams["axes.titlesize"] = 24
@@ -34,24 +35,27 @@ implementations = [
     ("HM/Chrome", f"{results_dir}/bench-hammurabi-chrome.csv"),
 
     ("Chrome", f"{results_dir}/bench-chrome.csv"),
-    ("\\textbf{V/Chrome}", f"{results_dir}/bench-verdict-chrome.csv"),
-    ("\\textbf{V/Chrome$^\\star$}", f"{results_dir}/bench-verdict-chrome-aws-lc.csv"),
+    ("V/Chrome", f"{results_dir}/bench-verdict-chrome.csv"),
+    ("V/Chrome*", f"{results_dir}/bench-verdict-chrome-aws-lc.csv"),
 
     ("Firefox", f"{results_dir}/bench-firefox.csv"),
-    ("\\textbf{V/Firefox}", f"{results_dir}/bench-verdict-firefox.csv"),
-    ("\\textbf{V/Firefox$^\\star$}", f"{results_dir}/bench-verdict-firefox-aws-lc.csv"),
+    ("V/Firefox", f"{results_dir}/bench-verdict-firefox.csv"),
+    ("V/Firefox*", f"{results_dir}/bench-verdict-firefox-aws-lc.csv"),
 
     ("OpenSSL", f"{results_dir}/bench-openssl.csv"),
-    ("\\textbf{V/OpenSSL}", f"{results_dir}/bench-verdict-openssl.csv"),
-    ("\\textbf{V/OpenSSL$^\\star$}", f"{results_dir}/bench-verdict-openssl-aws-lc.csv"),
+    ("V/OpenSSL", f"{results_dir}/bench-verdict-openssl.csv"),
+    ("V/OpenSSL*", f"{results_dir}/bench-verdict-openssl-aws-lc.csv"),
 ]
-
-num_measurements = 10
 
 all_data = []
 
 for impl_label, csv_file in implementations:
     print(f"### Processing data for {impl_label} at {csv_file}")
+
+    # Determine the number of columns
+    with open(csv_file, "r", newline="") as f:
+        reader = csv.reader(f)
+        num_measurements = len(next(reader)) - 4
 
     df = pd.read_csv(csv_file, header=None, dtype={
         0: "str",
@@ -178,7 +182,7 @@ def plot_simple(combined_df):
     ).legend(title="Result", loc="upper left")
     plt.xlabel("")
     plt.ylabel("Performance (microseconds)")
-    plt.ylim(0, 300)
+    # plt.ylim(0, 300)
 
     # Draw vertical separators for every 3 items
     num_categories = len(combined_df["impl"].unique())
