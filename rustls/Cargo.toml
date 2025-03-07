@@ -31,8 +31,7 @@ webpki = { workspace = true }
 pki-types = { workspace = true }
 zeroize = { workspace = true }
 zlib-rs = { workspace = true, optional = true }
-chain = { git = "https://github.com/verdict-x509/verdict.git", branch = "main" }
-parser = { git = "https://github.com/verdict-x509/verdict.git", branch = "main" }
+verdict = { path = "../../../verdict/verdict" }
 
 [features]
 default = ["aws_lc_rs", "logging", "std", "tls12"]
@@ -47,7 +46,7 @@ tls12 = []
 read_buf = ["rustversion", "std"]
 fips = ["aws_lc_rs", "aws-lc-rs?/fips"]
 zlib = ["dep:zlib-rs"]
-verdict-aws-lc = ["chain/aws-lc"]
+verdict-aws-lc = ["verdict/aws-lc"]
 
 [dev-dependencies]
 base64 = { workspace = true }

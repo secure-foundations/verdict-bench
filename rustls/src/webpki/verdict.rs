@@ -3,9 +3,9 @@ use std::format;
 use std::vec::Vec;
 use std::fmt;
 
-use chain::error::ValidationError;
-use chain::validate::{RootStore, Validator};
-use chain::policy::{ExecPurpose, ExecTask, Policy};
+use verdict::error::ValidationError;
+use verdict::validator::{RootStore, Validator};
+use verdict::policy::{ExecPurpose, ExecTask, Policy};
 use log::trace;
 use pki_types::{CertificateDer, ServerName, UnixTime};
 

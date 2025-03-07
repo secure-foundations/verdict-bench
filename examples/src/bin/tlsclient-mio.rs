@@ -34,7 +34,7 @@ use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
 use rustls::VerdictPolicy;
 use rustls::RootCertStore;
 
-use criterion::{Criterion, black_box};
+// use criterion::{Criterion, black_box};
 
 const CLIENT: mio::Token = mio::Token(0);
 

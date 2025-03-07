@@ -1,6 +1,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use chain::policy::{ChromePolicy, FirefoxPolicy, OpenSSLPolicy};
+use verdict::policy::{ChromePolicy, FirefoxPolicy, OpenSSLPolicy};
 use core::marker::PhantomData;
 
 use pki_types::{CertificateDer, PrivateKeyDer};
