@@ -34,7 +34,7 @@ def test_domain(path, domain, port, rustls_client, isolated_cores) -> List[List[
         "python3", os.path.join(sys.path[0], "fake_server.py"),
         "--host", "127.0.0.1",
         "--port", str(port), os.path.join(path, domain),
-    ], stdout=subprocess.PIPE, text=True)
+    ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
 
     # Wait for server to start
     while True:
