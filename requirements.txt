@@ -12,4 +12,6 @@ matplotlib==3.9.2
 seaborn==0.13.2
 
 # End-to-end test with Rustls
+pyOpenSSL==25.0.0
+requests==2.32.3
 scipy==1.15.1

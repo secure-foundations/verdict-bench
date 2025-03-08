@@ -28,4 +28,4 @@
 [submodule "rustls"]
 	path = rustls
 	url = git@github.com:secure-foundations/verdict-bench.git
-	branch = rustls-end-to-end
+	branch = rustls
