@@ -5,6 +5,7 @@ Perform end-to-end tests of Rustls performance (w/ or w/o Verdict)
 from typing import List
 
 import os
+import sys
 import time
 import signal
 import argparse
@@ -30,14 +31,15 @@ def test_domain(path, domain, port, rustls_client, isolated_cores) -> List[List[
 
     server_proc = subprocess.Popen([
         "taskset", "-c", isolated_cores[0],
-        "python3", "fake_server.py",
-        "--host", "localhost",
+        "python3", os.path.join(sys.path[0], "fake_server.py"),
+        "--host", "127.0.0.1",
         "--port", str(port), os.path.join(path, domain),
-    ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    ], stdout=subprocess.PIPE, text=True)
 
     # Wait for server to start
     while True:
         line = server_proc.stdout.readline()
+        # print(line)
         if not line:
             print("failed to start server")
             server_proc.send_signal(signal.SIGINT)
@@ -55,7 +57,7 @@ def test_domain(path, domain, port, rustls_client, isolated_cores) -> List[List[
             result = subprocess.run([
                 "taskset", "-c", isolated_cores[1],
                 rustls_client,
-                "--connect", "localhost",
+                "--connect", "127.0.0.1",
                 "--port", str(port),
                 "--cafile", os.path.join(path, "roots.pem"),
                 "--http",
@@ -64,12 +66,11 @@ def test_domain(path, domain, port, rustls_client, isolated_cores) -> List[List[
                 domain,
             ], capture_output=True, text=True)
 
-            if "error" in result.stderr:
-                print(f"rustls failed to connect")
-
             if result.returncode != 0:
-                print(f"rustls returned non-zero exit code {result.returncode}")
+                print(f"rustls returned non-zero exit code {result.returncode}:")
+                print(result.stderr)
 
+            # print("stdout", result.stdout)
             samples = result.stdout.strip().split()
             assert len(samples) == WARMUP + REPEAT, f"unmatched sample number {len(samples)}"
             all_samples.append(list(map(int, samples))[WARMUP:])
