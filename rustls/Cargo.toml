@@ -31,7 +31,7 @@ webpki = { workspace = true }
 pki-types = { workspace = true }
 zeroize = { workspace = true }
 zlib-rs = { workspace = true, optional = true }
-verdict = { path = "../../../verdict/verdict" }
+verdict = { path = "../../verdict/verdict" }
 
 [features]
 default = ["aws_lc_rs", "logging", "std", "tls12"]
