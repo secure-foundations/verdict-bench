@@ -7,6 +7,17 @@ There are three main evaluations:
 - Eval 2: Differential testing with Chrome, Firefox, OpenSSL
 - Eval 3: End-to-End HTTPS performance in Rustls
 
+# TL;DR
+
+```
+$ git submodule update --init --recursive
+$ docker build . -t verdict-bench
+$ docker run -it --cap-add=NET_ADMIN verdict-bench
+(container) $ make eval
+```
+
+Running `make eval` again will print out the results again.
+
 # Build
 
 If you do not need to edit the benchmarking code in any of the tools, the recommended
@@ -28,8 +39,11 @@ the entire build process took **about 1 hour and 120 GB of free disk space**.
 
 The rest of the tutorial assumes that you are in the Docker container:
 ```
-docker run -it verdict-bench
+docker run -it --cap-add=NET_ADMIN verdict-bench
 ```
+`--cap-add=NET_ADMIN` is required for the network delay setup in Eval 3.
+
+To make sure that all benchmarks work correctly, run `make test` in the container.
 
 ### Build a particular tool
 To build a particular X.509 tool, run
@@ -67,13 +81,12 @@ where each CSV file in `test_suite/certs` should have columns (without headers)
 
 Then in all the evaluations below, set an additional variable `CT_LOG=test_suite` for each `make` command.
 
-# Eval 1
+# Eval 1: Performance
 
 To run performance benchmarks on all supported tools:
 ```
-make eval-1 [FLAGS=-j<n>]
+make eval-1
 ```
-the optional flag parallelizes the benchmark but may skew the results.
 
 At the end, a LaTeX table of performance statistics will be printed.
 A PDF containing boxplots of more detailed performance distribution will also be stored at `results/performance.pdf`
@@ -97,15 +110,13 @@ Note that, as also mentioned in the paper, for ARMOR and CERES, we only sample a
 and for Hammurabi, we only sample 1% of all test cases.
 To override these settings, make suitable adjustments in `Makefile`.
 
-# Eval 2
+# Eval 2: Differential Testing
 
 To run all differential tests (comparison of Verdict's Chrome, Firefox,
 and OpenSSL policies against their original implementations), run
 ```
-make eval-2 [FLAGS=-j<n>]
+make eval-2
 ```
-Since performance is irrelevant for this evaluation, you can
-set `<n>` to, e.g., the number of CPU cores for faster results.
 
 At the end, a LaTeX table containing results will be printed.
 More detailed results can be found in `results/diff-<tool>.csv` (differential tests on CT logs),
@@ -120,7 +131,7 @@ or
 make results/limbo-<tool>.csv
 ```
 
-# Eval 3
+# Eval 3: End-to-End Performance
 
 To run end-to-end performance tests with Rustls, use
 ```

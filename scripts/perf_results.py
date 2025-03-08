@@ -36,19 +36,19 @@ def print_table(args):
 
     # List of implementations and their corresponding CSV file paths
     implementations = [
-        ("CERES", f"{args.results}/bench-ceres.csv"),
-        ("ARMOR", f"{args.results}/bench-armor.csv"),
-        ("HM/Firefox", f"{args.results}/bench-hammurabi-firefox.csv"),
-        ("HM/Chrome", f"{args.results}/bench-hammurabi-chrome.csv"),
-        ("Chrome", f"{args.results}/bench-chrome.csv"),
-        ("V/Chrome", f"{args.results}/bench-verdict-chrome.csv"),
-        ("V/Chrome*", f"{args.results}/bench-verdict-chrome-aws-lc.csv"),
-        ("Firefox", f"{args.results}/bench-firefox.csv"),
-        ("V/Firefox", f"{args.results}/bench-verdict-firefox.csv"),
-        ("V/Firefox*", f"{args.results}/bench-verdict-firefox-aws-lc.csv"),
-        ("OpenSSL", f"{args.results}/bench-openssl.csv"),
-        ("V/OpenSSL", f"{args.results}/bench-verdict-openssl.csv"),
-        ("V/OpenSSL*", f"{args.results}/bench-verdict-openssl-aws-lc.csv"),
+        ("CERES", f"{args.results}/perf-ceres.csv"),
+        ("ARMOR", f"{args.results}/perf-armor.csv"),
+        ("HM/Firefox", f"{args.results}/perf-hammurabi-firefox.csv"),
+        ("HM/Chrome", f"{args.results}/perf-hammurabi-chrome.csv"),
+        ("Chrome", f"{args.results}/perf-chrome.csv"),
+        ("V/Chrome", f"{args.results}/perf-verdict-chrome.csv"),
+        ("V/Chrome*", f"{args.results}/perf-verdict-chrome-aws-lc.csv"),
+        ("Firefox", f"{args.results}/perf-firefox.csv"),
+        ("V/Firefox", f"{args.results}/perf-verdict-firefox.csv"),
+        ("V/Firefox*", f"{args.results}/perf-verdict-firefox-aws-lc.csv"),
+        ("OpenSSL", f"{args.results}/perf-openssl.csv"),
+        ("V/OpenSSL", f"{args.results}/perf-verdict-openssl.csv"),
+        ("V/OpenSSL*", f"{args.results}/perf-verdict-openssl-aws-lc.csv"),
     ]
 
     all_data = []
