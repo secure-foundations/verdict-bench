@@ -122,5 +122,10 @@ make results/limbo-<tool>.csv
 
 # Eval 3
 
-Currently this is separate from the Docker image.
-See `rustls/README.md` for details on how to run this evaluation.
+To run end-to-end performance tests with Rustls, use
+```
+make eval-3 [END_TO_END_DELAY=5ms] [END_TO_END_WARMUP=20] [END_TO_END_REPEAT=100]
+```
+This will run Rustls's `tlsclient-mio` to simulate fetching the first HTTPS response from public domains
+(these domains are simulated locally).
+The results will be saved to `results/end-to-end-*.csv`, and a summarizing table will be printed at the end.

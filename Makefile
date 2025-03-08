@@ -26,6 +26,12 @@ REPEAT = 10
 NO_DOMAIN = ceres armor # Implementations that do not support hostname validation
 LIMBO_JSON = data/limbo.json
 
+LIBFAKETIME = /usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1
+END_TO_END_TIME = 2025-01-16 12:00:00
+END_TO_END_DELAY = 5ms
+END_TO_END_WARMUP = 20
+END_TO_END_REPEAT = 100
+
 # Settings for reducing noise (need to be changed on the test machine)
 ISOLATE_CORES = # e.g. 0,2,4,6
 CORE_FREQUENCY = # e.g. 2401000
@@ -51,10 +57,22 @@ eval-2: limbo diff
 	python3 scripts/diff_results.py
 
 .PHONY: eval-3
-eval-3:
-	LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 \
-	FAKETIME="@2025-01-16 12:00:00" \
-	python3 scripts/rustls_end_to_end.py data/end-to-end rustls/target/release/tlsclient-mio
+eval-3: results results/end-to-end-aws-lc.csv results/end-to-end-libcrux.csv
+	python3 scripts/rustls_results.py \
+		results/end-to-end-aws-lc.csv \
+		results/end-to-end-libcrux.csv
+
+# Parallel commands of tc might conflict
+.NOTPARALLEL: results/end-to-end-%.csv
+results/end-to-end-%.csv:
+	LD_PRELOAD=$(LIBFAKETIME) FAKETIME="@$(END_TO_END_TIME)" \
+	python3 scripts/rustls_end_to_end.py data/end-to-end \
+		$(if $(filter aws-lc,$*),rustls/target/release/tlsclient-mio-aws-lc,rustls/target/release/tlsclient-mio) \
+		--delay $(END_TO_END_DELAY) \
+		--warmup $(END_TO_END_WARMUP) \
+		--repeat $(END_TO_END_REPEAT) \
+		-o results/end-to-end-$*.tmp.csv
+	mv results/end-to-end-$*.tmp.csv results/end-to-end-$*.csv
 
 # Run all Limbo tests
 .PHONY: limbo
