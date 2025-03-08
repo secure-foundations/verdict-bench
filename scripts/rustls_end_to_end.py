@@ -2,7 +2,6 @@
 Perform end-to-end tests of Rustls performance (w/ and w/o Verdict)
 """
 
-from __future__ import annotations
 from typing import List, Optional, Iterator
 
 import os
@@ -14,10 +13,7 @@ import socket
 import signal
 import argparse
 import subprocess
-import statistics
 import multiprocessing
-
-from scipy import stats
 
 
 def eprint(*args, **kwargs):

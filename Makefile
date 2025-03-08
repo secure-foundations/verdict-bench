@@ -54,7 +54,7 @@ eval-2: limbo diff
 eval-3:
 	LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 \
 	FAKETIME="@2025-01-16 12:00:00" \
-	python3 rustls/test_end_to_end.py data/end-to-end rustls/rustls/target/release/tlsclient-mio
+	python3 scripts/rustls_end_to_end.py data/end-to-end rustls/target/release/tlsclient-mio
 
 # Run all Limbo tests
 .PHONY: limbo

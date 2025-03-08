@@ -284,8 +284,8 @@ COPY --from=verdict-build \
 ##################################
 FROM verdict-build AS rustls-build
 ##################################
-COPY rustls/rustls rustls/rustls
-RUN cd rustls/rustls && \
+COPY rustls rustls
+RUN cd rustls && \
     cargo build --release --features verdict-aws-lc && \
     mv target/release/tlsclient-mio target/release/tlsclient-mio-aws-lc && \
     cargo build --release
@@ -294,11 +294,9 @@ RUN cd rustls/rustls && \
 FROM scratch AS rustls-install
 ##############################
 COPY --from=rustls-build \
-    /rustls/rustls/target/release/tlsclient-mio-aws-lc \
-    /rustls/rustls/target/release/tlsclient-mio \
-    /rustls/rustls/target/release/
-
-COPY rustls/test_end_to_end.py rustls/fake_server.py /rustls/
+    /rustls/target/release/tlsclient-mio-aws-lc \
+    /rustls/target/release/tlsclient-mio \
+    /rustls/target/release/
 
 #########################################
 # ███████╗██╗███╗   ██╗ █████╗ ██╗      #
@@ -355,7 +353,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
 # Misc
-COPY data data
+COPY data/ct-log data/ct-log
+COPY data/end-to-end data/end-to-end
+COPY data/limbo.json data/limbo.json
+
 COPY scripts scripts
 COPY Makefile Makefile
 
