@@ -10,3 +10,6 @@ cryptography==44.0.2
 pandas==2.2.3
 matplotlib==3.9.2
 seaborn==0.13.2
+
+# End-to-end test with Rustls
+scipy==1.15.1

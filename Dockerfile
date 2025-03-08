@@ -281,10 +281,24 @@ COPY --from=verdict-build \
 # ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝ #
 ######################################################
 
-################################
-FROM other-build AS rustls-build
-################################
+##################################
+FROM verdict-build AS rustls-build
+##################################
+COPY rustls/rustls rustls/rustls
+RUN cd rustls/rustls && \
+    cargo build --release --features verdict-aws-lc && \
+    mv target/release/tlsclient-mio target/release/tlsclient-mio-aws-lc && \
+    cargo build --release
 
+##############################
+FROM scratch AS rustls-install
+##############################
+COPY --from=rustls-build \
+    /rustls/rustls/target/release/tlsclient-mio-aws-lc \
+    /rustls/rustls/target/release/tlsclient-mio \
+    /rustls/rustls/target/release/
+
+COPY rustls/test_end_to_end.py rustls/fake_server.py /rustls/
 
 #########################################
 # ███████╗██╗███╗   ██╗ █████╗ ██╗      #
@@ -313,6 +327,7 @@ COPY --from=ceres-install / .
 COPY --from=hammurabi-install / .
 COPY --from=openssl-install / .
 COPY --from=verdict-install / .
+COPY --from=rustls-install / .
 
 # Strip all ELF binaries
 RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \;
@@ -321,15 +336,14 @@ RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \
 FROM ubuntu:24.04 AS final-runtime
 ##################################
 
-COPY --from=final-strip /verdict-bench /verdict-bench
 WORKDIR /verdict-bench
 
 COPY requirements.txt requirements.txt
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        make libfaketime python3-pip libgtk-3-0 \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+        make libfaketime python3 python3-pip libgtk-3-0 \
         libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox \
-        iproute2 && \
+        iproute2 sudo && \
     python3 -m pip install -r requirements.txt \
         --break-system-packages \
         --no-cache-dir && \
@@ -337,6 +351,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
 # Misc
 COPY data data
