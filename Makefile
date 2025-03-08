@@ -46,9 +46,15 @@ results:
 eval-1: bench
 	python3 scripts/perf_results.py -o results/performance.pdf
 
-.PHONY: eval2
+.PHONY: eval-2
 eval-2: limbo diff
 	python3 scripts/diff_results.py
+
+.PHONY: eval-3
+eval-3:
+	LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 \
+	FAKETIME="@2025-01-16 12:00:00" \
+	python3 rustls/test_end_to_end.py data/end-to-end rustls/rustls/target/release/tlsclient-mio
 
 # Run all Limbo tests
 .PHONY: limbo
