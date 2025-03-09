@@ -61,10 +61,12 @@ mozilla-unified/.fetched:
 inner-build: src
 	cd mozilla-unified && \
 	. ~/.bashrc && \
+	cp ../mozconfig mozconfig && \
 	SHELL=/bin/bash MACH_USE_SYSTEM_PYTHON=1 ./mach build
 
 .PHONY: inner-clean
 inner-clean: src
 	cd mozilla-unified && \
 	. ~/.bashrc && \
+	cp ../mozconfig mozconfig && \
 	SHELL=/bin/bash MACH_USE_SYSTEM_PYTHON=1 ./mach clobber
