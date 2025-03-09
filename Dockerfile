@@ -337,18 +337,29 @@ FROM ubuntu:24.04 AS final-runtime
 WORKDIR /verdict-bench
 
 COPY requirements.txt requirements.txt
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install \
+        --no-install-recommends -y \
         make libfaketime python3 python3-pip libgtk-3-0 \
         libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox \
-        iproute2 sudo && \
-    python3 -m pip install -r requirements.txt \
+        iproute2 sudo
+
+RUN python3 -m pip install \
+        -r requirements.txt \
+        --no-cache-dir --no-compile \
         --break-system-packages \
-        --no-cache-dir && \
-    DEBIAN_FRONTEND=noninteractive apt-get purge -y python3-pip file && \
-    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && \
+        --no-cache-dir
+
+# Cleanup
+RUN apt-get purge -y python3-pip file && \
+    apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /root/.cache
 
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 

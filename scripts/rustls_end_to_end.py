@@ -210,7 +210,7 @@ def main():
         try:
             set_network_delay(args.port, args.delay)
 
-            for domain in os.listdir(args.fake_servers):
+            for domain in sorted(os.listdir(args.fake_servers)):
                 full_path = os.path.join(args.fake_servers, domain)
 
                 if os.path.isdir(full_path):

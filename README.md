@@ -18,6 +18,9 @@ $ docker run -it --cap-add=NET_ADMIN verdict-bench
 
 Running `make eval` again will print out the results again.
 
+n our test machine with the Intel Core i9-10980XE CPU, `docker build` takes about **1 hour and 120 GB of free disk space**,
+and `make eval` takes about **3.5 hours** (with the given sample of 35,000 chains).
+
 # Build
 
 If you do not need to edit the benchmarking code in any of the tools, the recommended
@@ -34,8 +37,6 @@ containing all necessary dependencies:
 docker build . -t verdict-bench
 ```
 This will take a while, since we need to build large projects such as Firefox and Chromium.
-On our test machine with the Intel Core i9-10980XE CPU,
-the entire build process took **about 1 hour and 120 GB of free disk space**.
 
 The rest of the tutorial assumes that you are in the Docker container:
 ```
