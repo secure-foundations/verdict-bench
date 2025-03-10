@@ -135,7 +135,7 @@ def plot_comparison(args, combined_df):
         palette={"Accept": "#40B0A6", "Reject": "#E1BE6A"},
     ).legend(title="Result", loc="upper left")
     plt.xlabel("")
-    plt.ylabel("Performance (microseconds)")
+    plt.ylabel("Performance (μs)")
     # plt.ylim(0, 300)
 
     # Draw vertical separators for every 3 items

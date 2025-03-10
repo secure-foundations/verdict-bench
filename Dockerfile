@@ -354,12 +354,21 @@ RUN python3 -m pip install \
         --break-system-packages \
         --no-cache-dir
 
-# Cleanup
-RUN apt-get purge -y python3-pip file && \
+# Cleanup and remove unnecessary files
+RUN apt-get purge -y python3-pip file openssl && \
     apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /root/.cache
+    rm -rf /var/lib/apt/lists/* \
+           /root/.cache \
+           /usr/lib/python3*/__pycache__ \
+           /usr/share/icons \
+           /usr/share/mime \
+           /usr/share/doc \
+           /usr/share/X11 \
+           /usr/share/gtk-3.0 \
+           /usr/share/fonts \
+           /usr/local/lib/python3*/dist-packages/pandas/tests \
+           /usr/local/lib/python3*/dist-packages/matplotlib/tests
 
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
@@ -376,4 +385,4 @@ FROM scratch AS final
 #####################
 COPY --from=final-runtime / /
 WORKDIR /verdict-bench
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "/bin/sh" ]
