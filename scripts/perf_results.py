@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.backends.backend_pdf
 import seaborn as sns
 
 # Set up the same font as the USENIX security template

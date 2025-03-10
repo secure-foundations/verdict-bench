@@ -335,6 +335,7 @@ RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \
 # to avoid installing pandas, matplotlib, and numpy in the final image
 COPY scripts/perf_results.py scripts/perf_results.py
 RUN python3 -m pip install \
+        --break-system-packages \
         pyinstaller==6.12.0 \
         pandas==2.2.3 \
         matplotlib==3.9.2 \

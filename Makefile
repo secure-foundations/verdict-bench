@@ -71,7 +71,7 @@ test: eval-1 eval-2 eval-3
 #############################################
 .PHONY: eval-1
 eval-1: results $(foreach target,$(PERF_TARGETS),results/perf-$(target).csv)
-	python3 scripts/perf_results -o results/performance.pdf
+	scripts/perf_results -r results -o results/performance.pdf
 
 # Reduce benchmark size for some implementations
 results/perf-armor.csv: PERF_SAMPLE = 0.001
