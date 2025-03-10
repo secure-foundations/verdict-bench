@@ -315,7 +315,8 @@ FROM ubuntu:24.04 AS final-strip
 WORKDIR /verdict-bench
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential file
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        build-essential file python3-pip
 
 # Install all builds
 COPY --from=chromium-install / .
@@ -330,13 +331,24 @@ COPY --from=rustls-install / .
 # Strip all ELF binaries
 RUN find . -type f -exec sh -c 'file -b "$1" | grep -q ELF && strip "$1"' _ {} \;
 
+# Bundle scripts/perf_results.py into a separate executable
+# to avoid installing pandas, matplotlib, and numpy in the final image
+COPY scripts/perf_results.py scripts/perf_results.py
+RUN python3 -m pip install \
+        pyinstaller==6.12.0 \
+        pandas==2.2.3 \
+        matplotlib==3.9.2 \
+        seaborn==0.13.2
+RUN pyinstaller --onefile --strip \
+        --distpath scripts \
+        --name perf_results \
+        scripts/perf_results.py
+
 ##################################
 FROM ubuntu:24.04 AS final-runtime
 ##################################
 
 WORKDIR /verdict-bench
-
-COPY requirements.txt requirements.txt
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
@@ -348,6 +360,7 @@ RUN apt-get update && \
         libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox \
         iproute2 sudo
 
+COPY requirements.txt requirements.txt
 RUN python3 -m pip install \
         -r requirements.txt \
         --no-cache-dir --no-compile \
@@ -366,9 +379,7 @@ RUN apt-get purge -y python3-pip file openssl && \
            /usr/share/doc \
            /usr/share/X11 \
            /usr/share/gtk-3.0 \
-           /usr/share/fonts \
-           /usr/local/lib/python3*/dist-packages/pandas/tests \
-           /usr/local/lib/python3*/dist-packages/matplotlib/tests
+           /usr/share/fonts
 
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
@@ -376,7 +387,6 @@ COPY --from=final-strip /verdict-bench/ /verdict-bench/
 COPY data/ct-log data/ct-log
 COPY data/end-to-end data/end-to-end
 COPY data/limbo.json data/limbo.json
-
 COPY scripts scripts
 COPY Makefile Makefile
 
@@ -385,4 +395,4 @@ FROM scratch AS final
 #####################
 COPY --from=final-runtime / /
 WORKDIR /verdict-bench
-ENTRYPOINT [ "/bin/sh" ]
+ENTRYPOINT [ "/bin/bash" ]
