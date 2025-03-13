@@ -340,10 +340,11 @@ RUN python3 -m pip install \
         pandas==2.2.3 \
         matplotlib==3.9.2 \
         seaborn==0.13.2
-RUN pyinstaller --onefile --strip \
-        --distpath scripts \
+RUN cd /tmp && \
+    pyinstaller --onefile --strip \
+        --distpath /verdict-bench/scripts \
         --name perf_results \
-        scripts/perf_results.py
+        /verdict-bench/scripts/perf_results.py
 
 ##################################
 FROM ubuntu:24.04 AS final-runtime
