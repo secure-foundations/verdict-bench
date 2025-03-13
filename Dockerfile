@@ -367,7 +367,8 @@ RUN python3 -m pip install \
         -r requirements.txt \
         --no-cache-dir --no-compile \
         --break-system-packages \
-        --no-cache-dir
+        --no-cache-dir && \
+    rm requirements.txt
 
 # Cleanup and remove unnecessary files
 RUN apt-get purge -y python3-pip file openssl && \
@@ -391,7 +392,16 @@ RUN apt-get purge -y python3-pip file openssl && \
 # This might broke some dependencies but should be easy to fix
 RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
            /lib/x86_64-linux-gnu/libicuuc.so* && \
-    dpkg --remove --force-depends shared-mime-info
+    cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
+          /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
+    dpkg --remove --force-depends \
+        shared-mime-info \
+        systemd \
+        systemd-dev \
+        libsystemd-shared \
+        systemd-sysv && \
+    mv /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup \
+       /usr/lib/x86_64-linux-gnu/libsystemd.so.0
 
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
