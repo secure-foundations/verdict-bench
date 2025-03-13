@@ -383,6 +383,16 @@ RUN apt-get purge -y python3-pip file openssl && \
            /usr/share/gtk-3.0 \
            /usr/share/fonts
 
+# Some additional unneeded, large shared libraries
+# according to the output of
+# ```
+# export LD_LIBRARY_PATH=firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin; for binary in /bin/* /usr/local/sbin/* /usr/local/bin/* /usr/sbin/* /usr/bin/* firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell; do [ -f "$binary" ] && [ -r "$binary" ] && (file -L "$binary" | grep -q "ELF\|shared object") && ldd "$binary" 2>/dev/null | grep -o '/[^ :),]*' | sed "s|$| $binary|"; done | awk '{lib=$1; bin=$2; if(!(lib in libs)) libs[lib]=bin; else libs[lib]=libs[lib]", "bin} END {for(lib in libs) {cmd="du -L -h \""lib"\" 2>/dev/null | cut -f1"; cmd|getline hsize; close(cmd); if(hsize) {printf "%s\t%s (used by: %s)\n", hsize, lib, libs[lib]} else printf "0B\t%s (used by: %s)\n", lib, libs[lib]}}' | sort -h
+# ```
+# This might broke some dependencies but should be easy to fix
+RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
+           /lib/x86_64-linux-gnu/libicuuc.so* && \
+    dpkg --remove --force-depends shared-mime-info
+
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
 # Misc
