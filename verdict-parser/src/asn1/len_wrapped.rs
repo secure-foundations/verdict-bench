@@ -18,7 +18,7 @@ impl<T: View> View for LengthWrapped<T> {
 impl<T: SpecCombinator> SpecCombinator for LengthWrapped<T> {
     type SpecResult = T::SpecResult;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         match new_spec_length_wrapped_inner(self.0).spec_parse(s) {
             Ok((len, (_, v))) => Ok((len, v)),
             Err(..) => Err(()),
@@ -29,7 +29,7 @@ impl<T: SpecCombinator> SpecCombinator for LengthWrapped<T> {
         new_spec_length_wrapped_inner(self.0).spec_parse_wf(s)
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         match self.0.spec_serialize(v) {
             // Need to compute the inner serialized length first
             Ok(buf) => new_spec_length_wrapped_inner(self.0).spec_serialize((buf.len() as LengthValue, v)),
@@ -65,7 +65,7 @@ impl<T: Combinator> Combinator for LengthWrapped<T> where
     type Result<'a> = T::Result<'a>;
     type Owned = T::Owned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -116,11 +116,11 @@ impl<'b, T: Combinator> Continuation for LengthWrappedCont<'b, T> where
         AndThen(Bytes(i as usize), &self.0)
     }
 
-    open spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
+    closed spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
         true
     }
 
-    open spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
+    closed spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
         &&& self.0.parse_requires() ==> o.parse_requires()
         &&& self.0.serialize_requires() ==> o.serialize_requires()
         &&& o@ == AndThen(Bytes(i as usize), self.0@)
@@ -132,7 +132,7 @@ type SpecLengthWrappedInner<T> = SpecDepend<Length, AndThen<Bytes, T>>;
 type LengthWrappedInner<'a, T> = Depend<Length, AndThen<Bytes, &'a T>, LengthWrappedCont<'a, T>>;
 
 /// SpecDepend version of new_length_wrapped_inner
-pub open spec fn new_spec_length_wrapped_inner<T: SpecCombinator>(inner: T) -> SpecLengthWrappedInner<T> {
+closed spec fn new_spec_length_wrapped_inner<T: SpecCombinator>(inner: T) -> SpecLengthWrappedInner<T> {
     SpecDepend {
         fst: Length,
         snd: |l| {

@@ -21,7 +21,7 @@ pub type IA5StringValueOwned = String;
 impl SpecCombinator for IA5String {
     type SpecResult = SpecIA5StringValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         Refined {
             inner: UTF8String,
             predicate: IA5StringPred,
@@ -35,7 +35,7 @@ impl SpecCombinator for IA5String {
         }.spec_parse_wf(s)
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         Refined {
             inner: UTF8String,
             predicate: IA5StringPred,
@@ -74,7 +74,7 @@ impl Combinator for IA5String {
     type Result<'a> = IA5StringValue<'a>;
     type Owned = IA5StringValueOwned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -104,7 +104,7 @@ impl Combinator for IA5String {
 pub struct IA5StringPred;
 
 impl IA5StringPred {
-    pub open spec fn wf_char(c: char) -> bool {
+    closed spec fn wf_char(c: char) -> bool {
         c <= '\x7f'
     }
 
@@ -119,7 +119,7 @@ impl IA5StringPred {
 impl SpecPred for IA5StringPred {
     type Input = Seq<char>;
 
-    open spec fn spec_apply(&self, s: &Self::Input) -> bool {
+    closed spec fn spec_apply(&self, s: &Self::Input) -> bool {
         forall |i| 0 <= i < s.len() ==> #[trigger] Self::wf_char(s[i])
     }
 }

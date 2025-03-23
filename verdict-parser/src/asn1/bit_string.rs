@@ -133,7 +133,7 @@ impl<'a> BitStringValue<'a> {
 impl SpecCombinator for BitString {
     type SpecResult = SpecBitStringValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         match OctetString.spec_parse(s) {
             Ok((len, bytes)) =>
                 if BitStringValue::spec_wf(bytes) {
@@ -146,9 +146,11 @@ impl SpecCombinator for BitString {
         }
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        OctetString.spec_parse_wf(s);
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         if BitStringValue::spec_wf(v) {
             OctetString.spec_serialize(v)
         } else {
@@ -179,7 +181,7 @@ impl Combinator for BitString {
     type Result<'a> = BitStringValue<'a>;
     type Owned = BitStringValueOwned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

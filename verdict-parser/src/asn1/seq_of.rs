@@ -27,13 +27,15 @@ impl<C: View> ViewWithASN1Tagged for SequenceOf<C> {
 impl<C: SecureSpecCombinator + SpecCombinator> SpecCombinator for SequenceOf<C> {
     type SpecResult = Seq<C::SpecResult>;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         ExplicitTag(self.spec_tag(), Repeat(self.0)).spec_parse(s)
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        ExplicitTag(self.spec_tag(), Repeat(self.0)).spec_parse_wf(s)
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         ExplicitTag(self.spec_tag(), Repeat(self.0)).spec_serialize(v)
     }
 }
@@ -63,7 +65,7 @@ impl<C: Combinator> Combinator for SequenceOf<C> where
     type Result<'a> = SequenceOfValue<C::Result<'a>>;
     type Owned = SequenceOfValue<C::Owned>;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

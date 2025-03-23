@@ -47,7 +47,7 @@ impl Combinator for End {
     type Result<'a> = EndValue;
     type Owned = EndValue;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         Some(0)
     }
 

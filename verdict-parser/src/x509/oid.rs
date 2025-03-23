@@ -165,9 +165,7 @@ macro_rules! gen_lemma_disjoint {
                 ensures
                     (true || #[trigger] lemma_disjoint_trigger()),
                     gen_lemma_disjoint_helper! {; $($term),* }
-            {
-                admit();
-            }
+            {}
         }
     };
 }

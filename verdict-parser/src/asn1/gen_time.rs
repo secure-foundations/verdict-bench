@@ -49,13 +49,15 @@ asn1_tagged!(GeneralizedTime, tag_of!(GENERALIZED_TIME));
 impl SpecCombinator for GeneralizedTime {
     type SpecResult = GeneralizedTimeValueInner;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         LengthWrapped(GeneralizedTimeInner).spec_parse(s)
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        LengthWrapped(GeneralizedTimeInner).spec_parse_wf(s);
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         LengthWrapped(GeneralizedTimeInner).spec_serialize(v)
     }
 }
@@ -82,7 +84,7 @@ impl Combinator for GeneralizedTime {
     type Result<'a> = GeneralizedTimeValueInner;
     type Owned = GeneralizedTimeValueInner;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -107,7 +109,7 @@ pub struct GeneralizedTimeInner;
 impl SpecCombinator for GeneralizedTimeInner {
     type SpecResult = GeneralizedTimeValueInner;
 
-    open spec fn spec_parse(&self, v: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, v: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         spec_let_some!(
             year = four_chars_to_u16(v[0], v[1], v[2], v[3]);
             month = two_chars_to_u8(v[4], v[5]);
@@ -331,7 +333,7 @@ impl SpecCombinator for GeneralizedTimeInner {
 
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         spec_let_some!(
             year = u16_to_four_chars(v.year);
             month = u8_to_two_chars(v.month);
@@ -501,7 +503,7 @@ impl SpecCombinator for GeneralizedTimeInner {
 }
 
 impl SecureSpecCombinator for GeneralizedTimeInner {
-    open spec fn is_prefix_secure() -> bool {
+    closed spec fn is_prefix_secure() -> bool {
         false
     }
 
@@ -531,7 +533,7 @@ impl Combinator for GeneralizedTimeInner {
     type Result<'a> = GeneralizedTimeValueInner;
     type Owned = GeneralizedTimeValueInner;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -613,7 +615,7 @@ impl Combinator for GeneralizedTimeInner {
 
 /// Conversion between u8 (< 100) and two ASCII chars
 #[verifier::opaque]
-pub open spec fn spec_four_chars_to_u16(b1: u8, b2: u8, b3: u8, b4: u8) -> Option<u16> {
+closed spec fn spec_four_chars_to_u16(b1: u8, b2: u8, b3: u8, b4: u8) -> Option<u16> {
     if b1 >= zero_char!() && b1 <= nine_char!() &&
        b2 >= zero_char!() && b2 <= nine_char!() &&
        b3 >= zero_char!() && b3 <= nine_char!() &&
@@ -625,7 +627,7 @@ pub open spec fn spec_four_chars_to_u16(b1: u8, b2: u8, b3: u8, b4: u8) -> Optio
 }
 
 #[verifier::opaque]
-pub open spec fn spec_u16_to_four_chars(v: u16) -> Option<(u8, u8, u8, u8)> {
+closed spec fn spec_u16_to_four_chars(v: u16) -> Option<(u8, u8, u8, u8)> {
     if v >= 10000 {
         None
     } else {
@@ -638,7 +640,7 @@ pub open spec fn spec_u16_to_four_chars(v: u16) -> Option<(u8, u8, u8, u8)> {
     }
 }
 
-pub broadcast proof fn lemma_four_chars_to_u16_iso(b1: u8, b2: u8, b3: u8, b4: u8)
+broadcast proof fn lemma_four_chars_to_u16_iso(b1: u8, b2: u8, b3: u8, b4: u8)
     ensures
         #[trigger] spec_four_chars_to_u16(b1, b2, b3, b4) matches Some(v) ==> {
             &&& 0 <= v < 10000
@@ -664,7 +666,7 @@ pub broadcast proof fn lemma_four_chars_to_u16_iso(b1: u8, b2: u8, b3: u8, b4: u
     reveal(spec_u16_to_four_chars);
 }
 
-pub broadcast proof fn lemma_u16_to_four_chars_iso(v: u16)
+broadcast proof fn lemma_u16_to_four_chars_iso(v: u16)
     ensures
         #[trigger] spec_u16_to_four_chars(v) matches Some((b1, b2, b3, b4)) ==> {
             &&& spec_four_chars_to_u16(b1, b2, b3, b4) matches Some(a)
@@ -686,7 +688,7 @@ pub broadcast proof fn lemma_u16_to_four_chars_iso(v: u16)
 }
 
 #[verifier::when_used_as_spec(spec_four_chars_to_u16)]
-pub fn four_chars_to_u16(b1: u8, b2: u8, b3: u8, b4: u8) -> (res: Option<u16>)
+fn four_chars_to_u16(b1: u8, b2: u8, b3: u8, b4: u8) -> (res: Option<u16>)
     ensures
         res matches Some(res) ==> {
             &&& spec_four_chars_to_u16(b1, b2, b3, b4) matches Some(res2)
@@ -706,7 +708,7 @@ pub fn four_chars_to_u16(b1: u8, b2: u8, b3: u8, b4: u8) -> (res: Option<u16>)
 }
 
 #[verifier::when_used_as_spec(spec_u16_to_four_chars)]
-pub fn u16_to_four_chars(v: u16) -> (res: Option<(u8, u8, u8, u8)>)
+fn u16_to_four_chars(v: u16) -> (res: Option<(u8, u8, u8, u8)>)
     ensures
         res matches Some(res) ==> {
             &&& spec_u16_to_four_chars(v) matches Some(res2)

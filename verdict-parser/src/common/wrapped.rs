@@ -143,6 +143,13 @@ macro_rules! wrap_combinator_impls {
         = $inner_expr:expr ;) => {
         ::builtin_macros::verus! {
             impl $name {
+                // #[verifier::opaque]
+                // closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, $spec_result), ()> {
+                //     hide(<$inner_type as View>::view);
+                //     let v = $inner_expr.view();
+                //     Err(())
+                // }
+
                 /// Since we can't exactly specify the inner combinator in SpecCombinator,
                 /// we need to separately check that it is a valid Combinator
                 #[allow(dead_code)]

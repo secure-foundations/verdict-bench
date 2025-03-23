@@ -17,7 +17,7 @@ pub type UTF8StringValueOwned = String;
 impl SpecCombinator for UTF8String {
     type SpecResult = SpecUTF8StringValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         match Length.spec_parse(s) {
             Ok((n, l)) => {
                 if n + l <= usize::MAX && n + l <= s.len() {
@@ -35,7 +35,7 @@ impl SpecCombinator for UTF8String {
 
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         let s = spec_serialize_utf8(v);
         match Length.spec_serialize(s.len() as LengthValue) {
             Ok(buf) =>
@@ -95,7 +95,7 @@ impl Combinator for UTF8String {
     type Result<'a> = UTF8StringValue<'a>;
     type Owned = UTF8StringValueOwned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

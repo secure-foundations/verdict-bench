@@ -40,13 +40,15 @@ asn1_tagged!(UTCTime, tag_of!(UTC_TIME));
 impl SpecCombinator for UTCTime {
     type SpecResult = UTCTimeValueInner;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         LengthWrapped(UTCTimeInner).spec_parse(s)
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        LengthWrapped(UTCTimeInner).spec_parse_wf(s)
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         LengthWrapped(UTCTimeInner).spec_serialize(v)
     }
 }
@@ -73,7 +75,7 @@ impl Combinator for UTCTime {
     type Result<'a> = UTCTimeValueInner;
     type Owned = UTCTimeValueInner;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -137,7 +139,7 @@ pub(super) use let_some;
 impl SpecCombinator for UTCTimeInner {
     type SpecResult = UTCTimeValueInner;
 
-    open spec fn spec_parse(&self, v: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, v: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         spec_let_some!(
             year = two_chars_to_u8(v[0], v[1]);
             month = two_chars_to_u8(v[2], v[3]);
@@ -235,7 +237,7 @@ impl SpecCombinator for UTCTimeInner {
 
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         spec_let_some!(
             year = if 1950 <= v.year && v.year <= 2049 {
                 u8_to_two_chars((v.year % 100) as u8)
@@ -346,7 +348,7 @@ impl Combinator for UTCTimeInner {
     type Result<'a> = UTCTimeValueInner;
     type Owned = UTCTimeValueInner;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -576,7 +578,7 @@ macro_rules! nine_char { {} => { '9' as u8 }; }
 
 /// Conversion between u8 (< 100) and two ASCII chars
 #[verifier::opaque]
-pub open spec fn spec_two_chars_to_u8(b1: u8, b2: u8) -> Option<u8> {
+pub closed spec fn spec_two_chars_to_u8(b1: u8, b2: u8) -> Option<u8> {
     if b1 >= zero_char!() && b1 <= nine_char!() && b2 >= zero_char!() && b2 <= nine_char!() {
         Some(((b1 - zero_char!()) * 10 + (b2 - zero_char!())) as u8)
     } else {
@@ -585,7 +587,7 @@ pub open spec fn spec_two_chars_to_u8(b1: u8, b2: u8) -> Option<u8> {
 }
 
 #[verifier::opaque]
-pub open spec fn spec_u8_to_two_chars(v: u8) -> Option<(u8, u8)> {
+pub closed spec fn spec_u8_to_two_chars(v: u8) -> Option<(u8, u8)> {
     if v >= 100 {
         None
     } else {

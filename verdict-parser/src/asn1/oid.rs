@@ -33,7 +33,7 @@ impl PolyfillEq for ObjectIdentifierValue {
 
 impl ObjectIdentifier {
     /// First byte of an OID is 40 * arc1 + arc2
-    pub open spec fn parse_first_two_arcs(byte: u8) -> Option<(UInt, UInt)> {
+    closed spec fn parse_first_two_arcs(byte: u8) -> Option<(UInt, UInt)> {
         let arc1 = byte / 40;
         let arc2 = byte % 40;
 
@@ -44,7 +44,7 @@ impl ObjectIdentifier {
         }
     }
 
-    pub open spec fn serialize_first_two_arcs(arc1: UInt, arc2: UInt) -> Option<u8> {
+    closed spec fn serialize_first_two_arcs(arc1: UInt, arc2: UInt) -> Option<u8> {
         if arc1 <= 2 && arc2 <= 39 {
             Some((arc1 * 40 + arc2) as u8)
         } else {
@@ -68,7 +68,7 @@ impl ObjectIdentifier {
 impl SpecCombinator for ObjectIdentifier {
     type SpecResult = SpecObjectIdentifierValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         match new_spec_object_identifier_inner().spec_parse(s) {
             Ok((len, (_, (first, rest_arcs)))) =>
                 match Self::parse_first_two_arcs(first) {
@@ -85,9 +85,11 @@ impl SpecCombinator for ObjectIdentifier {
         }
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        new_spec_object_identifier_inner().spec_parse_wf(s);
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         if v.len() < 2 || v.len() > usize::MAX {
             Err(())
         } else {
@@ -152,7 +154,7 @@ impl Combinator for ObjectIdentifier {
     type Result<'a> = ObjectIdentifierValue;
     type Owned = ObjectIdentifierValueOwned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -233,11 +235,11 @@ impl Continuation for OIDCont {
         AndThen(Bytes(i as usize), (U8, Repeat(Base128UInt)))
     }
 
-    open spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
+    closed spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
         true
     }
 
-    open spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
+    closed spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
         o == AndThen(Bytes(i as usize), (U8, Repeat(Base128UInt)))
     }
 }
@@ -249,7 +251,7 @@ impl Continuation for OIDCont {
 type SpecObjectIdentifierInner = SpecDepend<Length, AndThen<Bytes, (U8, Repeat<Base128UInt>)>>;
 type ObjectIdentifierInner = Depend<Length, AndThen<Bytes, (U8, Repeat<Base128UInt>)>, OIDCont>;
 
-pub open spec fn new_spec_object_identifier_inner() -> SpecObjectIdentifierInner {
+closed spec fn new_spec_object_identifier_inner() -> SpecObjectIdentifierInner {
     SpecDepend {
         fst: Length,
         snd: |l| {

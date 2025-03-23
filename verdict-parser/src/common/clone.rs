@@ -61,8 +61,8 @@ impl PolyfillClone for u16 {
 //     }
 // }
 
-impl<T: Copy> PolyfillClone for Vec<T>
-{
+impl<T: Copy> PolyfillClone for Vec<T> {
+    /// We trust the builtin Vec::clone implementation
     #[verifier::external_body]
     #[inline(always)]
     fn clone(&self) -> Self {

@@ -21,7 +21,7 @@ pub type PrintableStringValueOwned = String;
 impl SpecCombinator for PrintableString {
     type SpecResult = SpecPrintableStringValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         Refined {
             inner: UTF8String,
             predicate: PrintableStringPred,
@@ -35,7 +35,7 @@ impl SpecCombinator for PrintableString {
         }.spec_parse_wf(s)
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         Refined {
             inner: UTF8String,
             predicate: PrintableStringPred,
@@ -74,7 +74,7 @@ impl Combinator for PrintableString {
     type Result<'a> = PrintableStringValue<'a>;
     type Owned = PrintableStringValueOwned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -104,7 +104,7 @@ impl Combinator for PrintableString {
 pub struct PrintableStringPred;
 
 impl PrintableStringPred {
-    pub open spec fn wf_char(c: char) -> bool {
+    closed spec fn wf_char(c: char) -> bool {
         // https://en.wikipedia.org/wiki/PrintableString
         ||| ('A' <= c && c <= 'Z')
         ||| ('a' <= c && c <= 'z')
@@ -136,7 +136,7 @@ impl PrintableStringPred {
 impl SpecPred for PrintableStringPred {
     type Input = Seq<char>;
 
-    open spec fn spec_apply(&self, s: &Self::Input) -> bool {
+    closed spec fn spec_apply(&self, s: &Self::Input) -> bool {
         forall |i| 0 <= i < s.len() ==> #[trigger] Self::wf_char(s[i])
     }
 }
