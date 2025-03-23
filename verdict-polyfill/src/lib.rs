@@ -188,7 +188,7 @@ pub fn str_to_utf8(s: &str) -> (res: &[u8])
     s.as_bytes()
 }
 
-/// TODO: specify this
+/// We trust the implementation of `u64::to_string` for now
 pub closed spec fn spec_u64_to_string(x: u64) -> (res: Seq<char>);
 
 #[verifier::external_body]
@@ -397,28 +397,35 @@ pub fn join_strings(list: &Vec<String>, sep: &str) -> (res: String)
     res
 }
 
+/// Trusted spec
 #[verifier::external_body]
+#[inline(always)]
+pub fn slice_subrange<V>(s: &[V], start: usize, end: usize) -> (res: &[V])
+    requires start <= end <= s.len()
+    ensures res@ == s@.subrange(start as int, end as int)
+{
+    &s[start..end]
+}
+
 pub fn slice_drop_first<V>(s: &[V]) -> (res: &[V])
     requires s.len() > 0
     ensures res@ == s@.drop_first()
 {
-    &s[1..]
+    slice_subrange(s, 1, s.len())
 }
 
-#[verifier::external_body]
 pub fn slice_skip<V>(s: &[V], n: usize) -> (res: &[V])
     requires n <= s@.len()
     ensures res@ == s@.skip(n as int)
 {
-    &s[n..]
+    slice_subrange(s, n, s.len())
 }
 
-#[verifier::external_body]
 pub fn slice_take<V>(s: &[V], n: usize) -> (res: &[V])
     requires n <= s@.len()
     ensures res@ == s@.take(n as int)
 {
-    &s[..n]
+    slice_subrange(s, 0, n)
 }
 
 #[verifier::external_body]
