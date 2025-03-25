@@ -2,7 +2,7 @@ Verified X.509 Certificate Validation
 ---
 
 This is the main repo of Verdict, a formally verified X.509 certificate validator.
-For all evaluations, see [https://github.com/verdict-x509/verdict-bench](https://github.com/verdict-x509/verdict-bench).
+For all evaluations, see [https://github.com/secure-foundations/verdict-bench](https://github.com/secure-foundations/verdict-bench).
 
 ## Dependencies
 
