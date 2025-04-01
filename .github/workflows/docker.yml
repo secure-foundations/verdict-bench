@@ -18,9 +18,9 @@ jobs:
       - name: Disk Cleanup
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          sudo docker builder prune -a
-      - run: df -h
+          sudo docker system prune -a -f
+          sudo docker builder prune -a -f
+          df -h
 
       - name: Checkout repository with submodules
         uses: actions/checkout@v4
@@ -40,7 +40,49 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push Docker image
+      - name: Check Disk Usage
+        run: |
+          sudo docker image ls
+          df -h
+
+      # Build Chromium, Firefox, and OpenSSL separately to avoid high disk usage
+      - name: Build Chromium
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          target: chromium-install
+
+      - name: Check Disk Usage
+        run: |
+          sudo docker builder prune -a -f
+          sudo docker image ls
+          df -h
+
+      - name: Build Firefox
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          target: firefox-install
+      
+      - name: Check Disk Usage
+        run: |
+          sudo docker builder prune -a -f
+          sudo docker image ls
+          df -h
+
+      - name: Build OpenSSL
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          target: openssl-install
+
+      - name: Check Disk Usage
+        run: |
+          sudo docker builder prune -a -f
+          sudo docker image ls
+          df -h
+
+      - name: Build final Docker image
         id: push
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
