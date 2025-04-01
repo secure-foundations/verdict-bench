@@ -14,4 +14,4 @@ jobs:
           submodules: recursive
 
       - name: Build Docker image
-        run: docker build . -t verdict-bench:${{ github.sha[0:7] }}
+        run: docker build . -t verdict-bench:${GITHUB_SHA::7}
