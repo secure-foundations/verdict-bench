@@ -24,7 +24,8 @@
 	branch = openssl
 [submodule "verdict"]
 	path = verdict
-	url = git@github.com:secure-foundations/verdict.git
+	url = git@github.com:secure-foundations/verdict-bench.git
+	branch = verdict
 [submodule "rustls"]
 	path = rustls
 	url = git@github.com:secure-foundations/verdict-bench.git
