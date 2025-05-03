@@ -422,6 +422,21 @@ COPY data/end-to-end data/end-to-end
 COPY data/limbo.json data/limbo.json
 COPY scripts scripts
 COPY Makefile Makefile
+COPY README.md README.md
+
+RUN cat <<EOF2 >> /root/.bashrc
+cat <<EOF
+Welcome to the artifact for the paper
+
+    Towards Practical, End-to-End Formally Verified X.509 Certificate Validators with Verdict
+
+Please see the artifact appendix of the paper for more information.
+If you do not have access to that, README.md also contains some usage information.
+
+EOF
+
+PS1='\w \$ '
+EOF2
 
 #####################
 FROM scratch AS final
