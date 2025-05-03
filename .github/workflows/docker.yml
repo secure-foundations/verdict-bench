@@ -51,6 +51,7 @@ jobs:
         with:
           context: .
           target: chromium-install
+          tags: chromium-install
 
       - name: Check Disk Usage
         run: |
@@ -63,6 +64,7 @@ jobs:
         with:
           context: .
           target: firefox-install
+          tags: firefox-install
       
       - name: Check Disk Usage
         run: |
@@ -75,12 +77,22 @@ jobs:
         with:
           context: .
           target: openssl-install
+          tags: openssl-install
 
       - name: Check Disk Usage
         run: |
           sudo docker builder prune -a -f
           sudo docker image ls
           df -h
+
+      # Replace "AS <chrome/firefox/openssl>-install"
+      # in the Dockerfile with an unused name "AS <chrome/firefox/openssl>-install-unused"
+      # to force Docker to use previously built layers
+      - name: Force use of cached builds
+        run: |
+          sed -i 's/AS chromium-install/AS chromium-install-unused/g' Dockerfile
+          sed -i 's/AS firefox-install/AS firefox-install-unused/g' Dockerfile
+          sed -i 's/AS openssl-install/AS openssl-install-unused/g' Dockerfile
 
       - name: Build final Docker image
         id: push
