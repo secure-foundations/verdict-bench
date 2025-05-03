@@ -61,6 +61,9 @@ test: END_TO_END_WARMUP = 0
 test: END_TO_END_REPEAT = 2
 test: eval-1 eval-2 eval-3
 
+.PHONY: figures
+figures: eval-1 eval-2 eval-3
+
 #############################################
 # ███████╗██╗   ██╗ █████╗ ██╗          ██╗ #
 # ██╔════╝██║   ██║██╔══██╗██║         ███║ #
@@ -71,7 +74,10 @@ test: eval-1 eval-2 eval-3
 #############################################
 .PHONY: eval-1
 eval-1: results $(foreach target,$(PERF_TARGETS),results/perf-$(target).csv)
-	scripts/perf_results -r results -o results/performance.pdf
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%"
+	@echo "% Performance results %"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%"
+	@scripts/perf_results -r results -o results/performance.pdf
 
 # Reduce benchmark size for some implementations
 results/perf-armor.csv: PERF_SAMPLE = 0.001
@@ -103,7 +109,11 @@ results/perf-%.csv:
 
 .PHONY: eval-2
 eval-2: limbo diff
-	python3 scripts/diff_results.py
+	@echo
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	@echo "% Differential test results %"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	@python3 scripts/diff_results.py
 
 # Run all Limbo tests
 .PHONY: limbo
@@ -143,7 +153,11 @@ results/diff-%.csv:
 
 .PHONY: eval-3
 eval-3: results results/end-to-end-aws-lc.csv results/end-to-end-libcrux.csv
-	python3 scripts/rustls_results.py \
+	@echo
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	@echo "% End-to-end HTTPS performance %"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	@python3 scripts/rustls_results.py \
 		results/end-to-end-aws-lc.csv \
 		results/end-to-end-libcrux.csv
 
@@ -205,3 +219,13 @@ restore-sys:
 	@if [ -n "$(ISOLATE_CORES)" ]; then \
 		sudo cpupower -c $(ISOLATE_CORES) frequency-set --governor powersave; \
 	fi
+
+# Install dependencies and build Verdict (should be run inside the Docker container)
+build-verdict: SHELL := /bin/bash
+build-verdict:
+	apt update && apt install -y curl unzip gcc git
+	curl https://sh.rustup.rs -sSf | sh -s -- -y
+	. "$$HOME/.cargo/env" && \
+	cd verdict && \
+	. tools/activate.sh && \
+	vargo build

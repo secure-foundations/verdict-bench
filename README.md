@@ -21,6 +21,10 @@ Running `make eval` again will print out the results again.
 On our test machine with the Intel Core i9-10980XE CPU, `docker build` takes about **1 hour and 120 GB of free disk space**,
 and `make eval` takes about **3.5 hours** (with the given sample of 35,000 chains).
 
+Before `make eval`, you can also run `make test` (which will only take a few minutes)
+to run through the same evaluation but without multiple samples for accuracy.
+After `make test`, make sure to `rm -rf results` before running `make eval`.
+
 # Build
 
 If you do not need to edit the benchmarking code in any of the tools, the recommended

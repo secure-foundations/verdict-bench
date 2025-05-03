@@ -257,6 +257,15 @@ COPY --from=openssl-build /openssl/cert_bench /openssl/cert_bench
 FROM other-build AS verdict-build
 #################################
 COPY verdict verdict
+
+COPY verdict verdict-src
+RUN rm -rf /verdict-src/deps/libcrux/tests \
+           /verdict-src/deps/libcrux/libcrux-kem/tests \
+           /verdict-src/deps/libcrux/libcrux-ml-kem/tests \
+           /verdict-src/deps/libcrux/libcrux-sha3/tests \
+           /verdict-src/deps/libcrux/libcrux-ml-dsa/tests \
+           /verdict-src/deps/libcrux/libcrux-ml-kem/tests
+
 SHELL [ "/bin/bash", "-c" ]
 RUN cd verdict && \
     source tools/activate.sh && \
@@ -271,6 +280,8 @@ COPY --from=verdict-build \
     /verdict/target/release/verdict-aws-lc \
     /verdict/target/release/verdict \
     /verdict/target/release/
+
+COPY --from=verdict-build /verdict-src/ /verdict/
 
 ######################################################
 # ██████╗ ██╗   ██╗███████╗████████╗██╗     ███████╗ #
@@ -391,17 +402,17 @@ RUN apt-get purge -y python3-pip file openssl && \
 # ```
 # This might broke some dependencies but should be easy to fix
 RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
-           /lib/x86_64-linux-gnu/libicuuc.so* && \
-    cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
-          /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
-    dpkg --remove --force-depends \
-        shared-mime-info \
-        systemd \
-        systemd-dev \
-        libsystemd-shared \
-        systemd-sysv && \
-    mv /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup \
-       /usr/lib/x86_64-linux-gnu/libsystemd.so.0
+           /lib/x86_64-linux-gnu/libicuuc.so*
+    # cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
+    #       /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
+    # dpkg --remove --force-depends \
+    #     shared-mime-info \
+    #     systemd \
+    #     systemd-dev \
+    #     libsystemd-shared \
+    #     systemd-sysv && \
+    # mv /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup \
+    #    /usr/lib/x86_64-linux-gnu/libsystemd.so.0
 
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
