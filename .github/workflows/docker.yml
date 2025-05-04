@@ -18,8 +18,8 @@ jobs:
       - name: Disk Cleanup
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker system prune -a -f
-          sudo docker builder prune -a -f
+          docker system prune -a -f
+          docker builder prune -a -f
           df -h
 
       - name: Checkout repository with submodules
@@ -42,10 +42,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          install: true
 
       - name: Check Disk Usage
         run: |
-          sudo docker image ls
+          docker image ls
           df -h
 
       # Build Chromium
@@ -60,8 +62,8 @@ jobs:
 
       - name: Check Disk Usage
         run: |
-          sudo docker builder prune -a -f
-          sudo docker image ls
+          docker buildx prune --all --force
+          docker image ls
           df -h
 
       # Build Firefox
@@ -76,8 +78,8 @@ jobs:
       
       - name: Check Disk Usage
         run: |
-          sudo docker builder prune -a -f
-          sudo docker image ls
+          docker buildx prune --all --force
+          docker image ls
           df -h
 
       # Build OpenSSL
@@ -92,8 +94,8 @@ jobs:
 
       - name: Check Disk Usage
         run: |
-          sudo docker builder prune -a -f
-          sudo docker image ls
+          docker buildx prune --all --force
+          docker image ls
           df -h
 
       # Build ARMOR
@@ -108,8 +110,8 @@ jobs:
 
       - name: Check Disk Usage
         run: |
-          sudo docker builder prune -a -f
-          sudo docker image ls
+          docker buildx prune --all --force
+          docker image ls
           df -h
 
       # Replace some "AS **-install" in the Dockerfile
@@ -131,6 +133,7 @@ jobs:
           target: final
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
