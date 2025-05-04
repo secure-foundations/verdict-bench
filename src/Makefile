@@ -1,5 +1,5 @@
 AGDA_EXEC?=agda
-AGDA_OPTIONS_RTS=+RTS -M6G -RTS
+AGDA_OPTIONS_RTS=+RTS -M6G -H4G -A128M -N -RTS
 AGDA_OPTIONS_LIB=--library-file=`pwd`/$(LIBRARIES)
 
 AGDA=$(AGDA_EXEC) $(AGDA_OPTIONS_LIB) $(AGDA_OPTIONS_RTS)
@@ -11,8 +11,13 @@ ARMOR_BUILD=MAlonzo
 ARMOR_MAIN=Armor/Main.agda
 ARMOR_MAIN_HS=$(ARMOR_BUILD)/Code/Armor/Main.hs
 
+NPROCS := 1
+ifeq ($(shell uname -s),Linux)
+NPROCS := $(shell grep -c ^processor /proc/cpuinfo)
+endif
+
 STACK_GHC_EXE=stack --compiler ghc-8.8.4 exec ghc --
-STACK_GHC_OPTIONS=-O -Werror -fwarn-incomplete-patterns # -prof -fprof-auto
+STACK_GHC_OPTIONS=-O -j$(NPROCS) -Werror -fwarn-incomplete-patterns # -prof -fprof-auto
 
 .PHONY: all
 all: $(ARMOR_MAIN_HS)
