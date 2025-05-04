@@ -1,3 +1,8 @@
+NPROCS := 1
+ifeq ($(shell uname -s),Linux)
+NPROCS := $(shell grep -c ^processor /proc/cpuinfo)
+endif
+
 .PHONY: build
 build: src/armor-agda/src/Main
 	cd src/armor-driver && ./install.sh
@@ -8,4 +13,4 @@ src/armor-agda/src/Main: agda/agda
 
 agda/agda:
 # git submodule update --init
-	cd agda && stack install --stack-yaml stack-8.8.4.yaml --local-bin-path .
+	cd agda && stack install -j$(NPROCS) --ghc-options="-j$(NPROCS)" --stack-yaml stack-8.8.4.yaml --local-bin-path .
