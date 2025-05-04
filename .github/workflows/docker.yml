@@ -5,6 +5,9 @@ name: Build Docker Image
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - '*'
 
 env:
   REGISTRY: ghcr.io
@@ -39,6 +42,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=sha,format=short
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -114,16 +120,7 @@ jobs:
           docker image ls
           df -h
 
-      # # Replace some "AS **-install" in the Dockerfile
-      # # with an unused name "AS **-install-unused"
-      # # to force Docker to use previously built layers
-      # - name: Force use of cached builds
-      #   run: |
-      #     sed -i 's/AS chromium-install/AS chromium-install-unused/g' Dockerfile
-      #     sed -i 's/AS firefox-install/AS firefox-install-unused/g' Dockerfile
-      #     sed -i 's/AS openssl-install/AS openssl-install-unused/g' Dockerfile
-      #     sed -i 's/AS armor-install/AS armor-install-unused/g' Dockerfile
-
+      # Build the final image and push to registry
       - name: Build final Docker image
         id: push
         uses: docker/build-push-action@v5
@@ -139,3 +136,4 @@ jobs:
             type=gha,scope=firefox
             type=gha,scope=openssl
             type=gha,scope=armor
+          cache-to: type=gha,mode=min,scope=final
