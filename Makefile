@@ -1,6 +1,7 @@
 DOCKER = sudo docker
 DOCKER_IMAGE_TAG = firefox-build
 
+FIREFOX_REPO = https://hg.mozilla.org/mozilla-unified
 FIREFOX_CHANGESET = dbd5ee74c531204784baa6a81961ed556783ea15
 
 CURRENT_DIR = $(shell pwd)
@@ -48,7 +49,15 @@ xpcshell: build-env
 src: mozilla-unified/.fetched
 
 mozilla-unified/.fetched:
-	GECKO_HEAD_REV=$(FIREFOX_CHANGESET) python3 bootstrap.py --no-interactive
+# GECKO_HEAD_REV=$(FIREFOX_CHANGESET) python3 bootstrap.py --no-interactive
+	if [ ! -d mozilla-unified/.hg ]; then \
+		echo "### cloning firefox @$(FIREFOX_CHANGESET)"; \
+		hg clone --stream \
+			--config progress.assume-tty=yes \
+			-u $(FIREFOX_CHANGESET) \
+			$(FIREFOX_REPO) mozilla-unified; \
+	fi; \
+	hg -R mozilla-unified pull -u -r $(FIREFOX_CHANGESET); \
 	cd mozilla-unified && hg import ../$(DIFF_FILE) --no-commit
 	touch mozilla-unified/.fetched
 
