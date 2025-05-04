@@ -5,7 +5,7 @@ set -e
 
 SCRIPT_DIR="$(dirname "$(realpath $0)")"
 MOZILLA="$(realpath $SCRIPT_DIR/mozilla-unified)"
-DIST_BIN="$MOZILLA/obj-x86_64-pc-linux-gnu/dist/bin"
+DIST_BIN="$MOZILLA/obj-firefox/dist/bin"
 XPCSHELL="$DIST_BIN/run-mozilla.sh $DIST_BIN/xpcshell"
 
 roots=$1

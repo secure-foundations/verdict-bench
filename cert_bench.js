@@ -35,7 +35,7 @@ const certificateUsageVerifyCA          = 0x0100;
 const certificateUsageAnyCA             = 0x0800;
 
 const ERROR_CODES = new Map([
-    // Copied from mozilla-unified/obj-x86_64-pc-linux-gnu/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/nss_sslerr.rs
+    // Copied from mozilla-unified/obj-*/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/nss_sslerr.rs
     [-12288, "SSL_ERROR_EXPORT_ONLY_SERVER"],
     [-12287, "SSL_ERROR_US_ONLY_SERVER"],
     [-12286, "SSL_ERROR_NO_CYPHER_OVERLAP"],
@@ -226,7 +226,7 @@ const ERROR_CODES = new Map([
     [-12101, "SSL_ERROR_FEATURE_DISABLED"],
     [-12100, "SSL_ERROR_END_OF_LIST"],
 
-    // Copied from mozilla-unified/obj-x86_64-pc-linux-gnu/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/nss_secerr.rs
+    // Copied from mozilla-unified/obj-*/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/nss_secerr.rs
     [-8192, "SEC_ERROR_IO"],
     [-8191, "SEC_ERROR_LIBRARY_FAILURE"],
     [-8190, "SEC_ERROR_BAD_DATA"],
@@ -408,7 +408,7 @@ const ERROR_CODES = new Map([
     [-8014, "SEC_ERROR_APPLICATION_CALLBACK_ERROR"],
     [-8013, "SEC_ERROR_END_OF_LIST"],
 
-    // Copied from mozilla-unified/obj-x86_64-pc-linux-gnu/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/mozpkix.rs
+    // Copied from mozilla-unified/obj-*/x86_64-unknown-linux-gnu/release/build/neqo-crypto-ddfa555fd025ac0c/out/mozpkix.rs
     [-16384, "MOZILLA_PKIX_ERROR_KEY_PINNING_FAILURE"],
     [-16383, "MOZILLA_PKIX_ERROR_CA_CERT_USED_AS_END_ENTITY"],
     [-16382, "MOZILLA_PKIX_ERROR_INADEQUATE_KEY_SIZE"],

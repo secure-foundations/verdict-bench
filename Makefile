@@ -40,8 +40,8 @@ xpcshell: build-env
 		-v $(CURRENT_DIR):$(CURRENT_DIR) \
 		-w $(CURRENT_DIR) \
 		$(DOCKER_IMAGE_TAG) \
-		bash -c "LD_LIBRARY_PATH=/build/local/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin:$$LD_LIBRARY_PATH \
-			mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell"
+		bash -c "LD_LIBRARY_PATH=/build/local/mozilla-unified/obj-firefox/dist/bin:$$LD_LIBRARY_PATH \
+			mozilla-unified/obj-firefox/dist/bin/xpcshell"
 
 ##### Targets below are executed within Docker #####
 
