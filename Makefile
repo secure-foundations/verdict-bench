@@ -62,17 +62,17 @@ src/.fetched:
 	fi; \
 	echo "### applying gclient sync"; \
 	git apply ../deps.diff; \
-	gclient sync -vv --no-history --shallow -j8; \
+	gclient sync --no-history --shallow -j8; \
 	git apply ../${DIFF_FILE}; \
 	touch .fetched; \
 	echo "### fetched chromium@${CHROMIUM_COMMIT}"
 
 src/out/Debug/%: src/.fetched force
-	[ -f "src/out/Debug/build.ninja" ] || (cd src && gn gen out/Debug)
+	[ -f "src/out/Debug/build.ninja" ] || (cd src && gn gen out/Debug --args"build_dawn_tests=false use_ozone=false use_x11=false use_aura=false")
 	cd src && autoninja -C out/Debug $*
 
 src/out/Release/%: src/.fetched force
-	[ -f "src/out/Release/build.ninja" ] || (cd src && gn gen out/Release --args="is_debug=false")
+	[ -f "src/out/Release/build.ninja" ] || (cd src && gn gen out/Release --args="is_component_build=false is_debug=false build_dawn_tests=false use_ozone=false use_x11=false use_aura=false")
 	cd src && autoninja -C out/Release $*
 
 .PHONY: force
