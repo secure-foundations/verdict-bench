@@ -62,7 +62,7 @@ src/.fetched:
 	fi; \
 	echo "### applying gclient sync"; \
 	git apply ../deps.diff; \
-	gclient sync --no-history --nohooks --shallow -j8; \
+	gclient sync -vv --no-history --shallow -j8; \
 	git apply ../${DIFF_FILE}; \
 	touch .fetched; \
 	echo "### fetched chromium@${CHROMIUM_COMMIT}"

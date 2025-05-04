@@ -1,9 +1,30 @@
-solutions = [
-  {
-    "name": "src",
-    "url": "https://chromium.googlesource.com/chromium/src.git",
-    "managed": False,
-    "custom_deps": {},
-    "custom_vars": {},
+solutions = [{
+  "name": "src",
+  "url": "https://chromium.googlesource.com/chromium/src.git",
+  "custom_deps": {
+    "src/third_party/angle": None,
+    "src/third_party/angle/third_party/VK-GL-CTS/src": None,
+    "src/third_party/dawn": None,
+    "src/third_party/skia": None,
+    "src/third_party/swiftshader": None,
+    "src/third_party/ffmpeg": None,
+    "src/third_party/libvpx": None,
+    "src/third_party/opus": None,
+    "src/third_party/libwebp": None,
+    "src/third_party/dav1d": None,
+    "src/third_party/libavif": None,
+    "src/v8": None,
+    "src/third_party/webrtc": None,
+    "src/third_party/pdfium": None,
+    "src/third_party/devtools-frontend": None,
+    "src/third_party/node": None,
+    "src/third_party/icu": None,
+    "src/third_party/webgpu-cts/src": None,
   },
-]
+  "custom_vars": {
+    "checkout_android": False,
+    "checkout_chromeos": False,
+    "checkout_fuchsia": False,
+    "checkout_configuration": "small",
+  },
+}]
