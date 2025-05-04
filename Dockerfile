@@ -88,20 +88,20 @@ WORKDIR /firefox
 RUN make inner-build
 
 # Remove some unnecessary binaries
-RUN rm -rf mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/browser \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/chrome \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/geckodriver \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/hyphenation \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/http3server \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/libmozavcodec.so \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/minidump-analyzer \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/font
+RUN rm -rf mozilla-unified/obj-firefox/dist/bin/browser \
+           mozilla-unified/obj-firefox/dist/bin/chrome \
+           mozilla-unified/obj-firefox/dist/bin/geckodriver \
+           mozilla-unified/obj-firefox/dist/bin/hyphenation \
+           mozilla-unified/obj-firefox/dist/bin/http3server \
+           mozilla-unified/obj-firefox/dist/bin/libmozavcodec.so \
+           mozilla-unified/obj-firefox/dist/bin/minidump-analyzer \
+           mozilla-unified/obj-firefox/dist/bin/font
 
 # Resolve symlinks in obj-*/dist/bin/modules for later use
-RUN cp -rL mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin \
-           mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved
+RUN cp -rL mozilla-unified/obj-firefox/dist/bin \
+           mozilla-unified/obj-firefox/dist/bin-resolved
 
-RUN rm -rf $(find mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved \
+RUN rm -rf $(find mozilla-unified/obj-firefox/dist/bin-resolved \
                 -type f -executable \
                 ! -name "*.so*" \
                 ! -name "xpcshell" \
@@ -117,8 +117,8 @@ COPY --from=firefox-build \
     /firefox/
 
 COPY --from=firefox-build \
-    /firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin-resolved \
-    /firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin
+    /firefox/mozilla-unified/obj-firefox/dist/bin-resolved \
+    /firefox/mozilla-unified/obj-firefox/dist/bin
 
 ######################################################
 #  ██████╗ ████████╗██╗  ██╗███████╗██████╗ ███████╗ #
@@ -398,7 +398,7 @@ RUN apt-get purge -y python3-pip file openssl && \
 # Some additional unneeded, large shared libraries
 # according to the output of
 # ```
-# export LD_LIBRARY_PATH=firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin; for binary in /bin/* /usr/local/sbin/* /usr/local/bin/* /usr/sbin/* /usr/bin/* firefox/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/bin/xpcshell; do [ -f "$binary" ] && [ -r "$binary" ] && (file -L "$binary" | grep -q "ELF\|shared object") && ldd "$binary" 2>/dev/null | grep -o '/[^ :),]*' | sed "s|$| $binary|"; done | awk '{lib=$1; bin=$2; if(!(lib in libs)) libs[lib]=bin; else libs[lib]=libs[lib]", "bin} END {for(lib in libs) {cmd="du -L -h \""lib"\" 2>/dev/null | cut -f1"; cmd|getline hsize; close(cmd); if(hsize) {printf "%s\t%s (used by: %s)\n", hsize, lib, libs[lib]} else printf "0B\t%s (used by: %s)\n", lib, libs[lib]}}' | sort -h
+# export LD_LIBRARY_PATH=firefox/mozilla-unified/obj-firefox/dist/bin; for binary in /bin/* /usr/local/sbin/* /usr/local/bin/* /usr/sbin/* /usr/bin/* firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell; do [ -f "$binary" ] && [ -r "$binary" ] && (file -L "$binary" | grep -q "ELF\|shared object") && ldd "$binary" 2>/dev/null | grep -o '/[^ :),]*' | sed "s|$| $binary|"; done | awk '{lib=$1; bin=$2; if(!(lib in libs)) libs[lib]=bin; else libs[lib]=libs[lib]", "bin} END {for(lib in libs) {cmd="du -L -h \""lib"\" 2>/dev/null | cut -f1"; cmd|getline hsize; close(cmd); if(hsize) {printf "%s\t%s (used by: %s)\n", hsize, lib, libs[lib]} else printf "0B\t%s (used by: %s)\n", lib, libs[lib]}}' | sort -h
 # ```
 # This might broke some dependencies but should be easy to fix
 RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
