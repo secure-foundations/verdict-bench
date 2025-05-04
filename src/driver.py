@@ -129,8 +129,8 @@ parser = argparse.ArgumentParser(description='CERES command-line arguments')
 parser.add_argument("root_pem", type=str)
 # parser.add_argument('--input', type=str,
 #                     help='Input chain location')
-parser.add_argument('--ca-store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
-                    help='Trusted CA store location; default=/etc/ssl/certs/ca-certificates.crt')
+# parser.add_argument('--ca-store', type=str, default='/etc/ssl/certs/ca-certificates.crt',
+#                     help='Trusted CA store location; default=/etc/ssl/certs/ca-certificates.crt')
 parser.add_argument('--check-purpose', nargs='+',
                     help='list of expected purposes of End certificate: serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, OCSPSigning, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly; default=anyPurpose',
                     default=[])
@@ -159,7 +159,7 @@ with tempfile.TemporaryDirectory() as work_dir:
     set_home_dir(work_dir)
 
     # input_chain = args.input
-    input_CA_store = args.ca_store
+    input_CA_store = args.root_pem
     input_lfsc = args.check_proof
     input_show_chain = args.show_chain
     input_purposes = args.check_purpose
@@ -320,8 +320,8 @@ with tempfile.TemporaryDirectory() as work_dir:
                 semantic.reset()
                 try:
                     suc, err = validate_chain([base64.b64decode(cert.strip()).hex().upper() for cert in [leaf] + interm])
-                except:
-                    suc, err = False, "exception"
+                except Exception as e:
+                    suc, err = False, f"exception: {e}"
                 finally: ...
                 durations.append(time.time() - start)
 
