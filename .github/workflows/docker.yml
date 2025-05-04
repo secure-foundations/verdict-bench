@@ -114,15 +114,15 @@ jobs:
           docker image ls
           df -h
 
-      # Replace some "AS **-install" in the Dockerfile
-      # with an unused name "AS **-install-unused"
-      # to force Docker to use previously built layers
-      - name: Force use of cached builds
-        run: |
-          sed -i 's/AS chromium-install/AS chromium-install-unused/g' Dockerfile
-          sed -i 's/AS firefox-install/AS firefox-install-unused/g' Dockerfile
-          sed -i 's/AS openssl-install/AS openssl-install-unused/g' Dockerfile
-          sed -i 's/AS armor-install/AS armor-install-unused/g' Dockerfile
+      # # Replace some "AS **-install" in the Dockerfile
+      # # with an unused name "AS **-install-unused"
+      # # to force Docker to use previously built layers
+      # - name: Force use of cached builds
+      #   run: |
+      #     sed -i 's/AS chromium-install/AS chromium-install-unused/g' Dockerfile
+      #     sed -i 's/AS firefox-install/AS firefox-install-unused/g' Dockerfile
+      #     sed -i 's/AS openssl-install/AS openssl-install-unused/g' Dockerfile
+      #     sed -i 's/AS armor-install/AS armor-install-unused/g' Dockerfile
 
       - name: Build final Docker image
         id: push
