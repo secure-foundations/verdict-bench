@@ -55,13 +55,14 @@ src/.fetched:
 		rm -rf .git; \
 		git init; \
 		git remote add origin ${CHROMIUM_REPO}; \
-		git fetch --depth 1 origin ${CHROMIUM_COMMIT}; \
+		git config --local extensions.partialClone origin; \
+		git fetch --progress --depth 1 --filter=blob:none origin ${CHROMIUM_COMMIT}; \
 		git checkout FETCH_HEAD; \
 		touch .init; \
 	fi; \
 	echo "### applying gclient sync"; \
 	git apply ../deps.diff; \
-	gclient sync --no-history; \
+	gclient sync --no-history --nohooks --shallow -j8; \
 	git apply ../${DIFF_FILE}; \
 	touch .fetched; \
 	echo "### fetched chromium@${CHROMIUM_COMMIT}"
