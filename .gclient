@@ -1,6 +1,7 @@
 solutions = [{
   "name": "src",
   "url": "https://chromium.googlesource.com/chromium/src.git",
+  "managed": False,
   "custom_deps": {
     "src/third_party/angle": None,
     "src/third_party/angle/third_party/VK-GL-CTS/src": None,
