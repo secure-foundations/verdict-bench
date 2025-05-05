@@ -65,9 +65,7 @@ jobs:
           tags: chromium-install
           cache-from: type=gha,scope=chromium
           cache-to: type=gha,mode=min,scope=chromium
-
-      - name: Check Disk Usage
-        run: |
+      - run: |
           docker buildx prune --all --force
           docker image ls
           df -h
@@ -81,9 +79,7 @@ jobs:
           tags: firefox-install
           cache-from: type=gha,scope=firefox
           cache-to: type=gha,mode=min,scope=firefox
-      
-      - name: Check Disk Usage
-        run: |
+      - run: |
           docker buildx prune --all --force
           docker image ls
           df -h
@@ -97,9 +93,7 @@ jobs:
           tags: openssl-install
           cache-from: type=gha,scope=openssl
           cache-to: type=gha,mode=min,scope=openssl
-
-      - name: Check Disk Usage
-        run: |
+      - run: |
           docker buildx prune --all --force
           docker image ls
           df -h
@@ -113,14 +107,55 @@ jobs:
           tags: armor-install
           cache-from: type=gha,scope=armor
           cache-to: type=gha,mode=min,scope=armor
+      - run: |
+          docker buildx prune --all --force
+          docker image ls
+          df -h
 
-      - name: Check Disk Usage
-        run: |
+      # Build CERES
+      - name: Build CERES
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ceres-install
+          tags: ceres-install
+          cache-from: type=gha,scope=ceres
+          cache-to: type=gha,mode=min,scope=ceres
+      - run: |
+          docker buildx prune --all --force
+          docker image ls
+          df -h
+
+      # Build Hammurabi
+      - name: Build Hammurabi
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: hammurabi-install
+          tags: hammurabi-install
+          cache-from: type=gha,scope=hammurabi
+          cache-to: type=gha,mode=min,scope=hammurabi
+      - run: |
+          docker buildx prune --all --force
+          docker image ls
+          df -h
+
+      # Build Verdict
+      - name: Build Verdict
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: verdict-install
+          tags: verdict-install
+          cache-from: type=gha,scope=verdict
+          cache-to: type=gha,mode=min,scope=verdict
+      - run: |
           docker buildx prune --all --force
           docker image ls
           df -h
 
       # Build the final image and push to registry
+      # Don't cache the final image since it is too large
       - name: Build final Docker image
         id: push
         uses: docker/build-push-action@v5
@@ -136,4 +171,6 @@ jobs:
             type=gha,scope=firefox
             type=gha,scope=openssl
             type=gha,scope=armor
-          cache-to: type=gha,mode=min,scope=final
+            type=gha,scope=ceres
+            type=gha,scope=hammurabi
+            type=gha,scope=verdict
