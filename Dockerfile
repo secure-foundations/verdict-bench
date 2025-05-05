@@ -424,18 +424,42 @@ COPY scripts scripts
 COPY Makefile Makefile
 COPY README.md README.md
 
+# Add a nice welcome message
 RUN cat <<EOF2 >> /root/.bashrc
+
+# Check ANSI support
+if [[ -t 1 ]] && tput setaf 1 >/dev/null 2>&1 && [[ -z "${NO_COLOR-}" ]]; then
+    bold=\$(tput bold)
+    italic=\$(tput sitm)
+    underline=\$(tput smul)
+    reset=\$(tput sgr0)
+    green=\$(tput setaf 2)
+else
+    bold=
+    italic=
+    underline=
+    reset=
+    green=
+fi
+
 cat <<EOF
-Welcome to the artifact for the paper
+Welcome to the artifact accompanying the paper
 
-    Towards Practical, End-to-End Formally Verified X.509 Certificate Validators with Verdict
+    \${bold}\${italic}Towards Practical, End-to-End Formally Verified X.509 Certificate Validators with Verdict\${reset}
 
-Please see the artifact appendix of the paper for more information.
-If you do not have access to that, README.md also contains some usage information.
+For additional details, see the artifact appendix.
+If the appendix is unavailable, see README.md.
+
+${bold}TL;DR:${reset}
+
+    \\\$ make test\${reset}      \${green}# Sanity check\${reset}
+    \\\$ rm -rf results\${reset}
+    \\\$ make eval\${reset}      \${green}# Run the full benchmark\${reset}
+    \\\$ make figures\${reset}   \${green}# Show results\${reset}
 
 EOF
 
-PS1='\w \$ '
+PS1='\w \\\$ '
 EOF2
 
 #####################
