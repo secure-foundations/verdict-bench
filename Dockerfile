@@ -95,7 +95,8 @@ RUN rm -rf mozilla-unified/obj-firefox/dist/bin/browser \
            mozilla-unified/obj-firefox/dist/bin/http3server \
            mozilla-unified/obj-firefox/dist/bin/libmozavcodec.so \
            mozilla-unified/obj-firefox/dist/bin/minidump-analyzer \
-           mozilla-unified/obj-firefox/dist/bin/font
+           mozilla-unified/obj-firefox/dist/bin/fonts \
+           mozilla-unified/obj-firefox/dist/bin/dictionaries
 
 # Resolve symlinks in obj-*/dist/bin/modules for later use
 RUN cp -rL mozilla-unified/obj-firefox/dist/bin \
@@ -264,7 +265,10 @@ RUN rm -rf /verdict-src/deps/libcrux/tests \
            /verdict-src/deps/libcrux/libcrux-ml-kem/tests \
            /verdict-src/deps/libcrux/libcrux-sha3/tests \
            /verdict-src/deps/libcrux/libcrux-ml-dsa/tests \
-           /verdict-src/deps/libcrux/libcrux-ml-kem/tests
+           /verdict-src/deps/libcrux/libcrux-ml-kem/tests \
+           /verdict-src/deps/libcrux/proofs \
+           /verdict-src/deps/verus/source/docs \
+           /verdict-src/deps/verus/source/rust_verify/example
 
 SHELL [ "/bin/bash", "-c" ]
 RUN cd verdict && \
@@ -381,19 +385,26 @@ RUN python3 -m pip install \
         --no-cache-dir && \
     rm requirements.txt
 
+# Install busybox to replace coreutils
+RUN apt-get install -y busybox && \
+    dpkg --purge --force-depends --force-remove-essential coreutils && \
+    busybox --install -s /usr/bin
+
 # Cleanup and remove unnecessary files
 RUN apt-get purge -y python3-pip file openssl && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
            /root/.cache \
-           /usr/lib/python3*/__pycache__ \
+           /usr/lib/systemd \
+           /usr/lib/x86_64-linux-gnu/systemd \
            /usr/share/icons \
            /usr/share/mime \
            /usr/share/doc \
            /usr/share/X11 \
            /usr/share/gtk-3.0 \
-           /usr/share/fonts
+           /usr/share/fonts && \
+    find /usr | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Some additional unneeded, large shared libraries
 # according to the output of
@@ -403,6 +414,7 @@ RUN apt-get purge -y python3-pip file openssl && \
 # This might broke some dependencies but should be easy to fix
 RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
            /lib/x86_64-linux-gnu/libicuuc.so*
+    # dpkg --purge --force-depends ubuntu-mono
     # cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
     #       /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
     # dpkg --remove --force-depends \
