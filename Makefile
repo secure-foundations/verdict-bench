@@ -71,6 +71,8 @@ inner-build: src
 	cd mozilla-unified && \
 	. ~/.bashrc && \
 	cp ../mozconfig mozconfig && \
+	ulimit -Sn 16384 && \
+	ulimit -Hn 16384 && \
 	SHELL=/bin/bash MACH_USE_SYSTEM_PYTHON=1 ./mach build
 
 .PHONY: inner-clean
