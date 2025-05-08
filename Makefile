@@ -221,6 +221,7 @@ restore-sys:
 	fi
 
 # Install dependencies and build Verdict (should be run inside the Docker container)
+.PHONY: build-verdict
 build-verdict: SHELL := /bin/bash
 build-verdict:
 	apt update && apt install -y curl unzip gcc git
@@ -232,6 +233,9 @@ build-verdict:
 
 # Compare results with the reference
 # Used for CI testing
+.PHONY: compare-ref
+compare-ref: PERF_REPEAT = 1
+compare-ref: PERF_JOBS = $(shell nproc)
 compare-ref: ref-results results \
 		$(foreach target,$(PERF_TARGETS),results/perf-$(target).csv) \
 		$(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv) \
