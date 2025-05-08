@@ -65,7 +65,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
         autoconf2.13 unzip uuid zip libasound2-dev \
         libcurl4-openssl-dev libdbus-1-dev libdbus-glib-1-dev \
         libdrm-dev libgtk-3-dev libgtk2.0-dev libpulse-dev \
-        libx11-xcb-dev libxt-dev xvfb yasm nasm rlwrap
+        libx11-xcb-dev libxt-dev xvfb yasm nasm rlwrap llvm clang lld
 
 # Install NodeJS 11
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash && \
