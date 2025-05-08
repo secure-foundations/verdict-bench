@@ -1,6 +1,18 @@
+diff -r dbd5ee74c531 js/xpconnect/shell/moz.build
+--- a/js/xpconnect/shell/moz.build	Tue Aug 25 00:54:38 2020 +0000
++++ b/js/xpconnect/shell/moz.build	Thu May 08 19:01:16 2025 +0000
+@@ -10,6 +10,8 @@
+     'xpcshell.cpp',
+ ]
+ 
++USE_LIBS += ['static:xul-real']
++
+ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'cocoa':
+     SOURCES += [
+         'xpcshellMacUtils.mm',
 diff -r dbd5ee74c531 security/certverifier/CertVerifier.cpp
 --- a/security/certverifier/CertVerifier.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/certverifier/CertVerifier.cpp	Thu Dec 12 00:12:21 2024 +0000
++++ b/security/certverifier/CertVerifier.cpp	Thu May 08 19:01:16 2025 +0000
 @@ -586,16 +586,16 @@
        // results of setting the default policy to a particular configuration.
        SHA1Mode sha1ModeConfigurations[] = {
@@ -49,7 +61,7 @@ diff -r dbd5ee74c531 security/certverifier/CertVerifier.cpp
            MOZ_ARRAY_LENGTH(keySizeOptions) == MOZ_ARRAY_LENGTH(keySizeStatuses),
 diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
 --- a/security/manager/ssl/nsIX509CertDB.idl	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsIX509CertDB.idl	Thu Dec 12 00:12:21 2024 +0000
++++ b/security/manager/ssl/nsIX509CertDB.idl	Thu May 08 19:01:16 2025 +0000
 @@ -301,6 +301,25 @@
                               in uint64_t aTime,
                               in nsICertVerificationCallback aCallback);
@@ -78,7 +90,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsIX509CertDB.idl
    [must_use]
 diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
 --- a/security/manager/ssl/nsNSSCertificateDB.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Thu Dec 12 00:12:21 2024 +0000
++++ b/security/manager/ssl/nsNSSCertificateDB.cpp	Thu May 08 19:01:16 2025 +0000
 @@ -15,6 +15,7 @@
  #include "mozilla/Casting.h"
  #include "mozilla/Services.h"
@@ -252,7 +264,7 @@ diff -r dbd5ee74c531 security/manager/ssl/nsNSSCertificateDB.cpp
    NS_ENSURE_TRUE(certVerifier, NS_ERROR_FAILURE);
 diff -r dbd5ee74c531 security/nss/lib/ckfw/builtins/certdata.txt
 --- a/security/nss/lib/ckfw/builtins/certdata.txt	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/nss/lib/ckfw/builtins/certdata.txt	Thu Dec 12 00:12:21 2024 +0000
++++ b/security/nss/lib/ckfw/builtins/certdata.txt	Thu May 08 19:01:16 2025 +0000
 @@ -1,4 +1,4 @@
 -# 
 +#
@@ -23172,7 +23184,7 @@ diff -r dbd5ee74c531 security/nss/lib/ckfw/builtins/certdata.txt
 -CKA_TRUST_STEP_UP_APPROVED CK_BBOOL CK_FALSE
 diff -r dbd5ee74c531 security/nss/lib/mozpkix/lib/pkixcheck.cpp
 --- a/security/nss/lib/mozpkix/lib/pkixcheck.cpp	Tue Aug 25 00:54:38 2020 +0000
-+++ b/security/nss/lib/mozpkix/lib/pkixcheck.cpp	Thu Dec 12 00:12:21 2024 +0000
++++ b/security/nss/lib/mozpkix/lib/pkixcheck.cpp	Thu May 08 19:01:16 2025 +0000
 @@ -924,9 +924,9 @@
        return Result::ERROR_REQUIRED_TLS_FEATURE_MISSING;
      }
@@ -23186,3 +23198,16 @@ diff -r dbd5ee74c531 security/nss/lib/mozpkix/lib/pkixcheck.cpp
  
      return Result::Success;
    });
+diff -r dbd5ee74c531 toolkit/library/build/moz.build
+--- a/toolkit/library/build/moz.build	Tue Aug 25 00:54:38 2020 +0000
++++ b/toolkit/library/build/moz.build	Thu May 08 19:01:16 2025 +0000
+@@ -14,6 +14,9 @@
+ 
+ Libxul('xul-real')
+ 
++STATIC_LIBRARY_NAME = 'xul-real_s'
++FORCE_STATIC_LIB = True
++
+ if CONFIG['COMPILE_ENVIRONMENT']:
+     if CONFIG['MOZ_WIDGET_TOOLKIT'] in ('cocoa', 'uikit'):
+         full_libname = SHARED_LIBRARY_NAME

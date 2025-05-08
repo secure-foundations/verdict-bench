@@ -12,8 +12,18 @@ export NM=llvm-nm
 export MORE_FLAGS="-fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all"
 export CFLAGS="$CFLAGS $MORE_FLAGS"
 export CXXFLAGS="$CXXFLAGS $MORE_FLAGS"
+export RUSTFLAGS="$RUSTFLAGS -C opt-level=z"
+
+# A fix for some issues in static linking
+export LDFLAGS="$LDFLAGS -Wl,--allow-multiple-definition"
+
+export MOZILLA_OFFICIAL=1
 
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-firefox
+
+# Only build JS and xpcshell
+# ac_add_options --enable-project=js
+
 ac_add_options --disable-debug
 ac_add_options --disable-debug-symbols
 ac_add_options --disable-tests
@@ -24,8 +34,17 @@ ac_add_options --enable-lto=full
 ac_add_options --enable-linker=lld
 ac_add_options --enable-install-strip
 
-export MOZILLA_OFFICIAL=1
+# Some options to reduce the size of libjs
+ac_add_options --disable-jit
+ac_add_options --disable-spidermonkey-telemetry
+# ac_add_options --disable-shared-js
+# ac_add_options --disable-export-js
+ac_add_options --disable-ctypes
+ac_add_options --disable-shared-memory
+ac_add_options --disable-wasm-multi-value
+ac_add_options --disable-wasm-reftypes
 
+ac_add_options --disable-sandbox
 ac_add_options --disable-crashreporter
 ac_add_options --disable-dmd
 ac_add_options --disable-geckodriver
