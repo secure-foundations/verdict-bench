@@ -91,6 +91,8 @@ COPY firefox/ .
 RUN make inner-build
 
 # Remove some unnecessary binaries
+# In particular, libxul is not needed since we have
+# statically linked it to xpcshell
 RUN rm -rf mozilla-unified/obj-firefox/dist/bin/browser \
            mozilla-unified/obj-firefox/dist/bin/chrome \
            mozilla-unified/obj-firefox/dist/bin/geckodriver \
@@ -99,7 +101,8 @@ RUN rm -rf mozilla-unified/obj-firefox/dist/bin/browser \
            mozilla-unified/obj-firefox/dist/bin/libmozavcodec.so \
            mozilla-unified/obj-firefox/dist/bin/minidump-analyzer \
            mozilla-unified/obj-firefox/dist/bin/fonts \
-           mozilla-unified/obj-firefox/dist/bin/dictionaries
+           mozilla-unified/obj-firefox/dist/bin/dictionaries \
+           mozilla-unified/obj-firefox/dist/bin/libxul.so
 
 # Resolve symlinks in obj-*/dist/bin/modules for later use
 RUN cp -rL mozilla-unified/obj-firefox/dist/bin \
