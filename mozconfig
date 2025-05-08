@@ -8,8 +8,10 @@ export RANLIB=llvm-ranlib
 export NM=llvm-nm
 
 # https://serge-sans-paille.github.io/pythran-stories/shrinking-a-shared-library.html
-export CFLAGS="$CFLAGS -fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer"
-export CXXFLAGS="$CXXFLAGS -fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer"
+# https://news.ycombinator.com/item?id=36446158
+export MORE_FLAGS="-fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all"
+export CFLAGS="$CFLAGS $MORE_FLAGS"
+export CXXFLAGS="$CXXFLAGS $MORE_FLAGS"
 
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-firefox
 ac_add_options --disable-debug
