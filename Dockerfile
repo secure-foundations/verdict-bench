@@ -82,9 +82,12 @@ RUN . $HOME/.cargo/env && \
     rustup install 1.43.0 && \
     rustup default 1.43.0
 
-# The path must match the final path in the image to avoid a build issue
-COPY firefox firefox
+# Run fetch and build separately to allow more Docker caching
 WORKDIR /firefox
+COPY firefox/Makefile Makefile
+COPY firefox/cert_bench.diff cert_bench.diff
+RUN make mozilla-unified/.fetched
+COPY firefox/ .
 RUN make inner-build
 
 # Remove some unnecessary binaries
