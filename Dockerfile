@@ -482,4 +482,4 @@ FROM scratch AS final
 #####################
 COPY --from=final-runtime / /
 WORKDIR /verdict-bench
-ENTRYPOINT [ "/bin/bash" ]
+CMD [ "/bin/bash" ]

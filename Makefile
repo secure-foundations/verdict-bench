@@ -229,3 +229,31 @@ build-verdict:
 	cd verdict && \
 	. tools/activate.sh && \
 	vargo build
+
+# Compare results with the reference
+# Used for CI testing
+compare-ref: ref-results results \
+		$(foreach target,$(PERF_TARGETS),results/perf-$(target).csv) \
+		$(foreach target,$(DIFF_TARGETS),results/diff-$(target).csv) \
+		$(foreach target,$(DIFF_TARGETS),results/limbo-$(target).csv)
+	
+	@echo "%%% Comparing performance results with reference"; \
+	for target in $(PERF_TARGETS); do \
+		echo "Comparing results/perf-$$target.csv with ref-results/perf-$$target.csv"; \
+		$(VERDICT) diff-results \
+			ref-results/perf-$$target.csv \
+			results/perf-$$target.csv | grep -E "mismatch|does not exist" && exit 1; \
+		true; \
+	done
+
+	@echo; echo "%%% Comparing differential testing results with reference"; \
+	for target in $(DIFF_TARGETS); do \
+		echo "Comparing results/diff-$$target.csv with ref-results/diff-$$target.csv"; \
+		$(VERDICT) diff-results \
+			ref-results/diff-$$target.csv \
+			results/diff-$$target.csv | grep -E "mismatch|does not exist" && exit 1; \
+		$(VERDICT) diff-results \
+			ref-results/limbo-$$target.csv \
+			results/limbo-$$target.csv | grep -E "mismatch|does not exist" && exit 1; \
+		true; \
+	done

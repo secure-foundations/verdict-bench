@@ -174,3 +174,31 @@ jobs:
             type=gha,scope=ceres
             type=gha,scope=hammurabi
             type=gha,scope=verdict
+
+  # Finally, do some sanity checks
+  test:
+    name: Sanity checks
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the built image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-tag }}
+
+      - name: Run tests
+        run: |
+          docker run --rm --init --cap-add=NET_ADMIN \
+            -v ${{ github.workspace }}/ref-results:/verdict-bench/ref-results \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-tag }} \
+            make test compare-ref
