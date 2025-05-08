@@ -1,10 +1,36 @@
+# Seem to be required for LTO
+# https://bugzilla.mozilla.org/show_bug.cgi?id=1480005
+# https://bugzilla.mozilla.org/show_bug.cgi?id=1539280
+export CC=clang
+export CXX=clang++
+export AR=llvm-ar
+export RANLIB=llvm-ranlib
+export NM=llvm-nm
+
+# https://serge-sans-paille.github.io/pythran-stories/shrinking-a-shared-library.html
+export CFLAGS="$CFLAGS -fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer"
+export CXXFLAGS="$CXXFLAGS -fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer"
+
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-firefox
 ac_add_options --disable-debug
+ac_add_options --disable-debug-symbols
 ac_add_options --disable-tests
 ac_add_options --enable-strip
-ac_add_options --enable-optimize=-Os
-# ac_add_options --enable-lto=full
+ac_add_options --enable-release
+ac_add_options --enable-optimize=-Oz
+ac_add_options --enable-lto=full
+ac_add_options --enable-linker=lld
+ac_add_options --enable-install-strip
 
+export MOZILLA_OFFICIAL=1
+
+ac_add_options --disable-crashreporter
+ac_add_options --disable-dmd
+ac_add_options --disable-geckodriver
+ac_add_options --disable-jprof
+ac_add_options --disable-profiling
+
+ac_add_options --disable-gtest-in-build
 ac_add_options --disable-accessibility
 ac_add_options --disable-av1
 ac_add_options --disable-pref-extensions
