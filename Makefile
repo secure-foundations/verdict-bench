@@ -224,7 +224,7 @@ restore-sys:
 .PHONY: build-verdict
 build-verdict: SHELL := /bin/bash
 build-verdict:
-	apt update && apt install -y curl unzip gcc git
+	apt update && apt install -y perl-base curl unzip gcc git
 	curl https://sh.rustup.rs -sSf | sh -s -- -y
 	. "$$HOME/.cargo/env" && \
 	cd verdict && \
