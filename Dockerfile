@@ -332,7 +332,7 @@ WORKDIR /verdict-bench
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        build-essential file python3-pip
+        build-essential file python3-pip upx-ucl
 
 # Install all builds
 COPY --from=chromium-install / .
@@ -357,13 +357,16 @@ RUN python3 -m pip install \
         matplotlib==3.9.2 \
         seaborn==0.13.2
 RUN cd /tmp && \
-    pyinstaller --onefile --strip --clean \
+    PYTHONOPTIMIZE=2 pyinstaller --onefile --strip --clean \
         --exclude-module tkinter \
         --exclude-module unittest \
         --exclude-module pytest \
         --distpath /verdict-bench/scripts \
         --name perf_results \
         /verdict-bench/scripts/perf_results.py
+
+# Run UPX on some large binaries
+RUN upx --lzma --best /verdict-bench/firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell
 
 ##################################
 FROM ubuntu:24.04 AS final-runtime
