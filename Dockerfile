@@ -366,7 +366,21 @@ RUN cd /tmp && \
         /verdict-bench/scripts/perf_results.py
 
 # Run UPX on some large binaries
-RUN upx --lzma --best /verdict-bench/firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell
+RUN cat <<EOF > /verdict-bench/compressed.txt
+/verdict-bench/firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell
+/verdict-bench/ceres/build/extras/CVC4/cvc4
+/verdict-bench/ceres/build/extras/stringprep/runStringPrep
+/verdict-bench/armor/src/armor-driver/armor-bin
+/usr/bin/python3.12
+/verdict-bench/verdict/target/release/verdict
+/verdict-bench/verdict/target/release/verdict-aws-lc
+/verdict-bench/hammurabi/target/release/bench
+/verdict-bench/rustls/target/release/tlsclient-mio
+/verdict-bench/rustls/target/release/tlsclient-mio-aws-lc
+/verdict-bench/openssl/cert_bench
+EOF
+
+RUN upx --lzma --best $(cat /verdict-bench/compressed.txt | xargs)
 
 ##################################
 FROM ubuntu:24.04 AS final-runtime
@@ -382,7 +396,7 @@ RUN apt-get update && \
         --no-install-recommends -y \
         make libfaketime python3 python3-pip libgtk-3-0 \
         libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox \
-        iproute2 sudo jq
+        iproute2 sudo jq upx-ucl
 
 COPY requirements.txt requirements.txt
 RUN python3 -m pip install \
@@ -509,9 +523,29 @@ RUN apt-get purge -y python3-pip file openssl jq && \
 # mv /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup \
 #    /usr/lib/x86_64-linux-gnu/libsystemd.so.0
 
+# Unpack all compressed libraries before entry
+RUN cat <<EOF > /entry.sh
+#!/bin/sh
+
+FILES=\$(cat /verdict-bench/compressed.txt)
+TOTAL=\$(echo "\$FILES" | wc -w)
+COUNT=0
+
+for FILE in \$FILES; do
+    COUNT=\$((COUNT + 1))
+    printf "\r[%d/%d] Loading image" "\$COUNT" "\$TOTAL"
+    upx -d "\$FILE" > /dev/null 2>&1
+done
+printf "\r\033[K"
+
+exec "\$@"
+EOF
+RUN chmod +x /entry.sh
+
 #####################
 FROM scratch AS final
 #####################
 COPY --from=final-runtime / /
 WORKDIR /verdict-bench
+ENTRYPOINT [ "/entry.sh" ]
 CMD [ "/bin/bash" ]
