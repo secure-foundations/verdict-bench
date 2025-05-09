@@ -9,7 +9,14 @@ unset -f vargo 2>/dev/null || true
 REPO_ROOT=$(pwd)
 REAL_CARGO="$(which cargo)"
 
-git submodule update --init
+# Clone https://github.com/zhengyao-lin/verus.git into deps/verus
+if [ ! -d deps/verus ]; then
+    (git init deps/verus &&
+    cd deps/verus &&
+    git remote add origin https://github.com/zhengyao-lin/verus.git &&
+    git fetch --depth 1 origin df8335e469b7c091d16538f263536c602fa5d936 &&
+    git checkout FETCH_HEAD) || return 1
+fi
 
 # Build verus
 (cd deps/verus/source &&
