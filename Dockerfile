@@ -174,6 +174,7 @@ FROM other-build AS armor-build
 ###############################
 COPY armor armor
 RUN cd armor && make
+RUN rm -rf /armor/src/armor-driver/Morpheus
 
 #############################
 FROM scratch AS armor-install
@@ -197,7 +198,8 @@ COPY ceres ceres
 RUN cd ceres && make
 RUN rm -rf /ceres/test \
            /ceres/src/extras \
-           /ceres/src/extras.tar.gz
+           /ceres/src/extras.tar.gz \
+           /ceres/*.pdf
 
 #############################
 FROM scratch AS ceres-install
@@ -362,7 +364,10 @@ RUN python3 -m pip install \
         matplotlib==3.9.2 \
         seaborn==0.13.2
 RUN cd /tmp && \
-    pyinstaller --onefile --strip \
+    pyinstaller --onefile --strip --clean \
+        --exclude-module tkinter \
+        --exclude-module unittest \
+        --exclude-module pytest \
         --distpath /verdict-bench/scripts \
         --name perf_results \
         /verdict-bench/scripts/perf_results.py
@@ -398,6 +403,7 @@ RUN apt-get install -y busybox && \
 
 # Cleanup and remove unnecessary files
 RUN apt-get purge -y python3-pip file openssl && \
+    apt-get purge --allow-remove-essential -y perl-base && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
@@ -419,7 +425,11 @@ RUN apt-get purge -y python3-pip file openssl && \
 # ```
 # This might broke some dependencies but should be easy to fix
 RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
-           /lib/x86_64-linux-gnu/libicuuc.so*
+           /lib/x86_64-linux-gnu/libicuuc.so* \
+           /lib/x86_64-linux-gnu/libicui18n.so* \
+           /lib/swi-prolog/library/{chr,http,semweb,pldoc,dialect,protobufs,latex2html,pengines.pl,prolog_colour.pl} \
+           /lib/swi-prolog/include
+
     # dpkg --purge --force-depends ubuntu-mono
     # cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
     #       /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
@@ -479,6 +489,10 @@ EOF
 
 PS1='\w \\\$ '
 EOF2
+
+# Remove all log files
+RUN find /var/log -type f -delete && \
+    rm -rf /var/cache/*
 
 #####################
 FROM scratch AS final
