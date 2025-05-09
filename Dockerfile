@@ -409,8 +409,7 @@ RUN apt-get purge -y python3-pip file openssl && \
            /usr/share/X11 \
            /usr/share/gtk-3.0 \
            /usr/share/fonts \
-           /usr/share/bash-completion \
-           /usr/share/perl5 && \
+           /usr/share/bash-completion && \
     find /usr | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Some additional unneeded, large shared libraries
