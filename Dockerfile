@@ -379,7 +379,7 @@ RUN apt-get update && \
         --no-install-recommends -y \
         make libfaketime python3 python3-pip libgtk-3-0 \
         libx11-xcb1 libdbus-glib-1-2 libxt6 swi-prolog-nox \
-        iproute2 sudo
+        iproute2 sudo jq
 
 COPY requirements.txt requirements.txt
 RUN python3 -m pip install \
@@ -394,60 +394,6 @@ RUN apt-get install -y busybox && \
     dpkg --purge --force-depends --force-remove-essential coreutils && \
     busybox --install -s /usr/bin
 
-# Cleanup and remove unnecessary files
-RUN apt-get purge -y python3-pip file openssl && \
-    apt-get purge --allow-remove-essential -y perl-base && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* \
-           /root/.cache \
-           /usr/lib/systemd \
-           /usr/lib/x86_64-linux-gnu/systemd \
-           /usr/share/icons \
-           /usr/share/mime \
-           /usr/share/doc \
-           /usr/share/X11 \
-           /usr/share/gtk-3.0 \
-           /usr/share/fonts \
-           /usr/share/bash-completion && \
-    find /usr | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
-
-# Some additional unneeded, large shared libraries
-# according to the output of
-# ```
-# export LD_LIBRARY_PATH=firefox/mozilla-unified/obj-firefox/dist/bin; for binary in /bin/* /usr/local/sbin/* /usr/local/bin/* /usr/sbin/* /usr/bin/* firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell; do [ -f "$binary" ] && [ -r "$binary" ] && (file -L "$binary" | grep -q "ELF\|shared object") && ldd "$binary" 2>/dev/null | grep -o '/[^ :),]*' | sed "s|$| $binary|"; done | awk '{lib=$1; bin=$2; if(!(lib in libs)) libs[lib]=bin; else libs[lib]=libs[lib]", "bin} END {for(lib in libs) {cmd="du -L -h \""lib"\" 2>/dev/null | cut -f1"; cmd|getline hsize; close(cmd); if(hsize) {printf "%s\t%s (used by: %s)\n", hsize, lib, libs[lib]} else printf "0B\t%s (used by: %s)\n", lib, libs[lib]}}' | sort -h
-# ```
-# This might broke some dependencies but should be easy to fix
-RUN rm -rf /usr/lib/x86_64-linux-gnu/libicudata.so* \
-           /usr/lib/x86_64-linux-gnu/libicuuc.so* \
-           /usr/lib/x86_64-linux-gnu/libicui18n.so* \
-           /usr/lib/swi-prolog/library/chr \
-           /usr/lib/swi-prolog/library/http \
-           /usr/lib/swi-prolog/library/semweb \
-           /usr/lib/swi-prolog/library/pldoc \
-           /usr/lib/swi-prolog/library/dialect \
-           /usr/lib/swi-prolog/library/protobufs \
-           /usr/lib/swi-prolog/library/latex2html \
-           /usr/lib/swi-prolog/library/pengines.pl \
-           /usr/lib/swi-prolog/library/prolog_colour.pl \
-           /usr/lib/swi-prolog/include \
-           /usr/bin/systemctl \
-           /usr/bin/systemd-* \
-           /usr/bin/cvtsudoers \
-           /usr/bin/localedef
-
-    # dpkg --purge --force-depends ubuntu-mono
-    # cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
-    #       /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
-    # dpkg --remove --force-depends \
-    #     shared-mime-info \
-    #     systemd \
-    #     systemd-dev \
-    #     libsystemd-shared \
-    #     systemd-sysv && \
-    # mv /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup \
-    #    /usr/lib/x86_64-linux-gnu/libsystemd.so.0
-
 COPY --from=final-strip /verdict-bench/ /verdict-bench/
 
 # Misc
@@ -457,6 +403,15 @@ COPY data/limbo.json data/limbo.json
 COPY scripts scripts
 COPY Makefile Makefile
 COPY README.md README.md
+
+# Remove unnecessary test cases from limbo.json
+COPY ref-results/limbo-chrome.csv limbo-chrome.csv
+RUN cut -d, -f1 limbo-chrome.csv | jq -R -s -c 'split("\n") | map(select(. != ""))' > used_tests.json && \
+    jq --slurpfile used_tests used_tests.json \
+        '{ version: .version, testcases: [.testcases[] | select(.id as $id | $used_tests[0] | index($id))] }' data/limbo.json | \
+    jq -c . > data/limbo-new.json && \
+    rm used_tests.json limbo-chrome.csv data/limbo.json && \
+    mv data/limbo-new.json data/limbo.json
 
 # Add a nice welcome message
 RUN cat <<EOF2 >> /root/.bashrc
@@ -496,9 +451,60 @@ EOF
 PS1='\w \\\$ '
 EOF2
 
-# Remove all log files
-RUN find /var/log -type f -delete && \
-    rm -rf /var/cache/*
+# Cleanup and remove unnecessary files
+RUN apt-get purge -y python3-pip file openssl jq && \
+    apt-get purge --allow-remove-essential -y perl-base && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* \
+           /var/cache/* \
+           /root/.cache \
+           /usr/lib/systemd \
+           /usr/lib/x86_64-linux-gnu/systemd \
+           /usr/share/icons \
+           /usr/share/mime \
+           /usr/share/doc \
+           /usr/share/X11 \
+           /usr/share/gtk-3.0 \
+           /usr/share/fonts \
+           /usr/share/bash-completion && \
+    find /usr | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf && \
+    find /var/log -type f -delete && \
+    rm -rf /usr/lib/x86_64-linux-gnu/libicudata.so* \
+           /usr/lib/x86_64-linux-gnu/libicuuc.so* \
+           /usr/lib/x86_64-linux-gnu/libicui18n.so* \
+           /usr/lib/swi-prolog/library/chr \
+           /usr/lib/swi-prolog/library/http \
+           /usr/lib/swi-prolog/library/semweb \
+           /usr/lib/swi-prolog/library/pldoc \
+           /usr/lib/swi-prolog/library/dialect \
+           /usr/lib/swi-prolog/library/protobufs \
+           /usr/lib/swi-prolog/library/latex2html \
+           /usr/lib/swi-prolog/library/pengines.pl \
+           /usr/lib/swi-prolog/library/prolog_colour.pl \
+           /usr/lib/swi-prolog/include \
+           /usr/bin/systemctl \
+           /usr/bin/systemd-* \
+           /usr/bin/cvtsudoers \
+           /usr/bin/localedef
+
+# Some additional unneeded, large shared libraries
+# according to the output of
+# ```
+# export LD_LIBRARY_PATH=firefox/mozilla-unified/obj-firefox/dist/bin; for binary in /bin/* /usr/local/sbin/* /usr/local/bin/* /usr/sbin/* /usr/bin/* firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell; do [ -f "$binary" ] && [ -r "$binary" ] && (file -L "$binary" | grep -q "ELF\|shared object") && ldd "$binary" 2>/dev/null | grep -o '/[^ :),]*' | sed "s|$| $binary|"; done | awk '{lib=$1; bin=$2; if(!(lib in libs)) libs[lib]=bin; else libs[lib]=libs[lib]", "bin} END {for(lib in libs) {cmd="du -L -h \""lib"\" 2>/dev/null | cut -f1"; cmd|getline hsize; close(cmd); if(hsize) {printf "%s\t%s (used by: %s)\n", hsize, lib, libs[lib]} else printf "0B\t%s (used by: %s)\n", lib, libs[lib]}}' | sort -h
+# ```
+# This might broke some dependencies but should be easy to fix
+# dpkg --purge --force-depends ubuntu-mono
+# cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
+#       /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup && \
+# dpkg --remove --force-depends \
+#     shared-mime-info \
+#     systemd \
+#     systemd-dev \
+#     libsystemd-shared \
+#     systemd-sysv && \
+# mv /usr/lib/x86_64-linux-gnu/libsystemd.so.0.backup \
+#    /usr/lib/x86_64-linux-gnu/libsystemd.so.0
 
 #####################
 FROM scratch AS final
