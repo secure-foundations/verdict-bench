@@ -14,7 +14,7 @@ asn1_tagged!(Boolean, tag_of!(BOOLEAN));
 impl SpecCombinator for Boolean {
     type SpecResult = bool;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         if s.len() < 2 {
             Err(())
         } else if s[0] == 0x01 && s[1] == 0xff {
@@ -28,7 +28,7 @@ impl SpecCombinator for Boolean {
 
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         if v {
             Ok(seq![ 0x01, 0xff ])
         } else {
@@ -57,7 +57,7 @@ impl Combinator for Boolean {
     type Result<'a> = bool;
     type Owned = bool;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         Some(2)
     }
 

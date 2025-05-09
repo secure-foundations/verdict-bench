@@ -108,13 +108,15 @@ impl<'a> BigIntValue<'a> {
 impl SpecCombinator for BigInt {
     type SpecResult = Seq<u8>;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         new_spec_big_int_inner().spec_parse(s)
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        new_spec_big_int_inner().spec_parse_wf(s)
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         new_spec_big_int_inner().spec_serialize(v)
     }
 }
@@ -168,7 +170,7 @@ pub struct MinimalBigIntPred;
 impl SpecPred for MinimalBigIntPred {
     type Input = Seq<u8>;
 
-    open spec fn spec_apply(&self, i: &Self::Input) -> bool {
+    closed spec fn spec_apply(&self, i: &Self::Input) -> bool {
         BigIntValue::spec_wf(*i)
     }
 }
@@ -185,7 +187,7 @@ impl Pred for MinimalBigIntPred {
 
 type BigIntInner = Refined<OctetString, MinimalBigIntPred>;
 
-pub open spec fn new_spec_big_int_inner() -> BigIntInner
+pub closed spec fn new_spec_big_int_inner() -> BigIntInner
 {
     Refined {
         inner: OctetString,

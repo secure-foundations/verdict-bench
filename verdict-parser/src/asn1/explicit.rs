@@ -26,7 +26,7 @@ impl<T: View> ViewWithASN1Tagged for ExplicitTag<T> {
 impl<T: SpecCombinator> SpecCombinator for ExplicitTag<T> {
     type SpecResult = T::SpecResult;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         LengthWrapped(self.1).spec_parse(s)
     }
 
@@ -34,7 +34,7 @@ impl<T: SpecCombinator> SpecCombinator for ExplicitTag<T> {
         LengthWrapped(self.1).spec_parse_wf(s)
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         LengthWrapped(self.1).spec_serialize(v)
     }
 }
@@ -64,7 +64,7 @@ impl<T: Combinator> Combinator for ExplicitTag<T> where
     type Result<'a> = T::Result<'a>;
     type Owned = T::Owned;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

@@ -13,7 +13,7 @@ pub type LengthValue = usize;
 impl SpecCombinator for Length {
     type SpecResult = LengthValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
     {
         if s.len() == 0 {
             Err(())
@@ -39,9 +39,14 @@ impl SpecCombinator for Length {
         }
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        if s.len() != 0 && s[0] >= 0x80 {
+            let bytes = (s[0] - 0x80) as LengthValue;
+            VarUInt(bytes as usize).spec_parse_wf(s.drop_first());
+        }
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()>
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()>
     {
         if v < 0x80 {
             Ok(seq![v as u8])
@@ -119,7 +124,7 @@ impl Combinator for Length {
     type Result<'a> = LengthValue;
     type Owned = LengthValue;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

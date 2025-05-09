@@ -143,12 +143,17 @@ macro_rules! wrap_combinator_impls {
         = $inner_expr:expr ;) => {
         ::builtin_macros::verus! {
             impl $name {
-                /// Since we can't exactly specify the inner combinator in SpecCombinator,
-                /// we need to separately check that it is a valid Combinator
+                /// Due to a Verus/SMT instability issue,
+                /// specifying the actual definitions of, e.g., spec_parse
+                /// results in proof failures in a large number of irrelevant places
+                ///
+                /// So instead, we just separately check a number of sufficient conditions
+                /// for the wrapped combinator in this function
+                ///
+                /// TODO: remove this once the Verus issue is fixed
                 #[allow(dead_code)]
                 fn check_valid_inner_combinator() {
                     // Type check
-                    // TODO: remove this once the Verus issue is fixed
                     #[allow(unused_variables)]
                     let c: $inner_type = $inner_expr;
 

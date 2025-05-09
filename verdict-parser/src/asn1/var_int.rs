@@ -248,7 +248,7 @@ impl Combinator for VarUInt {
     type Result<'a> = VarUIntResult;
     type Owned = VarUIntResult;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         Some(self.0)
     }
 
@@ -514,7 +514,7 @@ impl Combinator for VarInt {
     type Result<'a> = VarIntResult;
     type Owned = VarIntResult;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         Some(self.0)
     }
 

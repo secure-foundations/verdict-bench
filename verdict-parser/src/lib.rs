@@ -105,7 +105,11 @@ verus! {
             // Completeness
             res is Err ==> spec_decode_base64(encoded@) is None,
     {
-        let (_, bytes) = Base64.parse(encoded)?;
+        let (n, bytes) = Base64.parse(encoded)?;
+
+        if n != encoded.len() {
+            return Err(ParseError::Other("trailing bytes in base64".to_string()));
+        }
 
         assert(encoded.len() <= usize::MAX);
         proof {

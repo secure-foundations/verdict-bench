@@ -16,7 +16,7 @@ asn1_tagged!(Null, tag_of!(NULL));
 impl SpecCombinator for Null {
     type SpecResult = NullValue;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         if s.len() >= 1 && s[0] == 0x00 {
             Ok((1, NullValue))
         } else {
@@ -26,7 +26,7 @@ impl SpecCombinator for Null {
 
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         Ok(seq![ 0x00 ])
     }
 }
@@ -51,7 +51,7 @@ impl Combinator for Null {
     type Result<'a> = NullValue;
     type Owned = NullValue;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         Some(1)
     }
 

@@ -110,14 +110,13 @@ impl<T: View> VecDeep<T> {
         self.0.append(&mut other.0);
     }
 
-    /// TODO: verify this?
-    #[verifier::external_body]
-    #[inline(always)]
-    pub fn flatten(v: VecDeep<VecDeep<T>>) -> (res: VecDeep<T>)
-        ensures res@ == v@.flatten()
-    {
-        Self::from_vec(v.0.into_iter().map(|u| u.0).flatten().collect())
-    }
+    // #[verifier::external_body]
+    // #[inline(always)]
+    // pub fn flatten(v: VecDeep<VecDeep<T>>) -> (res: VecDeep<T>)
+    //     ensures res@ == v@.flatten()
+    // {
+    //     Self::from_vec(v.0.into_iter().map(|u| u.0).flatten().collect())
+    // }
 
     #[inline(always)]
     pub fn split_off(&mut self, at: usize) -> (res: VecDeep<T>)
@@ -141,7 +140,7 @@ impl<T: View> VecDeep<T> {
     #[verifier::external_body]
     #[inline(always)]
     pub fn from_slice(slice: &[T]) -> (res: Self)
-        where T: Clone
+        where T: Copy
         ensures
             res@ =~= slice@.map_values(|x: T| x@),
     {

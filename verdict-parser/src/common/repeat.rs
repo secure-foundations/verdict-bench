@@ -23,7 +23,7 @@ impl<C: View> View for Repeat<C>
 impl<C: SpecCombinator + SecureSpecCombinator> SpecCombinator for Repeat<C> {
     type SpecResult = Seq<C::SpecResult>;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
         decreases s.len()
     {
         if !C::is_prefix_secure() {
@@ -48,7 +48,7 @@ impl<C: SpecCombinator + SecureSpecCombinator> SpecCombinator for Repeat<C> {
 
     proof fn spec_parse_wf(&self, s: Seq<u8>) {}
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()>
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()>
         decreases v.len()
     {
         if !C::is_prefix_secure() {
@@ -223,7 +223,7 @@ impl<C: Combinator> Combinator for Repeat<C> where
     type Result<'a> = VecDeep<C::Result<'a>>;
     type Owned = VecDeep<C::Owned>;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

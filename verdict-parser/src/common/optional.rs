@@ -21,7 +21,7 @@ impl<C1, C2> SpecCombinator for Optional<C1, C2> where
 {
     type SpecResult = PairValue<OptionDeep<C1::SpecResult>, C2::SpecResult>;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
     {
         if self.1.disjoint_from(&self.0) {
             if let Ok((n, (v1, v2))) = (self.0, self.1).spec_parse(s) {
@@ -41,7 +41,7 @@ impl<C1, C2> SpecCombinator for Optional<C1, C2> where
         self.1.spec_parse_wf(s);
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()>
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()>
     {
         if self.1.disjoint_from(&self.0) {
             match v {
@@ -103,7 +103,7 @@ impl<C1, C2> Combinator for Optional<C1, C2> where
     type Result<'a> = OptionalValue<C1::Result<'a>, C2::Result<'a>>;
     type Owned = OptionalValue<C1::Owned, C2::Owned>;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -154,6 +154,27 @@ impl<C1, C2> Combinator for Optional<C1, C2> where
         assert(data@ =~= seq_splice(old(data)@, pos, self@.spec_serialize(v@).unwrap()));
 
         Ok(len)
+    }
+}
+
+/// If T2 and T3 are both disjoint from T1, then
+/// something like Optional<T1, Optional<T2, T3>> is doable
+impl<T1, T2, T3> DisjointFrom<T1> for Optional<T2, T3> where
+    T1: SecureSpecCombinator,
+    T2: SecureSpecCombinator,
+    T3: SecureSpecCombinator,
+    T2: DisjointFrom<T1>,
+    T3: DisjointFrom<T1>,
+    T3: DisjointFrom<T2>,
+{
+    open spec fn disjoint_from(&self, other: &T1) -> bool {
+        self.0.disjoint_from(other) &&
+        self.1.disjoint_from(other)
+    }
+
+    proof fn parse_disjoint_on(&self, other: &T1, buf: Seq<u8>) {
+        self.0.parse_disjoint_on(other, buf);
+        self.1.parse_disjoint_on(other, buf);
     }
 }
 

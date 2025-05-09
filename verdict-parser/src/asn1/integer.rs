@@ -18,7 +18,7 @@ impl SpecCombinator for Integer {
 
     /// Same as new_spec_integer_inner(), but filters out tuples (n, v)
     /// where v is *not* the minimum number of bytes required to represent v
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         match new_spec_integer_inner().spec_parse(s) {
             Ok((len, (n, v))) => {
                 if is_min_num_bytes_signed(v, n as VarUIntResult) {
@@ -31,9 +31,11 @@ impl SpecCombinator for Integer {
         }
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        new_spec_integer_inner().spec_parse_wf(s);
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         new_spec_integer_inner().spec_serialize((min_num_bytes_signed(v) as LengthValue, v))
     }
 }
@@ -65,7 +67,7 @@ impl Combinator for Integer {
     type Result<'a> = IntegerValue;
     type Owned = IntegerValue;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -106,11 +108,11 @@ impl Continuation for IntegerCont {
         VarInt(i as usize)
     }
 
-    open spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
+    closed spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
         true
     }
 
-    open spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
+    closed spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
         o == VarInt(i as usize)
     }
 }
@@ -121,7 +123,7 @@ impl Continuation for IntegerCont {
 type SpecIntegerInner = SpecDepend<Length, VarInt>;
 type IntegerInner = Depend<Length, VarInt, IntegerCont>;
 
-pub open spec fn new_spec_integer_inner() -> SpecIntegerInner {
+closed spec fn new_spec_integer_inner() -> SpecIntegerInner {
     let ghost spec_snd = |l| {
         VarInt(l as usize)
     };

@@ -21,7 +21,7 @@ impl SpecCombinator for Base128UInt {
     type SpecResult = UInt;
 
     /// A wrapper around the *_helper version but first find the length of the first arc
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()>
     {
         match Self::find_first_arc(s) {
             Some(len) => {
@@ -38,7 +38,7 @@ impl SpecCombinator for Base128UInt {
         Self::lemma_find_first_arc_alt(s);
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         Ok(Self::spec_serialize_helper(v, true))
     }
 }
@@ -79,7 +79,7 @@ impl SecureSpecCombinator for Base128UInt {
 
 impl Base128UInt {
     /// last_byte is true iff s[-1] is the last byte (which must exist and have the highest bit set to 0)
-    pub open spec fn spec_parse_helper(s: Seq<u8>, last_byte: bool) -> Option<UInt>
+    closed spec fn spec_parse_helper(s: Seq<u8>, last_byte: bool) -> Option<UInt>
         decreases s.len()
     {
         if s.len() == 0 {
@@ -117,7 +117,7 @@ impl Base128UInt {
 
     /// Serialize v in base-128 encoding
     /// last_byte is true iff the encoding should have the highest bit of the last byte set to 0
-    pub open spec fn spec_serialize_helper(v: UInt, last_byte: bool) -> Seq<u8>
+    closed spec fn spec_serialize_helper(v: UInt, last_byte: bool) -> Seq<u8>
         decreases v via Self::spec_serialize_dereases
     {
         if v == 0 {
@@ -135,7 +135,7 @@ impl Base128UInt {
         }
     }
 
-    pub open spec fn find_first_arc(s: Seq<u8>) -> Option<int>
+    closed spec fn find_first_arc(s: Seq<u8>) -> Option<int>
         decreases s.len()
     {
         if s.len() == 0 {
@@ -533,7 +533,7 @@ impl Combinator for Base128UInt {
     type Result<'a> = UInt;
     type Owned = UInt;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

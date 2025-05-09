@@ -10,7 +10,7 @@ pub struct Base64;
 impl Base64 {
     /// Some() => valid 6 bits
     /// None => padding byte
-    pub open spec fn spec_char_to_bits(b: u8) -> Result<Option<u8>, ()> {
+    closed spec fn spec_char_to_bits(b: u8) -> Result<Option<u8>, ()> {
         let c = b as char;
         if c >= 'A' && c <= 'Z' {
             Ok(Some((b - 'A' as u8) as u8))
@@ -29,7 +29,7 @@ impl Base64 {
         }
     }
 
-    pub open spec fn spec_bits_to_char(b: u8) -> u8 {
+    closed spec fn spec_bits_to_char(b: u8) -> u8 {
         if b < 26 {
             (b + 'A' as u8) as u8
         } else if b < 52 {
@@ -44,7 +44,7 @@ impl Base64 {
     }
 
     /// Convert a quadruple of 6-bit bytes to a 3-byte sequence
-    pub open spec fn spec_decode_6_bit_bytes(b1: u8, b2: u8, b3: u8, b4: u8) -> (u8, u8, u8) {
+    closed spec fn spec_decode_6_bit_bytes(b1: u8, b2: u8, b3: u8, b4: u8) -> (u8, u8, u8) {
         let v1 = (b1 << 2) | (b2 >> 4);
         let v2 = (b2 << 4) | (b3 >> 2);
         let v3 = (b3 << 6) | b4;
@@ -52,7 +52,7 @@ impl Base64 {
     }
 
     /// Convert a byte sequence [v1, v2, v3] to a quadruple of 6-bit bytes
-    pub open spec fn spec_encode_6_bit_bytes(v1: u8, v2: u8, v3: u8) -> (u8, u8, u8, u8) {
+    closed spec fn spec_encode_6_bit_bytes(v1: u8, v2: u8, v3: u8) -> (u8, u8, u8, u8) {
         let b1 = v1 >> 2;
         let b2 = ((v1 & 0b11) << 4) | (v2 >> 4);
         let b3 = ((v2 & 0b1111) << 2) | (v3 >> 6);
@@ -60,7 +60,7 @@ impl Base64 {
         (b1, b2, b3, b4)
     }
 
-    pub open spec fn spec_parse_helper(s: Seq<u8>) -> Result<(usize, Seq<u8>), ()>
+    closed spec fn spec_parse_helper(s: Seq<u8>) -> Result<(usize, Seq<u8>), ()>
         decreases s.len()
     {
         if s.len() == 0 {
@@ -104,7 +104,7 @@ impl Base64 {
         }
     }
 
-    pub open spec fn spec_serialize_helper(v: Seq<u8>) -> Result<Seq<u8>, ()>
+    closed spec fn spec_serialize_helper(v: Seq<u8>) -> Result<Seq<u8>, ()>
         decreases v.len()
     {
         if v.len() == 0 {
@@ -136,11 +136,11 @@ impl Base64 {
 impl SpecCombinator for Base64 {
     type SpecResult = Seq<u8>;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         Self::spec_parse_helper(s)
     }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         match Self::spec_serialize_helper(v) {
             Ok(s) =>
                 if s.len() <= usize::MAX {
@@ -353,7 +353,7 @@ impl Combinator for Base64 {
     type Result<'a> = Vec<u8>;
     type Owned = Vec<u8>;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 

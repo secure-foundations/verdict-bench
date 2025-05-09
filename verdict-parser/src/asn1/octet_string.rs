@@ -12,16 +12,18 @@ asn1_tagged!(OctetString, tag_of!(OCTET_STRING));
 impl SpecCombinator for OctetString {
     type SpecResult = Seq<u8>;
 
-    open spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
+    closed spec fn spec_parse(&self, s: Seq<u8>) -> Result<(usize, Self::SpecResult), ()> {
         match new_spec_octet_string_inner().spec_parse(s) {
             Ok((len, (_, v))) => Ok((len, v)),
             Err(..) => Err(()),
         }
     }
 
-    proof fn spec_parse_wf(&self, s: Seq<u8>) {}
+    proof fn spec_parse_wf(&self, s: Seq<u8>) {
+        new_spec_octet_string_inner().spec_parse_wf(s)
+    }
 
-    open spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
+    closed spec fn spec_serialize(&self, v: Self::SpecResult) -> Result<Seq<u8>, ()> {
         new_spec_octet_string_inner().spec_serialize((v.len() as LengthValue, v))
     }
 }
@@ -48,7 +50,7 @@ impl Combinator for OctetString {
     type Result<'a> = &'a [u8];
     type Owned = Vec<u8>;
 
-    open spec fn spec_length(&self) -> Option<usize> {
+    closed spec fn spec_length(&self) -> Option<usize> {
         None
     }
 
@@ -80,11 +82,11 @@ impl Continuation for BytesCont {
         Bytes(i as usize)
     }
 
-    open spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
+    closed spec fn requires<'a>(&self, i: Self::Input<'a>) -> bool {
         true
     }
 
-    open spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
+    closed spec fn ensures<'a>(&self, i: Self::Input<'a>, o: Self::Output) -> bool {
         &&& o == Bytes(i as usize)
         &&& o.parse_requires()
         &&& o.serialize_requires()
@@ -95,7 +97,7 @@ impl Continuation for BytesCont {
 type SpecOctetStringInner = SpecDepend<Length, Bytes>;
 type OctetStringInner = Depend<Length, Bytes, BytesCont>;
 
-pub open spec fn new_spec_octet_string_inner() -> SpecOctetStringInner {
+closed spec fn new_spec_octet_string_inner() -> SpecOctetStringInner {
     SpecDepend {
         fst: Length,
         snd: |l| {
