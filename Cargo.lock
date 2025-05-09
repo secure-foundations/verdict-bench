@@ -171,7 +171,7 @@ dependencies = [
  "prettyplease_verus",
  "proc-macro2",
  "quote",
- "syn 2.0.96",
+ "syn 1.0.109",
  "syn_verus",
  "synstructure",
 ]
@@ -459,12 +459,6 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "hashbrown"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-
-[[package]]
-name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
@@ -589,16 +583,6 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
-dependencies = [
- "autocfg",
- "hashbrown 0.12.3",
-]
-
-[[package]]
-name = "indexmap"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f822373a4fe84d4bb149bf54e584a7f4abec90e072ed49cda0edea5b95471f"
@@ -668,6 +652,7 @@ checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
 [[package]]
 name = "libcrux"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/?branch=main)",
  "hax-lib-macros 0.1.0-rc.1 (git+https://github.com/hacspec/hax/?branch=main)",
@@ -684,6 +669,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdh"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
  "rand",
@@ -692,6 +678,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hacl"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "cc",
  "libcrux-platform",
@@ -700,6 +687,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hkdf"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
 ]
@@ -707,6 +695,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hmac"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-hacl",
  "libcrux-hkdf",
@@ -715,10 +704,12 @@ dependencies = [
 [[package]]
 name = "libcrux-intrinsics"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 
 [[package]]
 name = "libcrux-kem"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libcrux-ecdh",
  "libcrux-ml-kem",
@@ -729,6 +720,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ml-kem"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -740,6 +732,7 @@ dependencies = [
 [[package]]
 name = "libcrux-platform"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "libc",
 ]
@@ -747,6 +740,7 @@ dependencies = [
 [[package]]
 name = "libcrux-sha3"
 version = "0.0.2-beta.2"
+source = "git+https://github.com/zhengyao-lin/libcrux.git?rev=c69868e754dcb9d2390bb84d6db8a860af061f55#c69868e754dcb9d2390bb84d6db8a860af061f55"
 dependencies = [
  "hax-lib 0.1.0-rc.1 (git+https://github.com/hacspec/hax/)",
  "libcrux-intrinsics",
@@ -870,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "prettyplease_verus"
-version = "0.2.29"
+version = "0.1.15"
 dependencies = [
  "proc-macro2",
  "syn_verus",
@@ -1107,16 +1101,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "state_machines_macros"
-version = "0.1.0"
-dependencies = [
- "indexmap 1.9.3",
- "proc-macro2",
- "quote",
- "syn_verus",
-]
-
-[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1129,6 +1113,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
+ "quote",
  "unicode-ident",
 ]
 
@@ -1145,7 +1130,7 @@ dependencies = [
 
 [[package]]
 name = "syn_verus"
-version = "2.0.96"
+version = "1.0.95"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1154,12 +1139,13 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.13.0"
-source = "git+https://github.com/mystor/synstructure.git?rev=1079497eb2bea252433dac53afe41291d8779641#1079497eb2bea252433dac53afe41291d8779641"
+version = "0.12.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.96",
+ "syn 1.0.109",
  "unicode-xid",
 ]
 
@@ -1370,7 +1356,7 @@ dependencies = [
 name = "verdict-rspec"
 version = "0.1.0"
 dependencies = [
- "indexmap 2.7.0",
+ "indexmap",
  "proc-macro2",
  "quote",
  "syn_verus",
@@ -1417,7 +1403,6 @@ version = "0.1.0"
 dependencies = [
  "builtin",
  "builtin_macros",
- "state_machines_macros",
 ]
 
 [[package]]

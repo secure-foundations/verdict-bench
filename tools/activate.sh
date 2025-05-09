@@ -14,7 +14,7 @@ if [ ! -d deps/verus ]; then
     (git init deps/verus &&
     cd deps/verus &&
     git remote add origin https://github.com/zhengyao-lin/verus.git &&
-    git fetch --depth 1 origin df8335e469b7c091d16538f263536c602fa5d936 &&
+    git fetch --depth 1 origin 8e096695ccd42aaac479201c101030ca8532a1de &&
     git checkout FETCH_HEAD) || return 1
 fi
 
