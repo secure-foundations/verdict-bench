@@ -268,14 +268,7 @@ FROM other-build AS verdict-build
 COPY verdict verdict
 
 COPY verdict verdict-src
-RUN rm -rf /verdict-src/deps/libcrux/tests \
-           /verdict-src/deps/libcrux/libcrux-kem/tests \
-           /verdict-src/deps/libcrux/libcrux-ml-kem/tests \
-           /verdict-src/deps/libcrux/libcrux-sha3/tests \
-           /verdict-src/deps/libcrux/libcrux-ml-dsa/tests \
-           /verdict-src/deps/libcrux/libcrux-ml-kem/tests \
-           /verdict-src/deps/libcrux/proofs \
-           /verdict-src/deps/verus/source/docs \
+RUN rm -rf /verdict-src/deps/verus/source/docs \
            /verdict-src/deps/verus/source/rust_verify/example
 
 SHELL [ "/bin/bash", "-c" ]
