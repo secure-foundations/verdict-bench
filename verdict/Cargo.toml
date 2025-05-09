@@ -8,8 +8,8 @@ builtin_macros = { path = "../deps/verus/source/builtin_macros" }
 builtin = { path = "../deps/verus/source/builtin" }
 vstd = { path = "../deps/verus/source/vstd" }
 vest = { path = "../deps/vest" }
-libcrux = { path = "../deps/libcrux" }
-libcrux-hacl = { path = "../deps/libcrux/sys/hacl" }
+libcrux = { git = "https://github.com/zhengyao-lin/libcrux.git", rev = "c69868e754dcb9d2390bb84d6db8a860af061f55" }
+libcrux-hacl = { git = "https://github.com/zhengyao-lin/libcrux.git", rev = "c69868e754dcb9d2390bb84d6db8a860af061f55" }
 chrono = "0.4.38"
 aws-lc-rs = "1.10.0"
 verdict-polyfill = { path = "../verdict-polyfill" }
