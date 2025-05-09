@@ -157,6 +157,20 @@ jobs:
           docker image ls
           df -h
 
+      # Build Rustls
+      - name: Build Rustls
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: rustls-install
+          tags: rustls-install
+          cache-from: type=gha,scope=rustls
+          cache-to: type=gha,mode=min,scope=rustls
+      - run: |
+          docker buildx prune --all --force
+          docker image ls
+          df -h
+
       # Build the final image and push to registry
       # Don't cache the final image since it is too large
       - name: Build final Docker image
@@ -177,6 +191,7 @@ jobs:
             type=gha,scope=ceres
             type=gha,scope=hammurabi
             type=gha,scope=verdict
+            type=gha,scope=rustls
 
   # Finally, do some sanity checks
   test:
@@ -208,5 +223,6 @@ jobs:
       - name: Tag image as failed if tests failed
         if: steps.test.outcome == 'failure'
         run: |
+          TAG=$(echo "${{ needs.build.outputs.image-tag }}" | head -n1)
           docker tag "$TAG" "${TAG}-failed"
           docker push "${TAG}-failed"
