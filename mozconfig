@@ -9,13 +9,24 @@ export NM=llvm-nm
 
 # https://serge-sans-paille.github.io/pythran-stories/shrinking-a-shared-library.html
 # https://news.ycombinator.com/item?id=36446158
-export MORE_FLAGS="-fno-unwind-tables -fno-exceptions -fno-asynchronous-unwind-tables -fomit-frame-pointer -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all"
+export MORE_FLAGS="-fno-unwind-tables \
+    -fno-exceptions \
+    -fno-asynchronous-unwind-tables \
+    -fomit-frame-pointer \
+    -ffunction-sections \
+    -fdata-sections \
+    -Wl,--gc-sections \
+    -Wl,--as-needed \
+    -Wl,--icf=all \
+    -fno-semantic-interposition \
+    -Bsymbolic \
+    -fno-stack-protector"
 export CFLAGS="$CFLAGS $MORE_FLAGS"
 export CXXFLAGS="$CXXFLAGS $MORE_FLAGS"
 export RUSTFLAGS="$RUSTFLAGS -C opt-level=z"
 
 # A fix for some issues in static linking
-export LDFLAGS="$LDFLAGS -Wl,--allow-multiple-definition"
+export LDFLAGS="$LDFLAGS -Wl,--allow-multiple-definition -Wl,--lto-O2"
 
 export MOZILLA_OFFICIAL=1
 
