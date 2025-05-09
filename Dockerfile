@@ -415,7 +415,9 @@ RUN apt-get purge -y python3-pip file openssl && \
            /usr/share/doc \
            /usr/share/X11 \
            /usr/share/gtk-3.0 \
-           /usr/share/fonts && \
+           /usr/share/fonts \
+           /usr/share/bash-completion \
+           /usr/share/perl5 && \
     find /usr | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Some additional unneeded, large shared libraries
@@ -424,11 +426,23 @@ RUN apt-get purge -y python3-pip file openssl && \
 # export LD_LIBRARY_PATH=firefox/mozilla-unified/obj-firefox/dist/bin; for binary in /bin/* /usr/local/sbin/* /usr/local/bin/* /usr/sbin/* /usr/bin/* firefox/mozilla-unified/obj-firefox/dist/bin/xpcshell; do [ -f "$binary" ] && [ -r "$binary" ] && (file -L "$binary" | grep -q "ELF\|shared object") && ldd "$binary" 2>/dev/null | grep -o '/[^ :),]*' | sed "s|$| $binary|"; done | awk '{lib=$1; bin=$2; if(!(lib in libs)) libs[lib]=bin; else libs[lib]=libs[lib]", "bin} END {for(lib in libs) {cmd="du -L -h \""lib"\" 2>/dev/null | cut -f1"; cmd|getline hsize; close(cmd); if(hsize) {printf "%s\t%s (used by: %s)\n", hsize, lib, libs[lib]} else printf "0B\t%s (used by: %s)\n", lib, libs[lib]}}' | sort -h
 # ```
 # This might broke some dependencies but should be easy to fix
-RUN rm -rf /lib/x86_64-linux-gnu/libicudata.so* \
-           /lib/x86_64-linux-gnu/libicuuc.so* \
-           /lib/x86_64-linux-gnu/libicui18n.so* \
-           /lib/swi-prolog/library/{chr,http,semweb,pldoc,dialect,protobufs,latex2html,pengines.pl,prolog_colour.pl} \
-           /lib/swi-prolog/include
+RUN rm -rf /usr/lib/x86_64-linux-gnu/libicudata.so* \
+           /usr/lib/x86_64-linux-gnu/libicuuc.so* \
+           /usr/lib/x86_64-linux-gnu/libicui18n.so* \
+           /usr/lib/swi-prolog/library/chr \
+           /usr/lib/swi-prolog/library/http \
+           /usr/lib/swi-prolog/library/semweb \
+           /usr/lib/swi-prolog/library/pldoc \
+           /usr/lib/swi-prolog/library/dialect \
+           /usr/lib/swi-prolog/library/protobufs \
+           /usr/lib/swi-prolog/library/latex2html \
+           /usr/lib/swi-prolog/library/pengines.pl \
+           /usr/lib/swi-prolog/library/prolog_colour.pl \
+           /usr/lib/swi-prolog/include \
+           /usr/bin/systemctl \
+           /usr/bin/systemd-* \
+           /usr/bin/cvtsudoers \
+           /usr/bin/localedef
 
     # dpkg --purge --force-depends ubuntu-mono
     # cp -L /usr/lib/x86_64-linux-gnu/libsystemd.so.0 \
